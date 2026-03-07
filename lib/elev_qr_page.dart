@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 class ElevQrPage extends StatefulWidget {
   final String userId;
@@ -23,23 +25,18 @@ class _ElevQrPageState extends State<ElevQrPage> {
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _regen());
   }
 
-  Future<String> createToken(String userId) async {
-    final rand = Random();
-    final tokenId = List.generate(16, (i) => rand.nextInt(9)).join();
+  Future<String> createToken() async {
+    final callable = FirebaseFunctions.instance.httpsCallable(
+      'generateQrToken',
+    );
 
-    final expiresAt = DateTime.now().add(const Duration(seconds: 20));
+    final res = await callable.call();
 
-    await FirebaseFirestore.instance.collection("qrTokens").doc(tokenId).set({
-      "userId": userId,
-      "expiresAt": expiresAt,
-      "used": false,
-    });
-
-    return tokenId;
+    return res.data["token"];
   }
 
   void _regen() async {
-    final newToken = await createToken(widget.userId);
+    final newToken = await createToken();
 
     setState(() {
       _token = newToken;

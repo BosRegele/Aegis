@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 class GateScanPage extends StatefulWidget {
   const GateScanPage({super.key});
@@ -15,39 +15,11 @@ class _GateScanPageState extends State<GateScanPage> {
   bool _lock = false;
 
   Future<Map<String, dynamic>> _redeemToken(String tokenId) async {
-    final db = FirebaseFirestore.instance;
-    final tokenRef = db.collection('qrTokens').doc(tokenId);
+    final callable = FirebaseFunctions.instance.httpsCallable('redeemQrToken');
 
-    return db.runTransaction((tx) async {
-      final snap = await tx.get(tokenRef);
+    final res = await callable.call(<String, dynamic>{'token': tokenId});
 
-      if (!snap.exists) {
-        return {"ok": false, "reason": "NOT_FOUND"};
-      }
-
-      final data = snap.data()!;
-      final used = (data['used'] as bool?) ?? false;
-      final userId = data['userId']?.toString() ?? "unknown";
-      final expiresAt = data['expiresAt'];
-
-      if (used) {
-        return {"ok": false, "reason": "ALREADY_USED", "userId": userId};
-      }
-
-      if (expiresAt is! Timestamp) {
-        return {"ok": false, "reason": "BAD_EXPIRES", "userId": userId};
-      }
-
-      final now = Timestamp.now();
-      if (expiresAt.compareTo(now) <= 0) {
-        return {"ok": false, "reason": "EXPIRED", "userId": userId};
-      }
-
-      // Marchează token ca folosit (atomic)
-      tx.update(tokenRef, {"used": true, "usedAt": now});
-
-      return {"ok": true, "userId": userId};
-    });
+    return Map<String, dynamic>.from(res.data as Map);
   }
 
   Future<void> _logAccessEvent({
@@ -71,29 +43,30 @@ class _GateScanPageState extends State<GateScanPage> {
       _status = "Verificare...";
     });
 
-    final res = await _redeemToken(tokenId);
+    try {
+      final res = await _redeemToken(tokenId);
 
-    final ok = res["ok"] == true;
-    final userId = (res["userId"] ?? "").toString();
-    final reason = res["reason"] ?? "";
+      final ok = res["ok"] == true;
+      final userId = (res["userId"] ?? "-").toString();
+      final fullName = (res["fullName"] ?? "").toString();
+      final classId = (res["classId"] ?? "").toString();
+      final reason = (res["reason"] ?? "").toString();
 
-    await _logAccessEvent(
-      tokenId: tokenId,
-      allowed: ok,
-      reason: reason.toString(),
-      userId: userId.isEmpty || userId == 'unknown' ? null : userId,
-    );
-
-    setState(() {
-      _isAllowed = ok;
-      _status = ok
-          ? "✅ ALLOW (userId=$userId)"
-          : "❌ DENY ($reason) (userId=$userId)";
-    });
+      setState(() {
+        _isAllowed = ok;
+        _status = ok
+            ? "✅ ALLOW\n$fullName\n$classId\n(userId=$userId)"
+            : "❌ DENY ($reason)\n$fullName\n$classId\n(userId=$userId)";
+      });
+    } catch (e) {
+      setState(() {
+        _isAllowed = false;
+        _status = "❌ Eroare validare: $e";
+      });
+    }
 
     _lock = true;
 
-    // după 2 secunde se resetează și poți scana iar
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
 
@@ -120,7 +93,7 @@ class _GateScanPageState extends State<GateScanPage> {
                 final raw = barcodes.first.rawValue;
                 if (raw == null || raw.isEmpty) return;
 
-                _lock = true; // blochează instant ca să nu dubleze scanarea
+                _lock = true;
                 _handleToken(raw);
               },
             ),

@@ -242,7 +242,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                   onPressed: () async {
                     try {
                       final res = await api.resetPassword(
-                        uid: targetUserC.text,
+                        username: targetUserC.text,
                       );
                       final newPass = res['password'];
                       _log("RESET OK: newPass=$newPass");
@@ -261,7 +261,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                   onPressed: () async {
                     try {
                       await api.setDisabled(
-                        uid: targetUserC.text,
+                        username: targetUserC.text,
                         disabled: true,
                       );
                       _log("DISABLE OK");
@@ -276,7 +276,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                   onPressed: () async {
                     try {
                       await api.setDisabled(
-                        uid: targetUserC.text,
+                        username: targetUserC.text,
                         disabled: false,
                       );
                       _log("ENABLE OK");
@@ -296,7 +296,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
               onPressed: () async {
                 try {
                   await api.moveStudentClass(
-                    uid: targetUserC.text,
+                    username: targetUserC.text,
                     newClassId: moveClassC.text,
                   );
                   _log("MOVE OK");
@@ -335,7 +335,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
             ElevatedButton(
               onPressed: () async {
                 try {
-                  await store.setClassNoExitSchedule(
+                  await api.setClassNoExitSchedule(
                     classId: scheduleClassC.text,
                     startHHmm: noExitStartC.text,
                     endHHmm: noExitEndC.text,
@@ -352,7 +352,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
             ElevatedButton(
               onPressed: () async {
                 try {
-                  await store.createClass(classId: newClassC.text);
+                  await api.createClass(name: newClassC.text);
                   _log("CLASS OK: ${newClassC.text}");
                 } catch (e) {
                   _log("CLASS ERROR: $e");
@@ -363,7 +363,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
             ElevatedButton(
               onPressed: () async {
                 try {
-                  await store.deleteClassCascade(newClassC.text);
+                  await api.deleteClassCascade(classId: newClassC.text);
                   _log("DELETE CLASS OK: ${newClassC.text}");
                 } catch (e) {
                   _log("DELETE CLASS ERROR: $e");
