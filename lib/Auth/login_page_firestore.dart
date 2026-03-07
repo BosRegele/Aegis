@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../StudentInterface/mainnavigation.dart';
 import '../session.dart';
-import '../elev_qr_page.dart';
 import '../gate_scan_page.dart';
 import '../admin/secretariat_raw_page.dart';
 import '../teacher/teacher_dashboard_page.dart';
@@ -70,7 +70,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       if (role == "student") {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => ElevQrPage(userId: uid)),
+          MaterialPageRoute(builder: (_) => const AppShell()),
         );
       } else if (role == "gate") {
         Navigator.pushReplacement(

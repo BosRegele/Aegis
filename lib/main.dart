@@ -1,6 +1,6 @@
 import 'package:firster/Auth/login_page_firestore.dart';
+import 'package:firster/StudentInterface/mainnavigation.dart';
 import 'package:firster/admin/secretariat_raw_page.dart';
-import 'package:firster/elev_qr_page.dart';
 import 'package:firster/gate_scan_page.dart';
 import 'package:firster/teacher/teacher_dashboard_page.dart';
 import 'package:firster/session.dart';
@@ -43,7 +43,7 @@ class MyApp extends StatelessWidget {
     );
 
     if (role == 'student') {
-      return ElevQrPage(userId: user.uid);
+      return const AppShell();
     } else if (role == 'gate') {
       return const GateScanPage();
     } else if (role == 'admin') {

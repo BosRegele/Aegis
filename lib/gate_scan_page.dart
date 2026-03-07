@@ -46,16 +46,23 @@ class _GateScanPageState extends State<GateScanPage> {
       // Marchează token ca folosit (atomic)
       tx.update(tokenRef, {"used": true, "usedAt": now});
 
-      // Log acces (opțional dar recomandat)
-      final eventRef = db.collection('accessEvents').doc();
-      tx.set(eventRef, {
-        "tokenId": tokenId,
-        "userId": userId,
-        "timestamp": now,
-        "type": "entry",
-      });
-
       return {"ok": true, "userId": userId};
+    });
+  }
+
+  Future<void> _logAccessEvent({
+    required String tokenId,
+    required bool allowed,
+    required String reason,
+    String? userId,
+  }) async {
+    await FirebaseFirestore.instance.collection('accessEvents').add({
+      'tokenId': tokenId,
+      'userId': userId,
+      'timestamp': Timestamp.now(),
+      'scanType': 'entry',
+      'result': allowed ? 'allow' : 'deny',
+      'reason': reason,
     });
   }
 
@@ -67,8 +74,15 @@ class _GateScanPageState extends State<GateScanPage> {
     final res = await _redeemToken(tokenId);
 
     final ok = res["ok"] == true;
-    final userId = res["userId"] ?? "-";
+    final userId = (res["userId"] ?? "").toString();
     final reason = res["reason"] ?? "";
+
+    await _logAccessEvent(
+      tokenId: tokenId,
+      allowed: ok,
+      reason: reason.toString(),
+      userId: userId.isEmpty || userId == 'unknown' ? null : userId,
+    );
 
     setState(() {
       _isAllowed = ok;
