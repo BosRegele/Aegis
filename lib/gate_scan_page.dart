@@ -22,6 +22,22 @@ class _GateScanPageState extends State<GateScanPage> {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
+  Future<void> _logAccessEvent({
+    required String tokenId,
+    required bool allowed,
+    required String reason,
+    String? userId,
+  }) async {
+    await FirebaseFirestore.instance.collection('accessEvents').add({
+      'tokenId': tokenId,
+      'userId': userId,
+      'timestamp': Timestamp.now(),
+      'scanType': 'entry',
+      'result': allowed ? 'allow' : 'deny',
+      'reason': reason,
+    });
+  }
+
   Future<void> _handleToken(String tokenId) async {
     setState(() {
       _status = "Verificare...";
