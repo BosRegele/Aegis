@@ -26,21 +26,51 @@ class AdminApi {
     return Map<String, dynamic>.from(res.data);
   }
 
-  Future<Map<String, dynamic>> resetPassword({required String uid}) async {
+  Future<Map<String, dynamic>> resetPassword({required String username}) async {
     final callable = _functions.httpsCallable('adminResetPassword');
-    final res = await callable.call(<String, dynamic>{'uid': uid});
+    final res = await callable.call(<String, dynamic>{
+      'username': username.trim().toLowerCase(),
+    });
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> setClassNoExitSchedule({
+    required String classId,
+    required String startHHmm,
+    required String endHHmm,
+  }) async {
+    final callable = _functions.httpsCallable('adminSetClassNoExitSchedule');
+    final res = await callable.call(<String, dynamic>{
+      'classId': classId,
+      'startHHmm': startHHmm,
+      'endHHmm': endHHmm,
+    });
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> deleteClassCascade({
+    required String classId,
+  }) async {
+    final callable = _functions.httpsCallable('adminDeleteClassCascade');
+    final res = await callable.call(<String, dynamic>{'classId': classId});
     return Map<String, dynamic>.from(res.data as Map);
   }
 
   Future<Map<String, dynamic>> setDisabled({
-    required String uid,
+    required String username,
     required bool disabled,
   }) async {
     final callable = _functions.httpsCallable('adminSetDisabled');
     final res = await callable.call(<String, dynamic>{
-      'uid': uid,
+      'username': username.trim().toLowerCase(),
       'disabled': disabled,
     });
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> redeemQrToken({required String token}) async {
+    final callable = _functions.httpsCallable('redeemQrToken');
+    final res = await callable.call(<String, dynamic>{'token': token});
     return Map<String, dynamic>.from(res.data as Map);
   }
 
@@ -63,13 +93,13 @@ class AdminApi {
   }
 
   Future<Map<String, dynamic>> moveStudentClass({
-    required String uid,
+    required String username,
     required String newClassId,
   }) async {
     final callable = _functions.httpsCallable('adminMoveStudentClass');
     final res = await callable.call(<String, dynamic>{
-      'uid': uid,
-      'newClassId': newClassId,
+      'username': username.trim().toLowerCase(),
+      'newClassId': newClassId.trim().toUpperCase(),
     });
     return Map<String, dynamic>.from(res.data as Map);
   }
