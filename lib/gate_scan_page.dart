@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
@@ -51,6 +52,13 @@ class _GateScanPageState extends State<GateScanPage> {
       final fullName = (res["fullName"] ?? "").toString();
       final classId = (res["classId"] ?? "").toString();
       final reason = (res["reason"] ?? "").toString();
+
+      await _logAccessEvent(
+        tokenId: tokenId,
+        allowed: ok,
+        reason: reason,
+        userId: userId == '-' ? null : userId,
+      );
 
       setState(() {
         _isAllowed = ok;
