@@ -7,6 +7,8 @@ import 'admin_store.dart';
 import 'admin_classes_page.dart';
 import 'admin_students_page.dart';
 import 'admin_teachers_page.dart';
+import 'admin_admins_page.dart';
+import 'admin_turnstiles_page.dart';
 
 class SecretariatRawPage extends StatefulWidget {
   const SecretariatRawPage({super.key});
@@ -130,30 +132,63 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
               },
               child: const Text("Vezi clase + elevi"),
             ),
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AdminStudentsPage(),
-                      ),
-                    );
-                  },
-                  child: const Text("Toti elevii"),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AdminStudentsPage(),
+                          ),
+                        );
+                      },
+                      child: const Text("Toti elevii"),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AdminTeachersPage(),
+                          ),
+                        );
+                      },
+                      child: const Text("Toti profesorii"),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AdminTeachersPage(),
-                      ),
-                    );
-                  },
-                  child: const Text("Toti profesorii"),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AdminAdminsPage(),
+                          ),
+                        );
+                      },
+                      child: const Text("Toti administratorii"),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AdminTurnstilesPage(),
+                          ),
+                        );
+                      },
+                      child: const Text("Turnichete"),
+                    ),
+                  ],
                 ),
               ],
             ),
