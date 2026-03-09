@@ -343,13 +343,16 @@ class _StudentsList extends StatelessWidget {
           itemBuilder: (_, i) {
             final d = docs[i];
             final data = d.data() as Map<String, dynamic>;
-            final username = d.id;
+            final uid = d.id;
+            final username = (data['username'] ?? '').toString();
             final fullName = (data['fullName'] ?? username).toString();
             final status = (data['status'] ?? 'active').toString();
 
             return ListTile(
               title: Text(fullName),
-              subtitle: Text("username: $username | status: $status"),
+              subtitle: Text(
+                "username: $username | uid: $uid | status: $status",
+              ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
