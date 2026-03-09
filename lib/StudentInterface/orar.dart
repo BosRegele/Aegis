@@ -1,28 +1,131 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firster/session.dart';
 import 'package:flutter/material.dart';
 
-class OrarScreen extends StatelessWidget {
+class OrarScreen extends StatefulWidget {
   final VoidCallback? onBackToHome;
 
   const OrarScreen({super.key, this.onBackToHome});
 
   @override
-  Widget build(BuildContext context) {
-    final displayName = (AppSession.username?.trim().isNotEmpty ?? false)
-        ? AppSession.username!.trim()
-        : 'Elev';
-    final userEmail = (AppSession.username?.trim().isNotEmpty ?? false)
-        ? '${AppSession.username!.trim().toLowerCase()}@school.local'
-        : 'utilizator@school.local';
-    final studentId = (AppSession.uid?.isNotEmpty ?? false)
-        ? AppSession.uid!.substring(
-            0,
-            AppSession.uid!.length >= 6 ? 6 : AppSession.uid!.length,
-          )
-        : 'N/A';
+  State<OrarScreen> createState() => _OrarScreenState();
+}
 
+class _OrarScreenState extends State<OrarScreen> {
+  late final Future<_OrarViewData> _dataFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _dataFuture = _loadData();
+  }
+
+  Future<_OrarViewData> _loadData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('Utilizator neautentificat');
+    }
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    if (!userDoc.exists) {
+      throw Exception('Profilul utilizatorului nu exista in Firestore');
+    }
+
+    final userData = userDoc.data() ?? <String, dynamic>{};
+    final username = (userData['username'] ?? '').toString().trim();
+    final fullName = (userData['fullName'] ?? '').toString().trim();
+    final role = (userData['role'] ?? '').toString().trim();
+    final classId = (userData['classId'] ?? '').toString().trim().toUpperCase();
+    var teacherName = 'N/A';
+
+    String? noExitStart;
+    String? noExitEnd;
+    final noExitDays = <int>[];
+
+    if (classId.isNotEmpty) {
+      final classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(classId)
+          .get();
+
+      if (classDoc.exists) {
+        final classData = classDoc.data() ?? <String, dynamic>{};
+        final start = (classData['noExitStart'] ?? '').toString().trim();
+        final end = (classData['noExitEnd'] ?? '').toString().trim();
+        final teacherUsername = (classData['teacherUsername'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+
+        if (teacherUsername.isNotEmpty) {
+          final teacherByUsername = await FirebaseFirestore.instance
+              .collection('users')
+              .where('username', isEqualTo: teacherUsername)
+              .limit(1)
+              .get();
+
+          if (teacherByUsername.docs.isNotEmpty) {
+            final teacherData = teacherByUsername.docs.first.data();
+            final teacherFullName = (teacherData['fullName'] ?? '')
+                .toString()
+                .trim();
+            teacherName = teacherFullName.isNotEmpty
+                ? teacherFullName
+                : teacherUsername;
+          } else {
+            final teacherDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(teacherUsername)
+                .get();
+
+            if (teacherDoc.exists) {
+              final teacherData = teacherDoc.data() ?? <String, dynamic>{};
+              final teacherFullName = (teacherData['fullName'] ?? '')
+                  .toString()
+                  .trim();
+              teacherName = teacherFullName.isNotEmpty
+                  ? teacherFullName
+                  : teacherUsername;
+            }
+          }
+        }
+
+        if (start.isNotEmpty && end.isNotEmpty) {
+          noExitStart = start;
+          noExitEnd = end;
+        }
+
+        final rawDays = classData['noExitDays'];
+        if (rawDays is List) {
+          for (final day in rawDays) {
+            if (day is int && day >= 1 && day <= 7) {
+              noExitDays.add(day);
+            }
+          }
+        }
+      }
+    }
+
+    return _OrarViewData(
+      fullName: fullName,
+      username: username,
+      role: role,
+      classId: classId,
+      teacherName: teacherName,
+      noExitStart: noExitStart,
+      noExitEnd: noExitEnd,
+      noExitDays: noExitDays,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF7AAF5B),
+      backgroundColor: const Color(0xFFE6EBEE),
       appBar: AppBar(
         backgroundColor: const Color(0xFF7AAF5B),
         elevation: 0,
@@ -33,8 +136,8 @@ class OrarScreen extends StatelessWidget {
             color: Colors.white,
           ),
           onPressed: () {
-            if (onBackToHome != null) {
-              onBackToHome!();
+            if (widget.onBackToHome != null) {
+              widget.onBackToHome!();
               return;
             }
 
@@ -64,137 +167,175 @@ class OrarScreen extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF2F2F2),
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.10),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+              child: FutureBuilder<_OrarViewData>(
+                future: _dataFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.only(top: 80),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 80),
+                      child: Center(
+                        child: Text(
+                          'Eroare la incarcare profil/orar:\n${snapshot.error}',
+                          textAlign: TextAlign.center,
                         ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                    );
+                  }
+
+                  final data = snapshot.data;
+                  if (data == null) {
+                    return const Padding(
+                      padding: EdgeInsets.only(top: 80),
+                      child: Center(child: Text('Nu exista date disponibile.')),
+                    );
+                  }
+
+                  final displayName = data.fullName.isNotEmpty
+                      ? data.fullName
+                      : (data.username.isNotEmpty
+                            ? data.username
+                            : (AppSession.username ?? '').trim());
+                  final scheduleRows = _buildScheduleRows(data);
+
+                  return Column(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF2F2F2),
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.10),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
                             children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 98,
+                                    height: 106,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFDCEED5),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      Icons.person,
+                                      size: 56,
+                                      color: Color(0xFF6C7D62),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (displayName.isNotEmpty)
+                                          Text(
+                                            displayName,
+                                            style: const TextStyle(
+                                              fontSize: 23,
+                                              fontWeight: FontWeight.w800,
+                                              height: 1.0,
+                                              color: Color(0xFF171717),
+                                            ),
+                                          ),
+                                        if (data.role.isNotEmpty) ...[
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Rol: ${data.role}',
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              color: Color(0xFF303030),
+                                            ),
+                                          ),
+                                        ],
+                                        if (data.classId.isNotEmpty)
+                                          Text(
+                                            'Clasa ${data.classId}',
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              color: Color(0xFF303030),
+                                            ),
+                                          ),
+                                        if (data.classId.isNotEmpty)
+                                          Text(
+                                            'Diriginte: ${data.teacherName}',
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              color: Color(0xFF303030),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
                               Container(
-                                width: 98,
-                                height: 106,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFDCEED5),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.person,
-                                  size: 56,
-                                  color: Color(0xFF6C7D62),
-                                ),
+                                height: 1,
+                                color: const Color(0xFFB8B8B8),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      displayName,
-                                      style: const TextStyle(
-                                        fontSize: 23,
-                                        fontWeight: FontWeight.w800,
-                                        height: 1.0,
-                                        color: Color(0xFF171717),
-                                      ),
+                              const SizedBox(height: 8),
+                              if (data.username.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Username: ${data.username}',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF333333),
                                     ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'Elev',
-                                      style: TextStyle(
-                                        fontSize: 22,
-                                        color: Color(0xFF303030),
-                                      ),
-                                    ),
-                                    const Text(
-                                      'Clasa 11 I',
-                                      style: TextStyle(
-                                        fontSize: 22,
-                                        color: Color(0xFF303030),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Container(height: 1, color: const Color(0xFFB8B8B8)),
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              userEmail,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF222222),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Student ID: $studentId',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF333333),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Status: in afara scolii',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF333333),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  const Text(
-                    'Orar',
-                    style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF161616),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const _OrarRow(day: 'Luni', interval: '07:30 - 12:30'),
-                  const SizedBox(height: 10),
-                  const _OrarRow(day: 'Marti', interval: '07:30 - 12:30'),
-                  const SizedBox(height: 10),
-                  const _OrarRow(day: 'Miercuri', interval: '07:30 - 12:30'),
-                  const SizedBox(height: 10),
-                  const _OrarRow(day: 'Joi', interval: '07:30 - 12:30'),
-                  const SizedBox(height: 10),
-                  const _OrarRow(day: 'Vineri', interval: '07:30 - 12:30'),
-                ],
+                      const SizedBox(height: 22),
+                      const Text(
+                        'Orar',
+                        style: TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF161616),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (scheduleRows.isEmpty)
+                        const Text(
+                          'Nu exista orar definit pe server pentru clasa ta.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                      for (final row in scheduleRows) ...[
+                        _OrarRow(day: row.dayName, interval: row.intervalText),
+                        const SizedBox(height: 10),
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -202,6 +343,67 @@ class OrarScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+List<_ScheduleRowData> _buildScheduleRows(_OrarViewData data) {
+  if (data.noExitStart == null || data.noExitEnd == null) {
+    return const [];
+  }
+
+  if (data.noExitDays.isEmpty) {
+    return const [];
+  }
+
+  const dayMap = {
+    1: 'Luni',
+    2: 'Marti',
+    3: 'Miercuri',
+    4: 'Joi',
+    5: 'Vineri',
+    6: 'Sambata',
+    7: 'Duminica',
+  };
+
+  final uniqueDays = data.noExitDays.toSet().toList()..sort();
+  return uniqueDays
+      .map((d) => dayMap[d])
+      .whereType<String>()
+      .map(
+        (dayName) => _ScheduleRowData(
+          dayName: dayName,
+          intervalText: '${data.noExitStart} - ${data.noExitEnd}',
+        ),
+      )
+      .toList();
+}
+
+class _ScheduleRowData {
+  final String dayName;
+  final String intervalText;
+
+  const _ScheduleRowData({required this.dayName, required this.intervalText});
+}
+
+class _OrarViewData {
+  final String fullName;
+  final String username;
+  final String role;
+  final String classId;
+  final String teacherName;
+  final String? noExitStart;
+  final String? noExitEnd;
+  final List<int> noExitDays;
+
+  const _OrarViewData({
+    required this.fullName,
+    required this.username,
+    required this.role,
+    required this.classId,
+    required this.teacherName,
+    required this.noExitStart,
+    required this.noExitEnd,
+    required this.noExitDays,
+  });
 }
 
 class _OrarRow extends StatelessWidget {
@@ -212,33 +414,38 @@ class _OrarRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFFBAC7B8),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-      child: Row(
-        children: [
-          Text(
-            day,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF1C1C1C),
-            ),
+    return Align(
+      alignment: Alignment.center,
+      child: FractionallySizedBox(
+        widthFactor: 0.90,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFBAC7B8),
+            borderRadius: BorderRadius.circular(24),
           ),
-          const Spacer(),
-          Text(
-            interval,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1C1C1C),
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          child: Row(
+            children: [
+              Text(
+                day,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF1C1C1C),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                interval,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1C1C1C),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -13,6 +13,23 @@ class InboxScreen extends StatefulWidget {
 }
 
 class _InboxScreenState extends State<InboxScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _markAsRead();
+  }
+
+  Future<void> _markAsRead() async {
+    final uid = AppSession.uid;
+    if (uid == null || uid.isEmpty) {
+      return;
+    }
+
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'inboxLastOpenedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
   String _formatTimeAgo(DateTime dateTime) {
     final diff = DateTime.now().difference(dateTime);
     if (diff.inMinutes < 1) return 'acum';

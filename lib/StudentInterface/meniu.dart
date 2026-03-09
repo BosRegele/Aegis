@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firster/StudentInterface/cereri.dart';
 import 'package:firster/StudentInterface/inbox.dart';
 import 'package:firster/StudentInterface/orar.dart';
@@ -13,9 +15,16 @@ class MeniuScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayName = (AppSession.username?.trim().isNotEmpty ?? false)
+    final fallbackName = (AppSession.username?.trim().isNotEmpty ?? false)
         ? AppSession.username!.trim()
         : 'Elev';
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final userDocStream = currentUser == null
+        ? null
+        : FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .snapshots();
 
     return Scaffold(
       backgroundColor: const Color(0xFFD8DDD8),
@@ -51,138 +60,142 @@ class MeniuScreen extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFD8DDD8),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Text(
-                        'Bun venit, $displayName!',
-                        style: const TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF2E3B4E),
-                        ),
+              child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: userDocStream,
+                builder: (context, snapshot) {
+                  final userData =
+                      snapshot.data?.data() ?? const <String, dynamic>{};
+                  final fullName = (userData['fullName'] ?? '')
+                      .toString()
+                      .trim();
+                  final classId = (userData['classId'] ?? '')
+                      .toString()
+                      .trim()
+                      .toUpperCase();
+                  final lastOpenedAt =
+                      (userData['inboxLastOpenedAt'] as Timestamp?)?.toDate();
+
+                  final displayName = fullName.isNotEmpty
+                      ? fullName
+                      : fallbackName;
+
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFD8DDD8),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: _MenuTile(
-                            label: 'Acces\nQR',
-                            icon: Icons.qr_code_2_rounded,
-                            colors: const [
-                              Color(0xFF4B78D2),
-                              Color(0xFF304EAF),
-                            ],
-                            onTap: () {
-                              if (onNavigateTab != null) {
-                                onNavigateTab!(1);
-                                return;
-                              }
-
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const TeodorScreen(),
-                                ),
-                              );
-                            },
+                        Center(
+                          child: Text(
+                            'Bun venit, $displayName!',
+                            style: const TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF2E3B4E),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _MenuTile(
-                            label: 'Orar',
-                            icon: Icons.calendar_month_rounded,
-                            colors: const [
-                              Color(0xFFF0B15A),
-                              Color(0xFFE47E2D),
-                            ],
-                            onTap: () {
-                              if (onOpenOrar != null) {
-                                onOpenOrar!();
-                                return;
-                              }
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _MenuTile(
+                                label: 'Acces\nQR',
+                                icon: Icons.qr_code_2_rounded,
+                                colors: const [
+                                  Color(0xFF4B78D2),
+                                  Color(0xFF304EAF),
+                                ],
+                                onTap: () {
+                                  if (onNavigateTab != null) {
+                                    onNavigateTab!(1);
+                                    return;
+                                  }
 
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const OrarScreen(),
-                                ),
-                              );
-                            },
-                          ),
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const TeodorScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _MenuTile(
+                                label: 'Orar',
+                                icon: Icons.calendar_month_rounded,
+                                colors: const [
+                                  Color(0xFFF0B15A),
+                                  Color(0xFFE47E2D),
+                                ],
+                                onTap: () {
+                                  if (onOpenOrar != null) {
+                                    onOpenOrar!();
+                                    return;
+                                  }
+
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const OrarScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _MenuTile(
+                                label: 'Cereri\nInvoire',
+                                icon: Icons.article_rounded,
+                                colors: const [
+                                  Color(0xFF17B5A8),
+                                  Color(0xFF0C8D80),
+                                ],
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const CereriScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _UnreadMessagesTile(
+                                userId: currentUser?.uid,
+                                lastOpenedAt: lastOpenedAt,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const InboxScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        if (classId.isNotEmpty)
+                          _AccessInfoCard(classId: classId),
+                        const Spacer(),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _MenuTile(
-                            label: 'Cereri\nInvoire',
-                            icon: Icons.article_rounded,
-                            colors: const [
-                              Color(0xFF17B5A8),
-                              Color(0xFF0C8D80),
-                            ],
-                            onTap: () {
-                              if (onNavigateTab != null) {
-                                onNavigateTab!(2);
-                                return;
-                              }
-
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const CereriScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _MenuTile(
-                            label: 'Mesaje',
-                            icon: Icons.chat_bubble_rounded,
-                            colors: const [
-                              Color(0xFF9C84E0),
-                              Color(0xFF6E46C2),
-                            ],
-                            onTap: () {
-                              if (onNavigateTab != null) {
-                                onNavigateTab!(3);
-                                return;
-                              }
-
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const InboxScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    const _AccessInfoCard(
-                      statusText: 'in afara incintei',
-                      hasActivePermission: false,
-                      lastScanText: '08:30 - Turnichet principal',
-                    ),
-                    const Spacer(),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],
@@ -197,12 +210,14 @@ class _MenuTile extends StatelessWidget {
   final IconData icon;
   final List<Color> colors;
   final VoidCallback? onTap;
+  final int? badgeCount;
 
   const _MenuTile({
     required this.label,
     required this.icon,
     required this.colors,
     this.onTap,
+    this.badgeCount,
   });
 
   @override
@@ -230,7 +245,42 @@ class _MenuTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Row(
             children: [
-              Icon(icon, color: Colors.white, size: 44),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(icon, color: Colors.white, size: 44),
+                  if ((badgeCount ?? 0) > 0)
+                    Positioned(
+                      right: -10,
+                      top: -6,
+                      child: Container(
+                        constraints: const BoxConstraints(
+                          minWidth: 22,
+                          minHeight: 22,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD53A3A),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: Colors.white, width: 1.6),
+                        ),
+                        child: Text(
+                          (badgeCount! > 99) ? '99+' : '${badgeCount!}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            height: 1.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -251,21 +301,90 @@ class _MenuTile extends StatelessWidget {
   }
 }
 
-class _AccessInfoCard extends StatelessWidget {
-  final String statusText;
-  final bool hasActivePermission;
-  final String lastScanText;
+class _UnreadMessagesTile extends StatelessWidget {
+  final String? userId;
+  final DateTime? lastOpenedAt;
+  final VoidCallback onTap;
 
-  const _AccessInfoCard({
-    required this.statusText,
-    required this.hasActivePermission,
-    required this.lastScanText,
+  const _UnreadMessagesTile({
+    required this.userId,
+    required this.lastOpenedAt,
+    required this.onTap,
   });
+
+  int _countUnread(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+    String timestampField,
+  ) {
+    if (lastOpenedAt == null) {
+      return snapshot.docs.length;
+    }
+
+    return snapshot.docs.where((doc) {
+      final ts = (doc.data()[timestampField] as Timestamp?)?.toDate();
+      if (ts == null) {
+        return false;
+      }
+      return ts.isAfter(lastOpenedAt!);
+    }).length;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final permissionText = hasActivePermission ? 'Da' : 'Nu';
+    if (userId == null || userId!.isEmpty) {
+      return _MenuTile(
+        label: 'Mesaje',
+        icon: Icons.chat_bubble_rounded,
+        colors: const [Color(0xFF9C84E0), Color(0xFF6E46C2)],
+        onTap: onTap,
+      );
+    }
 
+    final leaveRequestsStream = FirebaseFirestore.instance
+        .collection('leaveRequests')
+        .where('studentUid', isEqualTo: userId)
+        .snapshots();
+
+    final accessEventsStream = FirebaseFirestore.instance
+        .collection('accessEvents')
+        .where('userId', isEqualTo: userId)
+        .snapshots();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: leaveRequestsStream,
+      builder: (context, leaveSnap) {
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: accessEventsStream,
+          builder: (context, accessSnap) {
+            var unreadCount = 0;
+            if (leaveSnap.hasData) {
+              unreadCount += _countUnread(leaveSnap.data!, 'requestedAt');
+            }
+            if (accessSnap.hasData) {
+              unreadCount += _countUnread(accessSnap.data!, 'timestamp');
+            }
+
+            return _MenuTile(
+              label: 'Mesaje',
+              icon: Icons.chat_bubble_rounded,
+              colors: const [Color(0xFF9C84E0), Color(0xFF6E46C2)],
+              onTap: onTap,
+              badgeCount: unreadCount,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _AccessInfoCard extends StatelessWidget {
+  final String classId;
+
+  const _AccessInfoCard({required this.classId});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -277,46 +396,12 @@ class _AccessInfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          RichText(
-            text: TextSpan(
-              style: const TextStyle(fontSize: 24, color: Color(0xFF2E343B)),
-              children: [
-                const TextSpan(text: 'Status: '),
-                TextSpan(
-                  text: statusText,
-                  style: const TextStyle(
-                    color: Color(0xFFC4463D),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 3),
           Text(
-            'Ultima scanare: $lastScanText',
+            'Clasa: $classId',
             style: const TextStyle(
               fontSize: 24,
               color: Color(0xFF48515A),
               fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 3),
-          RichText(
-            text: TextSpan(
-              style: const TextStyle(fontSize: 24, color: Color(0xFF2E343B)),
-              children: [
-                const TextSpan(text: 'Permisiune activa: '),
-                TextSpan(
-                  text: permissionText,
-                  style: TextStyle(
-                    color: hasActivePermission
-                        ? const Color(0xFF2E7D32)
-                        : const Color(0xFFC4463D),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
             ),
           ),
         ],

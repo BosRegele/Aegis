@@ -160,7 +160,7 @@ class _CereriScreenState extends State<CereriScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF7AAF5B),
+      backgroundColor: const Color(0xFFE7EDF0),
       appBar: AppBar(
         backgroundColor: const Color(0xFF7AAF5B),
         elevation: 0,
@@ -182,6 +182,7 @@ class _CereriScreenState extends State<CereriScreen> {
         top: false,
         child: Container(
           width: double.infinity,
+          height: double.infinity,
           decoration: const BoxDecoration(
             color: Color(0xFFE7EDF0),
             borderRadius: BorderRadius.only(
@@ -189,136 +190,154 @@ class _CereriScreenState extends State<CereriScreen> {
               topRight: Radius.circular(28),
             ),
           ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    'Trimite o cerere catre parinte\nsau diriginte pentru a obtine\npermisiunea de iesire in timpul\nprogramului scolar.',
-                    style: TextStyle(
-                      fontSize: 35,
-                      color: Color(0xFF2F3337),
-                      height: 1.1,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF2F2F2),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 26, 16, 20),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 22),
+                        child: Text(
+                          'Trimite o cerere catre parinte sau diriginte pentru a obtine permisiunea de iesire in timpul programului scolar.',
+                          textAlign: TextAlign.left,
+                          style: TextStyle(
+                            fontSize: 24,
+                            color: Color(0xFF1F252B),
+                            height: 1.28,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 26),
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF2F2F2),
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.12),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Data invoire:',
+                                style: TextStyle(
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2D2D2D),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              _ReadOnlyInput(
+                                controller: _dateController,
+                                hintText: 'Selecteaza data',
+                                trailingIcon: Icons.calendar_today_outlined,
+                                onTap: _pickDate,
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'De la ora:',
+                                style: TextStyle(
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2D2D2D),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              _ReadOnlyInput(
+                                controller: _timeController,
+                                hintText: 'Selecteaza ora',
+                                trailingIcon: Icons.chevron_right_rounded,
+                                onTap: _pickTime,
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Mesaj cerere:',
+                                style: TextStyle(
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2D2D2D),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF6F6F6),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFFDCDCDC),
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: _messageController,
+                                  minLines: 4,
+                                  maxLines: 5,
+                                  style: const TextStyle(
+                                    fontSize: 34,
+                                    height: 1.0,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Scrie motivul invoiri',
+                                    hintStyle: TextStyle(fontSize: 30),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.fromLTRB(
+                                      12,
+                                      10,
+                                      12,
+                                      10,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _submitting
+                                      ? null
+                                      : _submitRequest,
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: 0,
+                                    backgroundColor: const Color(0xFFB8C4B2),
+                                    foregroundColor: const Color(0xFF303530),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Trimitere cerere',
+                                    style: TextStyle(
+                                      fontSize: 35,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Data invoire:',
-                          style: TextStyle(
-                            fontSize: 34,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF2D2D2D),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        _ReadOnlyInput(
-                          controller: _dateController,
-                          hintText: 'Selecteaza data',
-                          trailingIcon: Icons.calendar_today_outlined,
-                          onTap: _pickDate,
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'De la ora:',
-                          style: TextStyle(
-                            fontSize: 34,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF2D2D2D),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        _ReadOnlyInput(
-                          controller: _timeController,
-                          hintText: 'Selecteaza ora',
-                          trailingIcon: Icons.chevron_right_rounded,
-                          onTap: _pickTime,
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Mesaj cerere:',
-                          style: TextStyle(
-                            fontSize: 34,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF2D2D2D),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF6F6F6),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFDCDCDC)),
-                          ),
-                          child: TextField(
-                            controller: _messageController,
-                            minLines: 4,
-                            maxLines: 5,
-                            style: const TextStyle(fontSize: 34, height: 1.0),
-                            decoration: const InputDecoration(
-                              hintText: 'Scrie motivul invoiri',
-                              hintStyle: TextStyle(fontSize: 30),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.fromLTRB(
-                                12,
-                                10,
-                                12,
-                                10,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _submitting ? null : _submitRequest,
-                            style: ElevatedButton.styleFrom(
-                              elevation: 0,
-                              backgroundColor: const Color(0xFFB8C4B2),
-                              foregroundColor: const Color(0xFF303530),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            child: const Text(
-                              'Trimitere cerere',
-                              style: TextStyle(
-                                fontSize: 35,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
