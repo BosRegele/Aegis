@@ -91,6 +91,48 @@ class AdminStore {
     }, SetOptions(merge: true));
   }
 
+  Future<void> setClassNoExitScheduleForDays({
+    required String classId,
+    required String startHHmm,
+    required String endHHmm,
+    required List<String> days,
+  }) async {
+    classId = classId.trim().toUpperCase();
+    if (classId.isEmpty) throw Exception("classId lipsa");
+
+    // (opțional) verifică format HH:mm
+    bool ok(String s) => RegExp(r'^\d{2}:\d{2}$').hasMatch(s);
+    if (!ok(startHHmm) || !ok(endHHmm)) {
+      throw Exception("Format invalid. Foloseste HH:mm (ex: 07:30)");
+    }
+
+    // clasa trebuie să existe
+    final classRef = _db.collection('classes').doc(classId);
+    final snap = await classRef.get();
+    if (!snap.exists) throw Exception("Clasa $classId nu exista");
+
+    // converti zilele din Romanian format la numere (1-5)
+    final dayMapping = {
+      'Luni': 1,
+      'Marți': 2,
+      'Miercuri': 3,
+      'Joi': 4,
+      'Vineri': 5,
+    };
+
+    final dayNumbers = days
+        .map((day) => dayMapping[day])
+        .whereType<int>()
+        .toList();
+
+    await classRef.set({
+      "noExitStart": startHHmm,
+      "noExitEnd": endHHmm,
+      "noExitDays": dayNumbers,
+      "updatedAt": FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
   Future<void> deleteClassCascade(String classId) async {
     classId = classId.trim().toUpperCase();
     if (classId.isEmpty) throw Exception("classId lipsa");

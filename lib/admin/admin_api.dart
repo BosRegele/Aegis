@@ -48,6 +48,49 @@ class AdminApi {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
+  Future<Map<String, dynamic>> setClassNoExitScheduleForDays({
+    required String classId,
+    required String startHHmm,
+    required String endHHmm,
+    required List<int> days,
+  }) async {
+    final callable = _functions.httpsCallable('adminSetClassNoExitSchedule');
+    final res = await callable.call(<String, dynamic>{
+      'classId': classId,
+      'startHHmm': startHHmm,
+      'endHHmm': endHHmm,
+      'days': days,
+    });
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> setClassSchedulePerDay({
+    required String classId,
+    required Map<int, Map<String, String>> schedulePerDay,
+  }) async {
+    final callable = _functions.httpsCallable('adminSetClassSchedulePerDay');
+    // Construct schedule as flat structure: day1_start, day1_end, day2_start, day2_end...
+    // or keep it nested but be explicit
+    final scheduleMap = <String, Map<String, String>>{};
+
+    for (final entry in schedulePerDay.entries) {
+      final dayNum = entry.key.toString();
+      final times = entry.value;
+      scheduleMap[dayNum] = {
+        'start': times['start'] ?? '07:30',
+        'end': times['end'] ?? '13:00',
+      };
+    }
+
+    final data = <String, dynamic>{
+      'classId': classId.trim().toUpperCase(),
+      'schedule': scheduleMap,
+    };
+
+    final res = await callable.call(data);
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
   Future<Map<String, dynamic>> deleteClassCascade({
     required String classId,
   }) async {
@@ -104,9 +147,7 @@ class AdminApi {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
-  Future<Map<String, dynamic>> deleteUser({
-    required String username,
-  }) async {
+  Future<Map<String, dynamic>> deleteUser({required String username}) async {
     final callable = _functions.httpsCallable('adminDeleteUser');
     final res = await callable.call(<String, dynamic>{
       'username': username.trim().toLowerCase(),

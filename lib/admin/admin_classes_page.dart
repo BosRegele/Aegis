@@ -21,7 +21,6 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
   final teacherUserC = TextEditingController();
 
   final _teacherSearchC = TextEditingController();
-  final String _teacherQuery = "";
 
   // pentru căutare clase
   final _classSearchC = TextEditingController();
@@ -81,15 +80,23 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: "Caută clasă...",
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-                      prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.6)),
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Colors.white.withOpacity(0.6),
+                      ),
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.1),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     onChanged: (value) {
                       setState(() {
@@ -123,9 +130,14 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                       // Filter classes based on search query
                       final filteredDocs = docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
-                        final name = (data['name'] ?? doc.id).toString().toLowerCase();
-                        final teacherU = (data['teacherUsername'] ?? '').toString().toLowerCase();
-                        return name.contains(_classQuery) || teacherU.contains(_classQuery);
+                        final name = (data['name'] ?? doc.id)
+                            .toString()
+                            .toLowerCase();
+                        final teacherU = (data['teacherUsername'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        return name.contains(_classQuery) ||
+                            teacherU.contains(_classQuery);
                       }).toList();
 
                       return ListView.builder(
@@ -143,13 +155,17 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                           return Column(
                             children: [
                               Container(
-                                color: isSelected ? Colors.white.withOpacity(0.15) : null,
+                                color: isSelected
+                                    ? Colors.white.withOpacity(0.15)
+                                    : null,
                                 child: ListTile(
                                   title: Text(
                                     name,
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
                                       fontSize: 16,
                                     ),
                                   ),
@@ -490,44 +506,45 @@ class _StudentsList extends StatelessWidget {
                     children: [
                       IconButton(
                         tooltip: "Delete user",
-                        icon: const Icon(Icons.delete_outline, color: Color(0xFFE53935)),
-                        onPressed: () async {
-                      final ok = await showDialog<bool>(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text("Delete user?"),
-                          content: Text("Stergi user: $username ?"),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text("Cancel"),
-                            ),
-                            ElevatedButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text("Delete"),
-                            ),
-                          ],
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Color(0xFFE53935),
                         ),
-                      );
-
-                      if (ok == true) {
-                        try {
-                          await store.deleteUser(username);
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("Eroare: $e")),
+                        onPressed: () async {
+                          final ok = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text("Delete user?"),
+                              content: Text("Stergi user: $username ?"),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: const Text("Cancel"),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text("Delete"),
+                                ),
+                              ],
+                            ),
                           );
-                        }
-                      }
+
+                          if (ok == true) {
+                            try {
+                              await store.deleteUser(username);
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Eroare: $e")),
+                              );
+                            }
+                          }
                         },
                       ),
                     ],
                   ),
                 ),
-                Divider(
-                  height: 1,
-                  color: primaryGreen.withOpacity(0.3),
-                ),
+                Divider(height: 1, color: primaryGreen.withOpacity(0.3)),
               ],
             );
           },
