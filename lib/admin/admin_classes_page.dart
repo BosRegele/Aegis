@@ -23,15 +23,24 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
   final _teacherSearchC = TextEditingController();
   final String _teacherQuery = "";
 
+  // pentru căutare clase
+  final _classSearchC = TextEditingController();
+  String _classQuery = "";
+
   @override
   void dispose() {
     teacherUserC.dispose();
     _teacherSearchC.dispose();
+    _classSearchC.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    const Color primaryGreen = Color.fromARGB(255, 94, 184, 78);
+    const Color lightGreen = Color(0xFFF0F4E8);
+    const Color darkGreen = Color.fromARGB(255, 94, 202, 54);
+
     if (!AppSession.isAdmin) {
       return const Scaffold(
         body: Center(child: Text("Access denied (admin only)")),
@@ -39,63 +48,141 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Admin: Clase & Elevi")),
+      backgroundColor: lightGreen,
+      appBar: AppBar(
+        backgroundColor: primaryGreen,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          "Admin · Clase & Elevi",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        elevation: 0,
+      ),
       body: Row(
         children: [
-          // LEFT: classes
-          SizedBox(
-            width: 320,
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('classes')
-                  .orderBy('name')
-                  .snapshots(),
-              builder: (context, snap) {
-                if (snap.hasError) {
-                  return Center(
-                    child: SelectableText("Eroare clase:\n${snap.error}"),
-                  );
-                }
-                if (!snap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final docs = snap.data!.docs;
-                if (docs.isEmpty) {
-                  return const Center(child: Text("Nu exista clase"));
-                }
-
-                return ListView.builder(
-                  itemCount: docs.length,
-                  itemBuilder: (_, i) {
-                    final d = docs[i];
-                    final data = (d.data() as Map<String, dynamic>);
-                    final name = (data['name'] ?? d.id).toString();
-                    final teacherU = (data['teacherUsername'] ?? '')
-                        .toString()
-                        .trim()
-                        .toLowerCase();
-                    final isSelected = selectedClassId == d.id;
-
-                    return ListTile(
-                      title: Text(name),
-                      subtitle: Text(
-                        teacherU.isEmpty
-                            ? "Diriginte: (nepus)"
-                            : "Diriginte: $teacherU",
+          // LEFT: classes sidebar
+          Container(
+            width: 280,
+            color: darkGreen,
+            child: Column(
+              children: [
+                // Search bar
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: TextField(
+                    controller: _classSearchC,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: "Caută clasă...",
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+                      prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.6)),
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.1),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
                       ),
-                      selected: isSelected,
-                      onTap: () {
-                        if (selectedClassId == d.id) return;
-                        setState(() {
-                          selectedClassId = d.id;
-                          selectedClassData = data;
-                        });
-                      },
-                    );
-                  },
-                );
-              },
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _classQuery = value.toLowerCase().trim();
+                      });
+                    },
+                  ),
+                ),
+                // Classes list
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('classes')
+                        .orderBy('name')
+                        .snapshots(),
+                    builder: (context, snap) {
+                      if (snap.hasError) {
+                        return Center(
+                          child: SelectableText("Eroare clase:\n${snap.error}"),
+                        );
+                      }
+                      if (!snap.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      final docs = snap.data!.docs;
+                      if (docs.isEmpty) {
+                        return const Center(child: Text("Nu exista clase"));
+                      }
+
+                      // Filter classes based on search query
+                      final filteredDocs = docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final name = (data['name'] ?? doc.id).toString().toLowerCase();
+                        final teacherU = (data['teacherUsername'] ?? '').toString().toLowerCase();
+                        return name.contains(_classQuery) || teacherU.contains(_classQuery);
+                      }).toList();
+
+                      return ListView.builder(
+                        itemCount: filteredDocs.length,
+                        itemBuilder: (_, i) {
+                          final d = filteredDocs[i];
+                          final data = (d.data() as Map<String, dynamic>);
+                          final name = (data['name'] ?? d.id).toString();
+                          final teacherU = (data['teacherUsername'] ?? '')
+                              .toString()
+                              .trim()
+                              .toLowerCase();
+                          final isSelected = selectedClassId == d.id;
+
+                          return Column(
+                            children: [
+                              Container(
+                                color: isSelected ? Colors.white.withOpacity(0.15) : null,
+                                child: ListTile(
+                                  title: Text(
+                                    name,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    teacherU.isEmpty
+                                        ? "Diriginte: (nepus)"
+                                        : "Diriginte: $teacherU",
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.7),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    if (selectedClassId == d.id) return;
+                                    setState(() {
+                                      selectedClassId = d.id;
+                                      selectedClassData = data;
+                                    });
+                                  },
+                                ),
+                              ),
+                              Divider(
+                                height: 1,
+                                color: Colors.white.withOpacity(0.2),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -104,7 +191,44 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
           // RIGHT: selected class details + students
           Expanded(
             child: selectedClassId == null
-                ? const Center(child: Text("Selecteaza o clasa din stanga"))
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: primaryGreen.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          child: Icon(
+                            Icons.school,
+                            size: 50,
+                            color: primaryGreen.withOpacity(0.5),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          "Selecteazà o clasă din stânga",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "Alege o clasă din lista din stânga pentru\na vedea elevii.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF777777),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -317,6 +441,8 @@ class _StudentsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const Color primaryGreen = Color.fromARGB(255, 94, 184, 78);
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
@@ -352,18 +478,20 @@ class _StudentsList extends StatelessWidget {
             final fullName = (data['fullName'] ?? username).toString();
             final status = (data['status'] ?? 'active').toString();
 
-            return ListTile(
-              title: Text(fullName),
-              subtitle: Text(
-                "username: $username | uid: $uid | status: $status",
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: "Delete user",
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () async {
+            return Column(
+              children: [
+                ListTile(
+                  title: Text(fullName),
+                  subtitle: Text(
+                    "username: $username | uid: $uid | status: $status",
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: "Delete user",
+                        icon: const Icon(Icons.delete_outline, color: Color(0xFFE53935)),
+                        onPressed: () async {
                       final ok = await showDialog<bool>(
                         context: context,
                         builder: (_) => AlertDialog(
@@ -391,10 +519,16 @@ class _StudentsList extends StatelessWidget {
                           );
                         }
                       }
-                    },
+                        },
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                Divider(
+                  height: 1,
+                  color: primaryGreen.withOpacity(0.3),
+                ),
+              ],
             );
           },
         );
