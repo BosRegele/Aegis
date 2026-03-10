@@ -98,8 +98,9 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
         msg = "Parola gresita";
       }
       if (e.code == "invalid-email") msg = "Username invalid";
-      if (e.code == "too-many-requests")
+      if (e.code == "too-many-requests") {
         msg = "Prea multe incercari. Incearca mai tarziu.";
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(

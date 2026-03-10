@@ -346,7 +346,7 @@ class AdminStore {
             .toString()
             .trim()
             .toLowerCase();
-        if (oldTeacher!.isEmpty) oldTeacher = null;
+        if (oldTeacher.isEmpty) oldTeacher = null;
       }
 
       // daca exista deja diriginte si incerci sa pui altul -> ERROR
@@ -365,8 +365,8 @@ class AdminStore {
           "teacherUsername": FieldValue.delete(),
         }, SetOptions(merge: true));
 
-        if (oldTeacher != null && oldTeacher!.isNotEmpty) {
-          final oldTeacherRef = _db.collection('users').doc(oldTeacher!);
+        if (oldTeacher != null && oldTeacher.isNotEmpty) {
+          final oldTeacherRef = _db.collection('users').doc(oldTeacher);
           final oldSnap = await tx.get(oldTeacherRef);
           if (oldSnap.exists) {
             final oldData = oldSnap.data() as Map<String, dynamic>;
@@ -421,8 +421,8 @@ class AdminStore {
       // 3) optional: clear old teacher classId if he was tied to this class
       if (oldTeacher != null &&
           oldTeacher != teacherUsername &&
-          oldTeacher!.isNotEmpty) {
-        final oldTeacherRef = _db.collection('users').doc(oldTeacher!);
+          oldTeacher.isNotEmpty) {
+        final oldTeacherRef = _db.collection('users').doc(oldTeacher);
         final oldSnap = await tx.get(oldTeacherRef);
         if (oldSnap.exists) {
           final oldData = oldSnap.data() as Map<String, dynamic>;

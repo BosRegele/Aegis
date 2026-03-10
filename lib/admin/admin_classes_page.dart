@@ -21,7 +21,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
   final teacherUserC = TextEditingController();
 
   final _teacherSearchC = TextEditingController();
-  String _teacherQuery = "";
+  final String _teacherQuery = "";
 
   @override
   void dispose() {
@@ -51,16 +51,19 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                   .orderBy('name')
                   .snapshots(),
               builder: (context, snap) {
-                if (snap.hasError)
+                if (snap.hasError) {
                   return Center(
                     child: SelectableText("Eroare clase:\n${snap.error}"),
                   );
-                if (!snap.hasData)
+                }
+                if (!snap.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
 
                 final docs = snap.data!.docs;
-                if (docs.isEmpty)
+                if (docs.isEmpty) {
                   return const Center(child: Text("Nu exista clase"));
+                }
 
                 return ListView.builder(
                   itemCount: docs.length,
@@ -324,8 +327,9 @@ class _StudentsList extends StatelessWidget {
         if (snap.hasError) {
           return Center(child: SelectableText("Eroare elevi:\n${snap.error}"));
         }
-        if (!snap.hasData)
+        if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
+        }
 
         final docs = [...snap.data!.docs];
         docs.sort((a, b) {
@@ -379,9 +383,9 @@ class _StudentsList extends StatelessWidget {
                         try {
                           await store.deleteUser(username);
                         } catch (e) {
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(SnackBar(content: Text("Eroare: $e")));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Eroare: $e")),
+                          );
                         }
                       }
                     },

@@ -51,12 +51,14 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                   .where('role', isEqualTo: 'student')
                   .snapshots(),
               builder: (context, snap) {
-                if (snap.hasError)
+                if (snap.hasError) {
                   return Center(
                     child: SelectableText("Eroare:\n${snap.error}"),
                   );
-                if (!snap.hasData)
+                }
+                if (!snap.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
 
                 final docs = [...snap.data!.docs];
 
@@ -87,8 +89,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                       classId.contains(q);
                 }).toList();
 
-                if (filtered.isEmpty)
+                if (filtered.isEmpty) {
                   return const Center(child: Text("Nu exista rezultate"));
+                }
 
                 return ListView.builder(
                   itemCount: filtered.length,

@@ -178,6 +178,39 @@ exports.adminMoveStudentClass = onCall(async (request) => {
 });
 
 
+// ---------- new function for deleting users ----------
+exports.adminDeleteUser = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login required");
+    }
+
+    const callerUid = request.auth.uid;
+    const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
+    if (!callerDoc.exists || callerDoc.data().role !== "admin") {
+        throw new HttpsError("permission-denied", "Doar adminul poate sterge utilizatori");
+    }
+
+    const username = String(request.data.username || "").trim().toLowerCase();
+    if (!username) {
+        throw new HttpsError("invalid-argument", "username lipsa");
+    }
+
+    const uid = await getUidByUsername(username);
+
+    // delete auth account
+    try {
+        await admin.auth().deleteUser(uid);
+    } catch (e) {
+        // ignore if user already gone
+    }
+
+    // delete firestore doc (and also clear teacher assignment in store.deleteUser if needed)
+    await admin.firestore().collection("users").doc(uid).delete();
+
+    return { ok: true, uid };
+});
+
+
 exports.adminCreateClass = onCall(async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "Login required");

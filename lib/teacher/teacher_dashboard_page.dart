@@ -44,12 +44,15 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
       body: StreamBuilder<DocumentSnapshot>(
         stream: teacherDoc.snapshots(),
         builder: (context, snap) {
-          if (snap.hasError)
+          if (snap.hasError) {
             return Center(child: Text("Eroare: ${snap.error}"));
-          if (!snap.hasData)
+          }
+          if (!snap.hasData) {
             return const Center(child: CircularProgressIndicator());
-          if (!snap.data!.exists)
+          }
+          if (!snap.data!.exists) {
             return const Center(child: Text("Teacher not found"));
+          }
 
           final data = snap.data!.data() as Map<String, dynamic>;
           final fullName =
@@ -193,16 +196,19 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 child: StreamBuilder<QuerySnapshot>(
                   stream: studentsQuery.snapshots(),
                   builder: (context, s2) {
-                    if (s2.hasError)
+                    if (s2.hasError) {
                       return Center(child: Text("Eroare elevi: ${s2.error}"));
-                    if (!s2.hasData)
+                    }
+                    if (!s2.hasData) {
                       return const Center(child: CircularProgressIndicator());
+                    }
 
                     final docs = s2.data!.docs;
-                    if (docs.isEmpty)
+                    if (docs.isEmpty) {
                       return const Center(
                         child: Text("Nu exista elevi in clasa asta"),
                       );
+                    }
 
                     // sort local
                     final list = docs.toList()

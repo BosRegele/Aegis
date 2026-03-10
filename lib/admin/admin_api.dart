@@ -103,4 +103,14 @@ class AdminApi {
     });
     return Map<String, dynamic>.from(res.data as Map);
   }
+
+  Future<Map<String, dynamic>> deleteUser({
+    required String username,
+  }) async {
+    final callable = _functions.httpsCallable('adminDeleteUser');
+    final res = await callable.call(<String, dynamic>{
+      'username': username.trim().toLowerCase(),
+    });
+    return Map<String, dynamic>.from(res.data as Map);
+  }
 }
