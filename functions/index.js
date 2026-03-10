@@ -272,6 +272,15 @@ exports.adminSetClassNoExitSchedule = onCall(async (request) => {
     const startHHmm = String(request.data.startHHmm || "").trim();
     const endHHmm = String(request.data.endHHmm || "").trim();
 
+    // Procesa zilele - asigura-te ca sunt numere intregi
+    let days = [1, 2, 3, 4, 5];
+    if (Array.isArray(request.data.days) && request.data.days.length > 0) {
+        days = request.data.days.map(d => parseInt(d, 10)).filter(d => !isNaN(d) && d >= 1 && d <= 5);
+        if (days.length === 0) {
+            days = [1, 2, 3, 4, 5];
+        }
+    }
+
     if (!classId || !startHHmm || !endHHmm) {
         throw new HttpsError("invalid-argument", "Campuri lipsa");
     }
@@ -291,13 +300,96 @@ exports.adminSetClassNoExitSchedule = onCall(async (request) => {
     await classRef.set({
         noExitStart: startHHmm,
         noExitEnd: endHHmm,
-        noExitDays: [1, 2, 3, 4, 5],
+        noExitDays: days,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    return { ok: true };
+    return { ok: true, days: days };
 });
 
+exports.adminSetClassSchedulePerDay = onCall(async (request) => {
+    try {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "Login required");
+        }
+
+        const callerUid = request.auth.uid;
+        const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
+        if (!callerDoc.exists) {
+            throw new HttpsError("permission-denied", "Profil admin inexistent");
+        }
+
+        const callerData = callerDoc.data();
+        if (callerData.role !== "admin") {
+            throw new HttpsError("permission-denied", "Doar adminul poate seta orarul");
+        }
+
+        const classId = String(request.data.classId || "").trim().toUpperCase();
+        let scheduleData = request.data.schedule;
+
+        console.log("1. classId:", classId);
+        console.log("2. scheduleData type:", typeof scheduleData);
+        console.log("3. scheduleData content:", JSON.stringify(scheduleData));
+
+        if (!classId || !scheduleData || typeof scheduleData !== 'object' || Object.keys(scheduleData).length === 0) {
+            throw new HttpsError("invalid-argument", `Missing classId, schedule, or empty schedule. classId=${classId}, schedule keys=${Object.keys(scheduleData || {}).length}`);
+        }
+
+        const hhmm = /^\d{2}:\d{2}$/;
+        const schedule = {};
+
+        for (const [dayStr, timesObj] of Object.entries(scheduleData)) {
+            console.log(`Processing day: ${dayStr}, timesObj:`, JSON.stringify(timesObj));
+
+            const dayNum = parseInt(dayStr, 10);
+            if (isNaN(dayNum) || dayNum < 1 || dayNum > 5) {
+                throw new HttpsError("invalid-argument", `Invalid day number: ${dayStr}`);
+            }
+
+            // Access times safely
+            const startTime = timesObj?.start || timesObj?.["start"];
+            const endTime = timesObj?.end || timesObj?.["end"];
+
+            console.log(`Day ${dayNum}: start=${startTime}, end=${endTime}`);
+
+            if (!startTime || !endTime) {
+                throw new HttpsError("invalid-argument", `Missing start/end time for day ${dayNum}. Received: ${JSON.stringify(timesObj)}`);
+            }
+
+            if (!hhmm.test(String(startTime)) || !hhmm.test(String(endTime))) {
+                throw new HttpsError("invalid-argument", `Invalid time format for day ${dayNum}. Expected HH:mm, got start=${startTime}, end=${endTime}`);
+            }
+
+            schedule[dayNum.toString()] = {
+                start: String(startTime),
+                end: String(endTime)
+            };
+        }
+
+        console.log("Final schedule to save:", JSON.stringify(schedule));
+
+        const classRef = admin.firestore().collection("classes").doc(classId);
+        const classSnap = await classRef.get();
+
+        if (!classSnap.exists) {
+            throw new HttpsError("not-found", `Class ${classId} does not exist`);
+        }
+
+        await classRef.set({
+            schedule: schedule,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        console.log("✓ Schedule saved successfully for class:", classId);
+        return { ok: true, schedule: schedule };
+    } catch (error) {
+        console.error("✗ Error in adminSetClassSchedulePerDay:", error.message, error.stack);
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+        throw new HttpsError("internal", `Unexpected error: ${error.message}`);
+    }
+});
 
 exports.adminDeleteClassCascade = onCall(async (request) => {
     if (!request.auth) {

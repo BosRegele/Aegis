@@ -42,9 +42,8 @@ class _OrarScreenState extends State<OrarScreen> {
     final classId = (userData['classId'] ?? '').toString().trim().toUpperCase();
     var teacherName = 'N/A';
 
-    String? noExitStart;
-    String? noExitEnd;
-    final noExitDays = <int>[];
+    Map<int, Map<String, String>> schedule =
+        {}; // {dayNum: {start: "HH:mm", end: "HH:mm"}}
 
     if (classId.isNotEmpty) {
       final classDoc = await FirebaseFirestore.instance
@@ -54,8 +53,40 @@ class _OrarScreenState extends State<OrarScreen> {
 
       if (classDoc.exists) {
         final classData = classDoc.data() ?? <String, dynamic>{};
-        final start = (classData['noExitStart'] ?? '').toString().trim();
-        final end = (classData['noExitEnd'] ?? '').toString().trim();
+
+        // Try to read new per-day schedule format
+        final scheduleData = classData['schedule'];
+        if (scheduleData is Map) {
+          for (final entry in scheduleData.entries) {
+            final dayNum = int.tryParse(entry.key.toString());
+            if (dayNum != null && dayNum >= 1 && dayNum <= 5) {
+              final times = entry.value;
+              if (times is Map) {
+                final start = times['start']?.toString() ?? '';
+                final end = times['end']?.toString() ?? '';
+                if (start.isNotEmpty && end.isNotEmpty) {
+                  schedule[dayNum] = {'start': start, 'end': end};
+                }
+              }
+            }
+          }
+        }
+
+        // Fallback to old format if new format doesn't exist
+        if (schedule.isEmpty) {
+          final start = (classData['noExitStart'] ?? '').toString().trim();
+          final end = (classData['noExitEnd'] ?? '').toString().trim();
+          final rawDays = classData['noExitDays'];
+
+          if (start.isNotEmpty && end.isNotEmpty && rawDays is List) {
+            for (final day in rawDays) {
+              if (day is int && day >= 1 && day <= 5) {
+                schedule[day] = {'start': start, 'end': end};
+              }
+            }
+          }
+        }
+
         final teacherUsername = (classData['teacherUsername'] ?? '')
             .toString()
             .trim()
@@ -93,20 +124,6 @@ class _OrarScreenState extends State<OrarScreen> {
             }
           }
         }
-
-        if (start.isNotEmpty && end.isNotEmpty) {
-          noExitStart = start;
-          noExitEnd = end;
-        }
-
-        final rawDays = classData['noExitDays'];
-        if (rawDays is List) {
-          for (final day in rawDays) {
-            if (day is int && day >= 1 && day <= 7) {
-              noExitDays.add(day);
-            }
-          }
-        }
       }
     }
 
@@ -116,9 +133,7 @@ class _OrarScreenState extends State<OrarScreen> {
       role: role,
       classId: classId,
       teacherName: teacherName,
-      noExitStart: noExitStart,
-      noExitEnd: noExitEnd,
-      noExitDays: noExitDays,
+      schedule: schedule,
     );
   }
 
@@ -346,35 +361,22 @@ class _OrarScreenState extends State<OrarScreen> {
 }
 
 List<_ScheduleRowData> _buildScheduleRows(_OrarViewData data) {
-  if (data.noExitStart == null || data.noExitEnd == null) {
+  if (data.schedule.isEmpty) {
     return const [];
   }
 
-  if (data.noExitDays.isEmpty) {
-    return const [];
-  }
+  const dayMap = {1: 'Luni', 2: 'Marți', 3: 'Miercuri', 4: 'Joi', 5: 'Vineri'};
 
-  const dayMap = {
-    1: 'Luni',
-    2: 'Marti',
-    3: 'Miercuri',
-    4: 'Joi',
-    5: 'Vineri',
-    6: 'Sambata',
-    7: 'Duminica',
-  };
-
-  final uniqueDays = data.noExitDays.toSet().toList()..sort();
-  return uniqueDays
-      .map((d) => dayMap[d])
-      .whereType<String>()
-      .map(
-        (dayName) => _ScheduleRowData(
-          dayName: dayName,
-          intervalText: '${data.noExitStart} - ${data.noExitEnd}',
-        ),
-      )
-      .toList();
+  // Sort by day number and build rows
+  final sortedDays = data.schedule.keys.toList()..sort();
+  return sortedDays.map((dayNum) {
+    final dayName = dayMap[dayNum] ?? 'Ziua $dayNum';
+    final times = data.schedule[dayNum];
+    final start = times?['start'] ?? '07:30';
+    final end = times?['end'] ?? '13:00';
+    final intervalText = '$start - $end';
+    return _ScheduleRowData(dayName: dayName, intervalText: intervalText);
+  }).toList();
 }
 
 class _ScheduleRowData {
@@ -390,9 +392,7 @@ class _OrarViewData {
   final String role;
   final String classId;
   final String teacherName;
-  final String? noExitStart;
-  final String? noExitEnd;
-  final List<int> noExitDays;
+  final Map<int, Map<String, String>> schedule;
 
   const _OrarViewData({
     required this.fullName,
@@ -400,9 +400,7 @@ class _OrarViewData {
     required this.role,
     required this.classId,
     required this.teacherName,
-    required this.noExitStart,
-    required this.noExitEnd,
-    required this.noExitDays,
+    required this.schedule,
   });
 }
 

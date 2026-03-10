@@ -1,5 +1,3 @@
-import 'package:firster/StudentInterface/cereri.dart';
-import 'package:firster/StudentInterface/inbox.dart';
 import 'package:firster/StudentInterface/meniu.dart';
 import 'package:firster/StudentInterface/orar.dart';
 import 'package:firster/StudentInterface/paginaqr.dart';
