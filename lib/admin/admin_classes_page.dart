@@ -55,7 +55,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          "Admin · Clase & Elevi",
+          "Admin · Class&Students",
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -80,13 +80,8 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: "Caută clasă...",
-                      hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: Colors.white.withOpacity(0.6),
-                      ),
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+                      prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.6)),
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.1),
                       border: OutlineInputBorder(
