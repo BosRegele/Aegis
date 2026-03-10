@@ -77,10 +77,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 final filtered = docs.where((d) {
                   if (q.isEmpty) return true;
                   final data = d.data() as Map<String, dynamic>;
-                  final username = d.id.toLowerCase();
-                  final fullName = (data['fullName'] ?? '')
-                      .toString()
-                      .toLowerCase();
+                  final uid = d.id;
+                  final username = (data['username'] ?? uid).toString();
+                  final fullName = (data['fullName'] ?? username).toString();
                   final classId = (data['classId'] ?? '')
                       .toString()
                       .toLowerCase();
@@ -98,7 +97,8 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                   itemBuilder: (_, i) {
                     final d = filtered[i];
                     final data = d.data() as Map<String, dynamic>;
-                    final username = d.id;
+                    final uid = d.id;
+                    final username = (data['username'] ?? uid).toString();
                     final fullName = (data['fullName'] ?? username).toString();
                     final classId = (data['classId'] ?? '').toString();
                     final status = (data['status'] ?? 'active').toString();

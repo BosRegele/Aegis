@@ -199,15 +199,21 @@ class AdminStore {
     username = username.trim().toLowerCase();
     if (username.isEmpty) throw Exception("username lipsa");
 
-    final userRef = _db.collection('users').doc(username);
-    final snap = await userRef.get();
-    if (!snap.exists) return;
+    final snap = await _db
+        .collection('users')
+        .where('username', isEqualTo: username)
+        .limit(1)
+        .get();
 
-    final data = snap.data() as Map<String, dynamic>;
+    if (snap.docs.isEmpty) {
+      throw Exception("User inexistent");
+    }
+
+    final userRef = snap.docs.first.reference;
+    final data = snap.docs.first.data();
     final role = (data['role'] ?? '').toString();
     final classId = (data['classId'] ?? '').toString().toUpperCase();
 
-    // dacă e teacher și are clasă, scoate-l din classes
     if (role == "teacher" && classId.isNotEmpty) {
       await _db.collection('classes').doc(classId).set({
         "teacherUsername": null,
@@ -222,7 +228,15 @@ class AdminStore {
     username = username.trim().toLowerCase();
     if (username.isEmpty) throw Exception("username lipsa");
 
-    await _db.collection('users').doc(username).update({
+    final snap = await _db
+        .collection('users')
+        .where('username', isEqualTo: username)
+        .limit(1)
+        .get();
+
+    if (snap.docs.isEmpty) throw Exception("User inexistent");
+
+    await snap.docs.first.reference.update({
       "status": disabled ? "disabled" : "active",
       "updatedAt": FieldValue.serverTimestamp(),
     });

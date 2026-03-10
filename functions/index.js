@@ -47,8 +47,16 @@ exports.adminCreateUser = onCall(async (request) => {
         status: "active",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
-
+    // daca este profesor si are clasa -> seteaza dirigintele clasei
+    if (role === "teacher" && classId) {
+        await admin.firestore().collection("classes").doc(classId).set({
+            name: classId,
+            teacherUsername: username,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }
     return { uid: user.uid };
+
 });
 async function getUidByUsername(username) {
     const uname = String(username || "").trim().toLowerCase();
@@ -167,11 +175,28 @@ exports.adminMoveStudentClass = onCall(async (request) => {
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }, { merge: true });
         }
-
+        const oldClassId = String(userData.classId || "").trim().toUpperCase();
         tx.update(userRef, {
             classId: newClassId,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+        if (role === "teacher") {
+            if (oldClassId && oldClassId !== newClassId) {
+                const oldClassRef = db.collection("classes").doc(oldClassId);
+                tx.set(oldClassRef, {
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true });
+                tx.update(oldClassRef, {
+                    teacherUsername: admin.firestore.FieldValue.delete(),
+                });
+            }
+
+            tx.set(classRef, {
+                name: newClassId,
+                teacherUsername: username,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        }
     });
 
     return { ok: true, uid };
