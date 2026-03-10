@@ -17,61 +17,35 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   late int _currentIndex;
-  bool _showOrar = false;
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex;
+    final idx = widget.initialIndex;
+    _currentIndex = idx < 0 ? 0 : (idx > 2 ? 2 : idx);
   }
 
   void _setTab(int index) {
-    if (_currentIndex == index && !_showOrar) {
+    if (_currentIndex == index) {
       return;
     }
 
     setState(() {
-      _showOrar = false;
       _currentIndex = index;
-    });
-  }
-
-  void _openOrar() {
-    if (_showOrar) {
-      return;
-    }
-
-    setState(() {
-      _showOrar = true;
-      _currentIndex = 0;
-    });
-  }
-
-  void _closeOrar() {
-    if (!_showOrar) {
-      return;
-    }
-
-    setState(() {
-      _showOrar = false;
-      _currentIndex = 0;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _showOrar
-          ? OrarScreen(onBackToHome: _closeOrar)
-          : IndexedStack(
-              index: _currentIndex,
-              children: [
-                MeniuScreen(onNavigateTab: _setTab, onOpenOrar: _openOrar),
-                TeodorScreen(onNavigateTab: _setTab),
-                CereriScreen(onNavigateTab: _setTab),
-                InboxScreen(onNavigateTab: _setTab),
-              ],
-            ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          MeniuScreen(onNavigateTab: _setTab, onOpenOrar: () => _setTab(2)),
+          TeodorScreen(onNavigateTab: _setTab),
+          OrarScreen(onBackToHome: () => _setTab(0)),
+        ],
+      ),
       bottomNavigationBar: FixedBottomNav(
         currentIndex: _currentIndex,
         onTap: _setTab,
