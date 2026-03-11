@@ -80,8 +80,13 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: "Caută clasă...",
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-                      prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.6)),
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Colors.white.withOpacity(0.6),
+                      ),
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.1),
                       border: OutlineInputBorder(
@@ -147,46 +152,58 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                               .toLowerCase();
                           final isSelected = selectedClassId == d.id;
 
-                          return Column(
-                            children: [
-                              Container(
+                          return GestureDetector(
+                            onTap: () {
+                              if (selectedClassId == d.id) return;
+                              setState(() {
+                                selectedClassId = d.id;
+                                selectedClassData = data;
+                              });
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
                                 color: isSelected
-                                    ? Colors.white.withOpacity(0.15)
-                                    : null,
-                                child: ListTile(
-                                  title: Text(
+                                    ? Colors.white
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
                                     name,
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: isSelected
+                                          ? darkGreen
+                                          : Colors.white,
+                                      fontSize: 15,
                                       fontWeight: isSelected
-                                          ? FontWeight.w600
-                                          : FontWeight.w500,
-                                      fontSize: 16,
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
                                     ),
                                   ),
-                                  subtitle: Text(
+                                  Text(
                                     teacherU.isEmpty
-                                        ? "Diriginte: (nepus)"
-                                        : "Diriginte: $teacherU",
+                                        ? 'Diriginte: (nepus)'
+                                        : 'Diriginte: $teacherU',
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
-                                      fontSize: 12,
+                                      color: isSelected
+                                          ? darkGreen.withOpacity(0.8)
+                                          : Colors.white.withOpacity(0.7),
+                                      fontSize: 11,
                                     ),
                                   ),
-                                  onTap: () {
-                                    if (selectedClassId == d.id) return;
-                                    setState(() {
-                                      selectedClassId = d.id;
-                                      selectedClassData = data;
-                                    });
-                                  },
-                                ),
+                                ],
                               ),
-                              Divider(
-                                height: 1,
-                                color: Colors.white.withOpacity(0.2),
-                              ),
-                            ],
+                            ),
                           );
                         },
                       );
@@ -321,9 +338,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                       final updated = {...selectedClassData!};
 
                       if (newTeacher.isEmpty) {
-                        updated.remove(
-                          "teacherUsername",
-                        ); // ca în DB (FieldValue.delete)
+                        updated.remove("teacherUsername");
                       } else {
                         updated["teacherUsername"] = newTeacher;
                       }
@@ -369,15 +384,8 @@ class _TeacherHeader extends StatelessWidget {
         .trim()
         .toLowerCase();
 
-    // ✅ schedule fields din documentul clasei
-    final noExitStart = (classData?['noExitStart'] ?? '').toString().trim();
-    final noExitEnd = (classData?['noExitEnd'] ?? '').toString().trim();
+    // noExit schedule removed from header display
 
-    final scheduleText = (noExitStart.isNotEmpty && noExitEnd.isNotEmpty)
-        ? "Nu poti iesi: $noExitStart - $noExitEnd (L-V)"
-        : "Nu poti iesi: (nesetat)";
-
-    // ✅ dacă nu există diriginte -> NU StreamBuilder
     if (teacherUsername.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(12),
@@ -392,7 +400,6 @@ class _TeacherHeader extends StatelessWidget {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
-                  Text(scheduleText, style: const TextStyle(fontSize: 13)),
                 ],
               ),
             ),
@@ -401,7 +408,6 @@ class _TeacherHeader extends StatelessWidget {
       );
     }
 
-    // dacă există diriginte -> citim numele din users/{username}
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
@@ -413,7 +419,7 @@ class _TeacherHeader extends StatelessWidget {
           final u = snap.data!.data() as Map<String, dynamic>;
           teacherName = (u['fullName'] ?? teacherUsername).toString();
         } else {
-          teacherName = teacherUsername; // fallback
+          teacherName = teacherUsername;
         }
 
         return Padding(
@@ -432,7 +438,6 @@ class _TeacherHeader extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(scheduleText, style: const TextStyle(fontSize: 13)),
                   ],
                 ),
               ),
