@@ -3,6 +3,7 @@ import 'package:firster/StudentInterface/mainnavigation.dart';
 import 'package:firster/admin/secretariat_raw_page.dart';
 import 'package:firster/gate_scan_page.dart';
 import 'package:firster/teacher/teacher_dashboard_page.dart';
+import 'package:firster/parent/parent_home_page.dart';
 import 'package:firster/session.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -50,6 +51,8 @@ class MyApp extends StatelessWidget {
       return const SecretariatRawPage();
     } else if (role == 'teacher') {
       return const TeacherDashboardPage();
+    } else if (role == 'parent') {
+      return const ParentHomePage();
     } else {
       await FirebaseAuth.instance.signOut();
       return const LoginPageFirestore();

@@ -7,6 +7,7 @@ import '../session.dart';
 import '../gate_scan_page.dart';
 import '../admin/secretariat_raw_page.dart';
 import '../teacher/teacher_dashboard_page.dart';
+import '../parent/parent_home_page.dart';
 
 class LoginPageFirestore extends StatefulWidget {
   const LoginPageFirestore({super.key});
@@ -40,17 +41,46 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
 
       final uid = cred.user!.uid;
 
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
+      // Lookup user document robustly: try by username field first, then by doc id = uid,
+      // then by uid field. This handles different methods of creating user documents.
+      final usersCol = FirebaseFirestore.instance.collection('users');
+      QuerySnapshot? qsnap;
+      DocumentSnapshot? doc;
 
-      if (!doc.exists) {
-        await FirebaseAuth.instance.signOut();
-        throw Exception("Profilul utilizatorului nu exista in Firestore");
+      // 1) try query where username field equals input
+      qsnap = await usersCol
+          .where('username', isEqualTo: username)
+          .limit(1)
+          .get();
+      if (qsnap.docs.isNotEmpty) {
+        doc = qsnap.docs.first;
       }
 
-      final data = doc.data()!;
+      // 2) try doc with id == uid
+      if (doc == null) {
+        final d = await usersCol.doc(uid).get();
+        if (d.exists) doc = d;
+      }
+
+      // 3) try query where uid field equals auth uid
+      if (doc == null) {
+        qsnap = await usersCol.where('uid', isEqualTo: uid).limit(1).get();
+        if (qsnap.docs.isNotEmpty) doc = qsnap.docs.first;
+      }
+
+      if (doc == null || !doc.exists) {
+        await FirebaseAuth.instance.signOut();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profilul utilizatorului nu exista in Firestore'),
+            ),
+          );
+        }
+        return;
+      }
+
+      final data = doc.data() as Map<String, dynamic>;
       if ((data["status"] ?? "active") == "disabled") {
         await FirebaseAuth.instance.signOut();
         throw Exception("Cont dezactivat");
@@ -58,6 +88,13 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
 
       final role = (data["role"] ?? "").toString();
       final usernameFromDb = (data["username"] ?? username).toString();
+
+      // Debug: inform what doc id we matched
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Logged in — role: $role | docId: ${doc.id}')),
+        );
+      }
 
       AppSession.setUser(
         uidValue: uid,
@@ -86,6 +123,11 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const TeacherDashboardPage()),
+        );
+      } else if (role == "parent") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ParentHomePage()),
         );
       } else {
         throw Exception("Rol necunoscut");

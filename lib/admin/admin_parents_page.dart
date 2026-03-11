@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import '../session.dart';
 import 'admin_store.dart';
 
-class AdminStudentsPage extends StatefulWidget {
-  const AdminStudentsPage({super.key});
+class AdminParentsPage extends StatefulWidget {
+  const AdminParentsPage({super.key});
 
   @override
-  State<AdminStudentsPage> createState() => _AdminStudentsPageState();
+  State<AdminParentsPage> createState() => _AdminParentsPageState();
 }
 
-class _AdminStudentsPageState extends State<AdminStudentsPage> {
+class _AdminParentsPageState extends State<AdminParentsPage> {
   final store = AdminStore();
   final searchC = TextEditingController();
   String q = "";
@@ -38,20 +38,19 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       appBar: AppBar(
         backgroundColor: primaryGreen,
         title: const Text(
-          "Admin · All Students",
+          "Admin · Parinti",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
         elevation: 0,
       ),
       body: Column(
         children: [
-          /// SEARCH BAR
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
               controller: searchC,
               decoration: InputDecoration(
-                hintText: "Search by username, full name or class...",
+                hintText: "Search by username or full name...",
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: Colors.white,
@@ -66,12 +65,11 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
 
           const Divider(height: 1),
 
-          /// STUDENTS LIST
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('users')
-                  .where('role', isEqualTo: 'student')
+                  .where('role', isEqualTo: 'parent')
                   .snapshots(),
               builder: (context, snap) {
                 if (snap.hasError) {
@@ -103,13 +101,8 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                   final uid = d.id;
                   final username = (data['username'] ?? uid).toString();
                   final fullName = (data['fullName'] ?? username).toString();
-                  final classId = (data['classId'] ?? '')
-                      .toString()
-                      .toLowerCase();
 
-                  return username.contains(q) ||
-                      fullName.contains(q) ||
-                      classId.contains(q);
+                  return username.contains(q) || fullName.contains(q);
                 }).toList();
 
                 if (filtered.isEmpty) {
@@ -125,7 +118,6 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                     final uid = d.id;
                     final username = (data['username'] ?? uid).toString();
                     final fullName = (data['fullName'] ?? username).toString();
-                    final classId = (data['classId'] ?? '').toString();
                     final status = (data['status'] ?? 'active').toString();
 
                     return Column(
@@ -139,35 +131,32 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                             fullName,
                             style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
-                          subtitle: Text(
-                            "user: $username | clasă: $classId | $status",
-                          ),
+                          subtitle: Text("user: $username | $status"),
                           trailing: const Icon(Icons.chevron_right),
-                          onTap: () => _openStudentDialog(
+                          onTap: () => _openParentDialog(
                             context,
                             username: username,
                             fullName: fullName,
-                            classId: classId,
                             status: status,
                           ),
                         ),
-                        // show assigned parents if any
-                        if ((data['parents'] ?? []).isNotEmpty)
+                        // show assigned students if any
+                        if ((data['children'] ?? []).isNotEmpty)
                           FutureBuilder<List<DocumentSnapshot>>(
                             future: Future.wait(
-                              List<String>.from(data['parents'] ?? []).map(
+                              List<String>.from(data['children'] ?? []).map(
                                 (id) => FirebaseFirestore.instance
                                     .collection('users')
                                     .doc(id)
                                     .get(),
                               ),
                             ),
-                            builder: (context, psnap) {
-                              if (psnap.hasError)
+                            builder: (context, csnap) {
+                              if (csnap.hasError)
                                 return const SizedBox.shrink();
-                              if (!psnap.hasData)
+                              if (!csnap.hasData)
                                 return const SizedBox.shrink();
-                              final docs = psnap.data!;
+                              final docs = csnap.data!;
                               if (docs.isEmpty) return const SizedBox.shrink();
                               return Padding(
                                 padding: const EdgeInsets.only(
@@ -178,18 +167,18 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('Părinți:'),
+                                    const Text('Nume copii:'),
                                     const SizedBox(height: 6),
                                     ...docs.map((ds) {
                                       final md =
                                           ds.data() as Map<String, dynamic>? ??
                                           {};
-                                      final pname =
+                                      final cname =
                                           (md['fullName'] ??
                                                   md['username'] ??
                                                   ds.id)
                                               .toString();
-                                      final pun = (md['username'] ?? ds.id)
+                                      final cun = (md['username'] ?? ds.id)
                                           .toString();
                                       return Padding(
                                         padding: const EdgeInsets.only(
@@ -197,9 +186,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                         ),
                                         child: Row(
                                           children: [
-                                            Expanded(child: Text(pname)),
+                                            Expanded(child: Text(cname)),
                                             Text(
-                                              'user: $pun',
+                                              'username: $cun',
                                               style: const TextStyle(
                                                 color: Colors.black54,
                                               ),
@@ -226,19 +215,34 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     );
   }
 
-  Future<void> _openStudentDialog(
+  Future<void> _openParentDialog(
     BuildContext context, {
     required String username,
     required String fullName,
-    required String classId,
     required String status,
   }) async {
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(fullName),
-        content: SelectableText(
-          "username: $username\nclassId: $classId\nstatus: $status",
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SelectableText("username: $username\nstatus: $status"),
+            const SizedBox(height: 12),
+            // show children in dialog as well
+            FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(username)
+                  .get(),
+              builder: (context, psnap) {
+                // fallback: try to find parent doc by username field if doc id is not username
+                return const SizedBox.shrink();
+              },
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -258,7 +262,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 context: context,
                 builder: (_) => AlertDialog(
                   title: const Text("Delete user?"),
-                  content: Text("Ștergi elevul: $username ?"),
+                  content: Text("Ștergi părintele: $username ?"),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
