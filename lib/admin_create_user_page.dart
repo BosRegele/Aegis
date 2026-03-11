@@ -38,6 +38,10 @@ class _AdminCreateUserPageState extends State<AdminCreateUserPage> {
         "username": username,
         "role": role,
         "classId": classId,
+        "status": "active",
+        "inSchool": false,
+        "lastInAt": null,
+        "lastOutAt": null,
         "createdAt": FieldValue.serverTimestamp(),
       });
 
