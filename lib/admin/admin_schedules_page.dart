@@ -186,7 +186,7 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
                               ),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
-                                vertical: 12,
+                                vertical: 18,
                               ),
                               decoration: BoxDecoration(
                                 color: isSelected

@@ -22,6 +22,7 @@ class SecretariatRawPage extends StatefulWidget {
 class _SecretariatRawPageState extends State<SecretariatRawPage> {
   final api = AdminApi();
   final store = AdminStore();
+  String activeSidebarLabel = "Class&Students";
 
   // create user
   final fullNameC = TextEditingController();
@@ -110,30 +111,6 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
     });
 
     _log("GENERATED: $uname / $pass");
-  }
-
-  Future<void> _pickStartTime() async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: noExitStart,
-    );
-    if (picked != null && picked != noExitStart) {
-      setState(() {
-        noExitStart = picked;
-      });
-    }
-  }
-
-  Future<void> _pickEndTime() async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: noExitEnd,
-    );
-    if (picked != null && picked != noExitEnd) {
-      setState(() {
-        noExitEnd = picked;
-      });
-    }
   }
 
   Future<void> _showLogoutDialog() async {
@@ -248,7 +225,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
         children: [
           // SIDEBAR
           Container(
-            width: 220,
+            width: 280,
             height: double.infinity,
             color: darkGreen,
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
@@ -302,73 +279,85 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                       _buildSidebarItem(
                         icon: Icons.table_chart,
                         label: "Class&Students",
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          setState(() => activeSidebarLabel = "Class&Students");
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => const AdminClassesPage(),
                             ),
                           );
+                          setState(() => activeSidebarLabel = "");
                         },
                       ),
                       _buildSidebarItem(
                         icon: Icons.people,
                         label: "All Students",
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          setState(() => activeSidebarLabel = "All Students");
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => const AdminStudentsPage(),
                             ),
                           );
+                          setState(() => activeSidebarLabel = "");
                         },
                       ),
                       _buildSidebarItem(
                         icon: Icons.person,
                         label: "Teachers",
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          setState(() => activeSidebarLabel = "Teachers");
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => const AdminTeachersPage(),
                             ),
                           );
+                          setState(() => activeSidebarLabel = "");
                         },
                       ),
                       _buildSidebarItem(
                         icon: Icons.admin_panel_settings,
                         label: "Admin",
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          setState(() => activeSidebarLabel = "Admin");
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => const AdminAdminsPage(),
                             ),
                           );
+                          setState(() => activeSidebarLabel = "");
                         },
                       ),
                       _buildSidebarItem(
                         icon: Icons.door_front_door,
                         label: "Turnichete",
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          setState(() => activeSidebarLabel = "Turnichete");
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => const AdminTurnstilesPage(),
                             ),
                           );
+                          setState(() => activeSidebarLabel = "");
                         },
                       ),
                       _buildSidebarItem(
                         icon: Icons.schedule,
                         label: "Orare",
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          setState(() => activeSidebarLabel = "Orare");
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => const AdminSchedulesPage(),
                             ),
                           );
+                          setState(() => activeSidebarLabel = "");
                         },
                       ),
                     ],
@@ -457,7 +446,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                     ),
                                     decoration: BoxDecoration(
                                       border: Border.all(
-                                        color: Colors.grey[300]!,
+                                        color: Colors.grey[200]!,
                                       ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
@@ -677,6 +666,60 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                     primaryGreen: primaryGreen,
                                     fullWidth: true,
                                     onPressed: () async {
+                                      final uname = usernameC.text.trim();
+                                      final pass = passwordC.text;
+                                      final full = fullNameC.text.trim();
+
+                                      // Basic client-side validation to avoid cloud failures
+                                      if (full.isEmpty) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Completează numele complet',
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                      if (uname.isEmpty) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Completează username',
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                      if (uname.contains(RegExp(r'\s'))) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Username nu poate conține spații',
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                      if (pass.length < 6) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Parola trebuie să aibă cel puțin 6 caractere',
+                                            ),
+                                          ),
+                                        );
+                                        return;
+                                      }
+
                                       try {
                                         final u =
                                             FirebaseAuth.instance.currentUser;
@@ -686,18 +729,19 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
 
                                         // cloud function
                                         final res = await api.createUser(
-                                          username: usernameC.text,
-                                          password: passwordC.text,
+                                          username: uname.toLowerCase(),
+                                          password: pass,
                                           role: role,
-                                          fullName: fullNameC.text,
+                                          fullName: full,
                                           classId:
                                               role == "student" ||
                                                   role == "teacher"
                                               ? selectedCreateUserClassId
                                               : null,
                                         );
+
                                         _log(
-                                          "API CREATE OK: ${usernameC.text} | uid=${res['uid']}",
+                                          "API CREATE OK: $uname | uid=${res['uid']}",
                                         );
 
                                         if (!mounted) return;
@@ -705,9 +749,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                           context,
                                         ).showSnackBar(
                                           SnackBar(
-                                            content: Text(
-                                              "User creat: ${usernameC.text}",
-                                            ),
+                                            content: Text("User creat: $uname"),
                                             backgroundColor: Colors.green,
                                             duration: const Duration(
                                               seconds: 2,
@@ -716,6 +758,17 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                         );
                                       } catch (e) {
                                         _log("CREATE ERROR: $e");
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Eroare creare user: $e',
+                                              ),
+                                            ),
+                                          );
+                                        }
                                       }
                                     },
                                   ),
@@ -740,7 +793,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                           ),
                                           decoration: BoxDecoration(
                                             border: Border.all(
-                                              color: Colors.grey[300]!,
+                                              color: Colors.grey[200]!,
                                             ),
                                             borderRadius: BorderRadius.circular(
                                               4,
@@ -776,7 +829,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                           ),
                                           decoration: BoxDecoration(
                                             border: Border.all(
-                                              color: Colors.grey[300]!,
+                                              color: Colors.grey[200]!,
                                             ),
                                             borderRadius: BorderRadius.circular(
                                               4,
@@ -882,6 +935,32 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                     ],
                                   ),
                                 ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            // Log Section (moved here)
+                            _buildCard(
+                              title: "Log",
+                              primaryGreen: primaryGreen,
+                              hasBorder: false,
+                              child: Container(
+                                width: double.infinity,
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[50],
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.grey[200]!),
+                                ),
+                                padding: const EdgeInsets.all(12),
+                                child: SingleChildScrollView(
+                                  child: SelectableText(
+                                    log.isEmpty ? "(empty)" : log,
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -1350,7 +1429,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                             border: Border.all(
                                               color: isSelected
                                                   ? primaryGreen
-                                                  : Colors.grey[300]!,
+                                                  : Colors.grey[200]!,
                                             ),
                                             borderRadius: BorderRadius.circular(
                                               8,
@@ -1533,7 +1612,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                         const SizedBox(height: 8),
                                       ],
                                     );
-                                  }).toList(),
+                                  }),
                                   const SizedBox(height: 16),
                                   _buildButton(
                                     label: "Save schedule",
@@ -1600,32 +1679,6 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 24),
-                            // Log Section
-                            _buildCard(
-                              title: "Log",
-                              primaryGreen: primaryGreen,
-                              hasBorder: false,
-                              child: Container(
-                                width: double.infinity,
-                                height: 200,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[50],
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.grey[300]!),
-                                ),
-                                padding: const EdgeInsets.all(12),
-                                child: SingleChildScrollView(
-                                  child: SelectableText(
-                                    log.isEmpty ? "(empty)" : log,
-                                    style: const TextStyle(
-                                      fontFamily: 'monospace',
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                       ),
@@ -1644,7 +1697,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
     required String title,
     required Color primaryGreen,
     required Widget child,
-    bool hasBorder = true,
+    bool hasBorder = false,
   }) {
     const Color darkGreen = Color(0xFF2D5A3D);
     return Container(
@@ -1691,11 +1744,11 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
         labelStyle: TextStyle(color: Colors.grey[600]),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+          borderSide: BorderSide(color: Colors.grey[200]!),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: Colors.grey[300]!),
+          borderSide: BorderSide(color: Colors.grey[200]!),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
@@ -1739,31 +1792,33 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
     required String label,
     required VoidCallback onTap,
   }) {
+    final bool selected = label == activeSidebarLabel;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(6),
-          color: Colors.transparent,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          color: selected ? Colors.white : Colors.transparent,
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.white.withOpacity(0.8), size: 20),
+            Icon(
+              icon,
+              color: selected
+                  ? Color.fromARGB(255, 94, 202, 54)
+                  : Colors.white.withOpacity(0.8),
+              size: 20,
+            ),
             const SizedBox(width: 12),
             Text(
               label,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
+                color: selected
+                    ? Color.fromARGB(255, 94, 202, 54)
+                    : Colors.white.withOpacity(0.9),
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ],
