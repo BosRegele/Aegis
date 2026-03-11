@@ -232,7 +232,6 @@ class _TeodorScreenState extends State<TeodorScreen> {
                                             final squareSide = constraints
                                                 .biggest
                                                 .shortestSide;
-                                            final badgeSize = squareSide * 0.25;
 
                                             return Stack(
                                               alignment: Alignment.center,
@@ -264,40 +263,6 @@ class _TeodorScreenState extends State<TeodorScreen> {
                                                   const Center(
                                                     child:
                                                         CircularProgressIndicator(),
-                                                  ),
-                                                if (_token.isNotEmpty)
-                                                  Container(
-                                                    width: badgeSize,
-                                                    height: badgeSize,
-                                                    decoration: BoxDecoration(
-                                                      color: const Color(
-                                                        0xFFEAF2D7,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            squareSide * 0.06,
-                                                          ),
-                                                      border: Border.all(
-                                                        color: const Color(
-                                                          0xFF86AB4A,
-                                                        ),
-                                                        width: 2,
-                                                      ),
-                                                    ),
-                                                    child: FittedBox(
-                                                      fit: BoxFit.scaleDown,
-                                                      child: Padding(
-                                                        padding: EdgeInsets.all(
-                                                          squareSide * 0.04,
-                                                        ),
-                                                        child: const Icon(
-                                                          Icons.shield_rounded,
-                                                          color: Color(
-                                                            0xFF86AB4A,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
                                                   ),
                                               ],
                                             );
