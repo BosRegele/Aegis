@@ -44,8 +44,7 @@ class _AppShellState extends State<AppShell> {
           MeniuScreen(onNavigateTab: _setTab, onOpenOrar: () => _setTab(2)),
           TeodorScreen(onNavigateTab: _setTab),
           OrarScreen(onBackToHome: () => _setTab(0)),
-          CereriScreen(onNavigateTab: _setTab),
-          InboxScreen(onNavigateTab: _setTab),
+          
         ],
       ),
       bottomNavigationBar: FixedBottomNav(

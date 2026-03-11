@@ -45,6 +45,9 @@ exports.adminCreateUser = onCall(async (request) => {
         role,
         classId,
         status: "active",
+        inSchool: false,
+        lastInAt: null,
+        lastOutAt: null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     // daca este profesor si are clasa -> seteaza dirigintele clasei
@@ -537,6 +540,7 @@ exports.redeemQrToken = onCall(async (request) => {
         }
 
         const userData = userSnap.data() || {};
+        const inSchool = userData.inSchool === true;
         const status = String(userData.status || "active");
         const fullName = String(userData.fullName || userData.username || userId);
         const classId = String(userData.classId || "");
@@ -551,6 +555,81 @@ exports.redeemQrToken = onCall(async (request) => {
             };
         }
 
+        // --- Class timetable check added here ---
+        if (!classId) {
+            return {
+                ok: false,
+                reason: "NO_CLASS_ASSIGNED",
+                userId,
+                fullName,
+                classId,
+            };
+        }
+
+        const classRef = db.collection("classes").doc(classId);
+        const classSnap = await tx.get(classRef);
+        const classData = classSnap.exists ? classSnap.data() || {} : {};
+        const schedule = classData.schedule || {};
+
+        const now = new Date();
+        const dayIdx = now.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+        if (dayIdx < 1 || dayIdx > 5) {
+            return {
+                ok: false,
+                reason: "OUTSIDE_CLASS_DAY",
+                userId,
+                fullName,
+                classId,
+            };
+        }
+
+        const dayKey = String(dayIdx);
+        const daySchedule = schedule[dayKey];
+        if (!daySchedule || !daySchedule.start || !daySchedule.end) {
+            return {
+                ok: false,
+                reason: "NO_SCHEDULE",
+                userId,
+                fullName,
+                classId,
+            };
+        }
+
+        const parseTime = (s) => {
+            const parts = String(s).split(":").map((x) => parseInt(x, 10));
+            if (parts.length !== 2 || Number.isNaN(parts[0]) || Number.isNaN(parts[1])) {
+                return null;
+            }
+            return parts[0] * 60 + parts[1];
+        };
+
+        const startMinutes = parseTime(daySchedule.start);
+        const endMinutes = parseTime(daySchedule.end);
+
+        if (startMinutes == null || endMinutes == null || endMinutes < startMinutes) {
+            return {
+                ok: false,
+                reason: "BAD_SCHEDULE",
+                userId,
+                fullName,
+                classId,
+            };
+        }
+
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        const isWithinSchedule = nowMinutes >= startMinutes && nowMinutes <= endMinutes;
+        const isAfterSchedule = nowMinutes > endMinutes;
+
+        if (!inSchool && !isWithinSchedule) {
+            return {
+                ok: false,
+                reason: "OUTSIDE_CLASS_TIME",
+                userId,
+                fullName,
+                classId,
+            };
+        }
+
         const nowTs = admin.firestore.FieldValue.serverTimestamp();
 
         tx.update(tokenRef, {
@@ -558,6 +637,41 @@ exports.redeemQrToken = onCall(async (request) => {
             usedAt: nowTs,
             redeemedBy: callerUid,
         });
+
+        let newInSchool = inSchool;
+        let eventType = "entry";
+
+        if (!inSchool && isWithinSchedule) {
+            // student entering school
+            newInSchool = true;
+            tx.update(userRef, {
+                inSchool: true,
+                lastInAt: nowTs,
+                lastOutAt: null,
+            });
+        } else if (inSchool && isAfterSchedule) {
+            // student exiting after class hours
+            newInSchool = false;
+            eventType = "exit";
+            tx.update(userRef, {
+                inSchool: false,
+                lastInAt: null,
+                lastOutAt: nowTs,
+            });
+        } else if (inSchool) {
+            // still in school during allowed hours; keep as is
+            newInSchool = true;
+            // no user update needed
+        } else {
+            // outside schedule and not in school (should not normally reach here)
+            return {
+                ok: false,
+                reason: "OUTSIDE_CLASS_TIME",
+                userId,
+                fullName,
+                classId,
+            };
+        }
 
         const eventRef = db.collection("accessEvents").doc();
         tx.set(eventRef, {
