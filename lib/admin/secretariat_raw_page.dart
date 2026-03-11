@@ -9,6 +9,7 @@ import 'admin_classes_page.dart';
 import 'admin_students_page.dart';
 import 'admin_teachers_page.dart';
 import 'admin_admins_page.dart';
+import 'admin_parents_page.dart';
 import 'admin_turnstiles_page.dart';
 import 'admin_schedules_page.dart';
 
@@ -44,6 +45,10 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
   // actions
   final targetUserC = TextEditingController();
   String selectedMoveClassId = "";
+
+  // assign parents
+  Map<String, String>? selectedAssignStudent; // {'id': uid, 'name': display}
+  Map<String, String>? selectedAssignParent; // {'id': uid, 'name': display}
 
   // class
   int selectedNumber = 9;
@@ -305,6 +310,20 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                         },
                       ),
                       _buildSidebarItem(
+                        icon: Icons.family_restroom,
+                        label: "Parinti",
+                        onTap: () async {
+                          setState(() => activeSidebarLabel = "Parinti");
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AdminParentsPage(),
+                            ),
+                          );
+                          setState(() => activeSidebarLabel = "");
+                        },
+                      ),
+                      _buildSidebarItem(
                         icon: Icons.person,
                         label: "Teachers",
                         onTap: () async {
@@ -466,6 +485,10 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                           DropdownMenuItem(
                                             value: "admin",
                                             child: Text("admin"),
+                                          ),
+                                          DropdownMenuItem(
+                                            value: "parent",
+                                            child: Text("parent"),
                                           ),
                                           DropdownMenuItem(
                                             value: "gate",
@@ -938,6 +961,426 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                               ),
                             ),
                             const SizedBox(height: 24),
+                            // Assign Parents Card
+                            _buildCard(
+                              title: "Assign Parents",
+                              primaryGreen: primaryGreen,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Select student:"),
+                                  const SizedBox(height: 8),
+                                  StreamBuilder<QuerySnapshot>(
+                                    stream: FirebaseFirestore.instance
+                                        .collection('users')
+                                        .where('role', isEqualTo: 'student')
+                                        .snapshots(),
+                                    builder: (context, snap) {
+                                      if (snap.hasError)
+                                        return Text('Eroare: ${snap.error}');
+                                      if (!snap.hasData)
+                                        return const CircularProgressIndicator();
+
+                                      final opts = snap.data!.docs.map((d) {
+                                        final data =
+                                            d.data() as Map<String, dynamic>;
+                                        final name =
+                                            (data['fullName'] ??
+                                                    data['username'] ??
+                                                    d.id)
+                                                .toString();
+                                        return {'id': d.id, 'name': name};
+                                      }).toList();
+
+                                      opts.sort(
+                                        (a, b) =>
+                                            a['name']!.toLowerCase().compareTo(
+                                              b['name']!.toLowerCase(),
+                                            ),
+                                      );
+
+                                      return Autocomplete<Map<String, String>>(
+                                        optionsBuilder: (txt) {
+                                          if (txt.text.isEmpty) return opts;
+                                          return opts.where(
+                                            (o) => o['name']!
+                                                .toLowerCase()
+                                                .contains(
+                                                  txt.text.toLowerCase(),
+                                                ),
+                                          );
+                                        },
+                                        displayStringForOption: (o) =>
+                                            o['name']!,
+                                        onSelected: (o) => setState(
+                                          () => selectedAssignStudent = o,
+                                        ),
+                                        fieldViewBuilder:
+                                            (
+                                              context,
+                                              ctrl,
+                                              focusNode,
+                                              onSubmit,
+                                            ) {
+                                              ctrl.text =
+                                                  selectedAssignStudent?['name'] ??
+                                                  '';
+                                              return TextField(
+                                                controller: ctrl,
+                                                focusNode: focusNode,
+                                                decoration:
+                                                    const InputDecoration(
+                                                      hintText:
+                                                          'Type student name...',
+                                                    ),
+                                              );
+                                            },
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (selectedAssignStudent != null) ...[
+                                    const Text("Current parents:"),
+                                    const SizedBox(height: 8),
+                                    StreamBuilder<DocumentSnapshot>(
+                                      stream: FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(selectedAssignStudent!['id'])
+                                          .snapshots(),
+                                      builder: (context, snap) {
+                                        if (snap.hasError)
+                                          return Text('Eroare: ${snap.error}');
+                                        if (!snap.hasData)
+                                          return const CircularProgressIndicator();
+                                        final data =
+                                            snap.data!.data()
+                                                as Map<String, dynamic>? ??
+                                            {};
+                                        final parents = List<String>.from(
+                                          data['parents'] ?? [],
+                                        );
+
+                                        if (parents.isEmpty) {
+                                          return const Text(
+                                            'Niciun părinte asignat',
+                                          );
+                                        }
+
+                                        return Column(
+                                          children: parents.map((puid) {
+                                            return FutureBuilder<
+                                              DocumentSnapshot
+                                            >(
+                                              future: FirebaseFirestore.instance
+                                                  .collection('users')
+                                                  .doc(puid)
+                                                  .get(),
+                                              builder: (context, psnap) {
+                                                if (!psnap.hasData)
+                                                  return const SizedBox.shrink();
+                                                final pdata =
+                                                    psnap.data!.data()
+                                                        as Map<
+                                                          String,
+                                                          dynamic
+                                                        >? ??
+                                                    {};
+                                                final pname =
+                                                    (pdata['fullName'] ??
+                                                            pdata['username'] ??
+                                                            psnap.data!.id)
+                                                        .toString();
+                                                return ListTile(
+                                                  title: Text(pname),
+                                                  subtitle: Text('uid: $puid'),
+                                                  trailing: IconButton(
+                                                    icon: const Icon(
+                                                      Icons.remove_circle,
+                                                      color: Colors.red,
+                                                    ),
+                                                    onPressed: () async {
+                                                      final confirm = await showDialog<bool>(
+                                                        context: context,
+                                                        builder: (_) => AlertDialog(
+                                                          title: const Text(
+                                                            'Confirm',
+                                                          ),
+                                                          content: Text(
+                                                            'Sunteți sigur că vreți să scoateți părintele $pname din elevul ${selectedAssignStudent!['name']}?',
+                                                          ),
+                                                          actions: [
+                                                            TextButton(
+                                                              onPressed: () =>
+                                                                  Navigator.pop(
+                                                                    context,
+                                                                    false,
+                                                                  ),
+                                                              child: const Text(
+                                                                'Nu',
+                                                              ),
+                                                            ),
+                                                            TextButton(
+                                                              onPressed: () =>
+                                                                  Navigator.pop(
+                                                                    context,
+                                                                    true,
+                                                                  ),
+                                                              child: const Text(
+                                                                'Da',
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      );
+                                                      if (confirm != true)
+                                                        return;
+                                                      try {
+                                                        final stuRef =
+                                                            FirebaseFirestore
+                                                                .instance
+                                                                .collection(
+                                                                  'users',
+                                                                )
+                                                                .doc(
+                                                                  selectedAssignStudent!['id'],
+                                                                );
+                                                        final parRef =
+                                                            FirebaseFirestore
+                                                                .instance
+                                                                .collection(
+                                                                  'users',
+                                                                )
+                                                                .doc(puid);
+                                                        await stuRef.update({
+                                                          'parents':
+                                                              FieldValue.arrayRemove(
+                                                                [puid],
+                                                              ),
+                                                        });
+                                                        await parRef.update({
+                                                          'children':
+                                                              FieldValue.arrayRemove([
+                                                                selectedAssignStudent!['id'],
+                                                              ]),
+                                                        });
+                                                        if (mounted)
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Părinte scos cu succes',
+                                                              ),
+                                                            ),
+                                                          );
+                                                      } catch (e) {
+                                                        if (mounted)
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            SnackBar(
+                                                              content: Text(
+                                                                'Eroare: $e',
+                                                              ),
+                                                            ),
+                                                          );
+                                                      }
+                                                    },
+                                                  ),
+                                                );
+                                              },
+                                            );
+                                          }).toList(),
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text('Select parent to assign:'),
+                                    const SizedBox(height: 8),
+                                    StreamBuilder<QuerySnapshot>(
+                                      stream: FirebaseFirestore.instance
+                                          .collection('users')
+                                          .where('role', isEqualTo: 'parent')
+                                          .snapshots(),
+                                      builder: (context, psnap) {
+                                        if (psnap.hasError)
+                                          return Text('Eroare: ${psnap.error}');
+                                        if (!psnap.hasData)
+                                          return const CircularProgressIndicator();
+                                        final popts = psnap.data!.docs.map((d) {
+                                          final data =
+                                              d.data() as Map<String, dynamic>;
+                                          final name =
+                                              (data['fullName'] ??
+                                                      data['username'] ??
+                                                      d.id)
+                                                  .toString();
+                                          return {'id': d.id, 'name': name};
+                                        }).toList();
+
+                                        popts.sort(
+                                          (a, b) => a['name']!
+                                              .toLowerCase()
+                                              .compareTo(
+                                                b['name']!.toLowerCase(),
+                                              ),
+                                        );
+
+                                        return Autocomplete<
+                                          Map<String, String>
+                                        >(
+                                          optionsBuilder: (txt) {
+                                            if (txt.text.isEmpty) return popts;
+                                            return popts.where(
+                                              (o) => o['name']!
+                                                  .toLowerCase()
+                                                  .contains(
+                                                    txt.text.toLowerCase(),
+                                                  ),
+                                            );
+                                          },
+                                          displayStringForOption: (o) =>
+                                              o['name']!,
+                                          onSelected: (o) => setState(
+                                            () => selectedAssignParent = o,
+                                          ),
+                                          fieldViewBuilder:
+                                              (
+                                                context,
+                                                ctrl,
+                                                focusNode,
+                                                onSubmit,
+                                              ) {
+                                                ctrl.text =
+                                                    selectedAssignParent?['name'] ??
+                                                    '';
+                                                return TextField(
+                                                  controller: ctrl,
+                                                  focusNode: focusNode,
+                                                  decoration:
+                                                      const InputDecoration(
+                                                        hintText:
+                                                            'Type parent name...',
+                                                      ),
+                                                );
+                                              },
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed:
+                                                selectedAssignParent == null
+                                                ? null
+                                                : () async {
+                                                    final sp =
+                                                        selectedAssignStudent!['id'];
+                                                    final pp =
+                                                        selectedAssignParent!['id'];
+                                                    try {
+                                                      final stuRef =
+                                                          FirebaseFirestore
+                                                              .instance
+                                                              .collection(
+                                                                'users',
+                                                              )
+                                                              .doc(sp);
+                                                      final stuSnap =
+                                                          await stuRef.get();
+                                                      final stuData =
+                                                          stuSnap.data()
+                                                              as Map<
+                                                                String,
+                                                                dynamic
+                                                              >? ??
+                                                          {};
+                                                      final parents =
+                                                          List<String>.from(
+                                                            stuData['parents'] ??
+                                                                [],
+                                                          );
+                                                      if (parents.contains(
+                                                        pp,
+                                                      )) {
+                                                        if (mounted)
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Părinte deja asignat',
+                                                              ),
+                                                            ),
+                                                          );
+                                                        return;
+                                                      }
+                                                      if (parents.length >= 2) {
+                                                        if (mounted)
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                'Elevul are deja 2 parinti assign',
+                                                              ),
+                                                            ),
+                                                          );
+                                                        return;
+                                                      }
+                                                      final parRef =
+                                                          FirebaseFirestore
+                                                              .instance
+                                                              .collection(
+                                                                'users',
+                                                              )
+                                                              .doc(pp);
+                                                      await stuRef.update({
+                                                        'parents':
+                                                            FieldValue.arrayUnion(
+                                                              [pp],
+                                                            ),
+                                                      });
+                                                      await parRef.update({
+                                                        'children':
+                                                            FieldValue.arrayUnion(
+                                                              [sp],
+                                                            ),
+                                                      });
+                                                      if (mounted)
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text(
+                                                              'Părinte asignat cu succes',
+                                                            ),
+                                                          ),
+                                                        );
+                                                    } catch (e) {
+                                                      if (mounted)
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                              'Eroare: $e',
+                                                            ),
+                                                          ),
+                                                        );
+                                                    }
+                                                  },
+                                            child: const Text('Assign parent'),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
                             // Log Section (moved here)
                             _buildCard(
                               title: "Log",
