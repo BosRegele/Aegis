@@ -124,48 +124,41 @@ class _InboxScreenState extends State<InboxScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF7AAF5B),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF7AAF5B),
+        toolbarHeight: 68,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+          ),
+          onPressed: () => _goBack(context),
+        ),
+        title: const Text(
+          'Inbox',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 32,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 6, 8, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => _goBack(context),
-                  ),
-                  const Expanded(
-                    child: Center(
-                      child: Text(
-                        'Inbox',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 40,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                ],
-              ),
+        top: false,
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          clipBehavior: Clip.antiAlias,
+          decoration: const BoxDecoration(
+            color: Color(0xFFE9EDF0),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE9EDF0),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
-                  ),
-                ),
-                child: _buildInboxList(),
-              ),
-            ),
-          ],
+          ),
+          child: _buildInboxList(),
         ),
       ),
     );

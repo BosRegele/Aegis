@@ -20,7 +20,7 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     final idx = widget.initialIndex;
-    _currentIndex = idx < 0 ? 0 : (idx > 2 ? 2 : idx);
+    _currentIndex = idx < 0 ? 0 : (idx > 4 ? 4 : idx);
   }
 
   void _setTab(int index) {
@@ -35,6 +35,8 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomNavIndex = _currentIndex <= 2 ? _currentIndex : 0;
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -42,10 +44,12 @@ class _AppShellState extends State<AppShell> {
           MeniuScreen(onNavigateTab: _setTab, onOpenOrar: () => _setTab(2)),
           TeodorScreen(onNavigateTab: _setTab),
           OrarScreen(onBackToHome: () => _setTab(0)),
+          CereriScreen(onNavigateTab: _setTab),
+          InboxScreen(onNavigateTab: _setTab),
         ],
       ),
       bottomNavigationBar: FixedBottomNav(
-        currentIndex: _currentIndex,
+        currentIndex: bottomNavIndex,
         onTap: _setTab,
       ),
     );

@@ -27,7 +27,7 @@ class MeniuScreen extends StatelessWidget {
               .snapshots();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFD8DDD8),
+      backgroundColor: const Color(0xFF7AAF5B),
       body: SafeArea(
         child: Column(
           children: [
@@ -81,12 +81,13 @@ class MeniuScreen extends StatelessWidget {
 
                   return Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    clipBehavior: Clip.antiAlias,
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
                     decoration: const BoxDecoration(
                       color: Color(0xFFD8DDD8),
                       borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
+                        topLeft: Radius.circular(28),
+                        topRight: Radius.circular(28),
                       ),
                     ),
                     child: Column(
@@ -102,7 +103,7 @@ class MeniuScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         Row(
                           children: [
                             Expanded(
@@ -164,6 +165,11 @@ class MeniuScreen extends StatelessWidget {
                                   Color(0xFF0C8D80),
                                 ],
                                 onTap: () {
+                                  if (onNavigateTab != null) {
+                                    onNavigateTab!(3);
+                                    return;
+                                  }
+
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (_) => const CereriScreen(),
@@ -178,6 +184,11 @@ class MeniuScreen extends StatelessWidget {
                                 userId: currentUser?.uid,
                                 lastOpenedAt: lastOpenedAt,
                                 onTap: () {
+                                  if (onNavigateTab != null) {
+                                    onNavigateTab!(4);
+                                    return;
+                                  }
+
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (_) => const InboxScreen(),
