@@ -112,9 +112,10 @@ class _TeodorScreenState extends State<TeodorScreen> {
         : 'Nume Prenume';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE7EDF0),
+      backgroundColor: const Color(0xFF7AAF5B),
       appBar: AppBar(
         backgroundColor: const Color(0xFF7AAF5B),
+        toolbarHeight: 68,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -152,6 +153,7 @@ class _TeodorScreenState extends State<TeodorScreen> {
         child: Container(
           width: double.infinity,
           height: double.infinity,
+          clipBehavior: Clip.antiAlias,
           decoration: const BoxDecoration(
             color: Color(0xFFE7EDF0),
             borderRadius: BorderRadius.only(

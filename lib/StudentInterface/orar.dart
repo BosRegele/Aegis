@@ -125,9 +125,10 @@ class _OrarScreenState extends State<OrarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE6EBEE),
+      backgroundColor: const Color(0xFF7AAF5B),
       appBar: AppBar(
         backgroundColor: const Color(0xFF7AAF5B),
+        toolbarHeight: 68,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -157,6 +158,8 @@ class _OrarScreenState extends State<OrarScreen> {
         top: false,
         child: Container(
           width: double.infinity,
+          height: double.infinity,
+          clipBehavior: Clip.antiAlias,
           decoration: const BoxDecoration(
             color: Color(0xFFE6EBEE),
             borderRadius: BorderRadius.only(
@@ -258,7 +261,7 @@ class _OrarScreenState extends State<OrarScreen> {
                                         if (data.role.isNotEmpty) ...[
                                           const SizedBox(height: 8),
                                           Text(
-                                            'Rol: ${data.role}',
+                                            'Statut: ${data.role}',
                                             style: const TextStyle(
                                               fontSize: 20,
                                               color: Color(0xFF303030),
@@ -267,7 +270,7 @@ class _OrarScreenState extends State<OrarScreen> {
                                         ],
                                         if (data.classId.isNotEmpty)
                                           Text(
-                                            'Clasa ${data.classId}',
+                                            'Clasa: ${data.classId}',
                                             style: const TextStyle(
                                               fontSize: 20,
                                               color: Color(0xFF303030),
