@@ -1,4 +1,5 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -620,16 +621,6 @@ exports.redeemQrToken = onCall(async (request) => {
         const isWithinSchedule = nowMinutes >= startMinutes && nowMinutes <= endMinutes;
         const isAfterSchedule = nowMinutes > endMinutes;
 
-        if (!inSchool && !isWithinSchedule) {
-            return {
-                ok: false,
-                reason: "OUTSIDE_CLASS_TIME",
-                userId,
-                fullName,
-                classId,
-            };
-        }
-
         const nowTs = admin.firestore.FieldValue.serverTimestamp();
 
         tx.update(tokenRef, {
@@ -641,8 +632,8 @@ exports.redeemQrToken = onCall(async (request) => {
         let newInSchool = inSchool;
         let eventType = "entry";
 
-        if (!inSchool && isWithinSchedule) {
-            // student entering school
+        if (!inSchool) {
+            // student entering school (now allowed regardless of timetable)
             newInSchool = true;
             tx.update(userRef, {
                 inSchool: true,
@@ -658,19 +649,10 @@ exports.redeemQrToken = onCall(async (request) => {
                 lastInAt: null,
                 lastOutAt: nowTs,
             });
-        } else if (inSchool) {
-            // still in school during allowed hours; keep as is
+        } else {
+            // still in school (during or before end schedule) - keep as is
             newInSchool = true;
             // no user update needed
-        } else {
-            // outside schedule and not in school (should not normally reach here)
-            return {
-                ok: false,
-                reason: "OUTSIDE_CLASS_TIME",
-                userId,
-                fullName,
-                classId,
-            };
         }
 
         const eventRef = db.collection("accessEvents").doc();
@@ -681,7 +663,7 @@ exports.redeemQrToken = onCall(async (request) => {
             classId,
             gateUid: callerUid,
             timestamp: nowTs,
-            type: "entry",
+            type: eventType,
         });
 
         return {
@@ -693,4 +675,31 @@ exports.redeemQrToken = onCall(async (request) => {
     });
 
     return result;
+});
+
+exports.cleanupExpiredQrTokens = onSchedule("every 60 minutes", async (event) => {
+    const db = admin.firestore();
+    const cutoff = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+    const expiredSnap = await db.collection("qrTokens")
+        .where("expiresAt", "<=", cutoff)
+        .get();
+
+    if (expiredSnap.empty) {
+        console.log("cleanupExpiredQrTokens: no expired QR tokens found");
+        return;
+    }
+
+    const docs = expiredSnap.docs;
+    const chunkSize = 500;
+    let deletedCount = 0;
+
+    for (let i = 0; i < docs.length; i += chunkSize) {
+        const chunk = docs.slice(i, i + chunkSize);
+        const batch = db.batch();
+        chunk.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+        deletedCount += chunk.length;
+    }
+
+    console.log(`cleanupExpiredQrTokens: deleted ${deletedCount} expired QR tokens`);
 });
