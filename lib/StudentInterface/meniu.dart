@@ -68,10 +68,7 @@ class MeniuScreen extends StatelessWidget {
                   final fullName = (userData['fullName'] ?? '')
                       .toString()
                       .trim();
-                  final classId = (userData['classId'] ?? '')
-                      .toString()
-                      .trim()
-                      .toUpperCase();
+                  // ...existing code...
                   final lastOpenedAt =
                       (userData['inboxLastOpenedAt'] as Timestamp?)?.toDate();
 
@@ -229,8 +226,262 @@ class MeniuScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 14),
-                        if (classId.isNotEmpty)
-                          _AccessInfoCard(classId: classId),
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 18,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: Color(0xFF2E3B4E).withOpacity(0.22),
+                              width: 2.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(0xFF2E3B4E).withOpacity(0.09),
+                                blurRadius: 18,
+                                offset: Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Status elevului
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Statusul elevului:',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF2E3B4E),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  if (userData['inSchool'] == true)
+                                    Text(
+                                      'în incinta școlii',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        color: Color(0xFF4B78D2),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    )
+                                  else ...[
+                                    Container(
+                                      width: 12,
+                                      height: 12,
+                                      margin: const EdgeInsets.only(right: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.red.withOpacity(0.2),
+                                            blurRadius: 2,
+                                            spreadRadius: 1,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Text(
+                                      'În afara incintei',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.w500,
+                                        fontFamily: 'Roboto',
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              Divider(
+                                color: Color(0xFF2E3B4E).withOpacity(0.18),
+                                thickness: 2,
+                                height: 16,
+                              ),
+                              // Ultima scanare
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Ultima scanare:',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF2E3B4E),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child:
+                                        StreamBuilder<
+                                          QuerySnapshot<Map<String, dynamic>>
+                                        >(
+                                          stream: FirebaseFirestore.instance
+                                              .collection('accessEvents')
+                                              .where(
+                                                'userId',
+                                                isEqualTo:
+                                                    currentUser?.uid ?? '',
+                                              )
+                                              .orderBy(
+                                                'timestamp',
+                                                descending: true,
+                                              )
+                                              .limit(1)
+                                              .snapshots(),
+                                          builder: (context, snapshot) {
+                                            final docs =
+                                                snapshot.data?.docs ?? [];
+                                            if (docs.isNotEmpty) {
+                                              final doc = docs.first;
+                                              final type = (doc['type'] ?? '')
+                                                  .toString();
+                                              final ts =
+                                                  (doc['timestamp']
+                                                      as Timestamp?);
+                                              final dateStr = ts != null
+                                                  ? '${ts.toDate().day.toString().padLeft(2, '0')}.${ts.toDate().month.toString().padLeft(2, '0')}.${ts.toDate().year} ${ts.toDate().hour.toString().padLeft(2, '0')}:${ts.toDate().minute.toString().padLeft(2, '0')}'
+                                                  : '';
+                                              if (type == 'entry') {
+                                                return Text(
+                                                  'Intrare - $dateStr',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    color: Color(0xFF17B5A8),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                );
+                                              } else if (type == 'exit') {
+                                                return Text(
+                                                  'Ieșire - $dateStr',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    color: Color(0xFFE47E2D),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                );
+                                              } else {
+                                                return Text(
+                                                  'Scanare - $dateStr',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    color: Color(0xFF2E3B4E),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                );
+                                              }
+                                            } else {
+                                              return Text(
+                                                'Nu există scanări.',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  color: Color(0xFF2E3B4E),
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              );
+                                            }
+                                          },
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              Divider(
+                                color: Color(0xFF2E3B4E).withOpacity(0.18),
+                                thickness: 2,
+                                height: 16,
+                              ),
+                              // Cereri de învoire
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Cereri de învoire:',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF2E3B4E),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child:
+                                        StreamBuilder<
+                                          QuerySnapshot<Map<String, dynamic>>
+                                        >(
+                                          stream: FirebaseFirestore.instance
+                                              .collection('leaveRequests')
+                                              .where(
+                                                'studentUid',
+                                                isEqualTo:
+                                                    currentUser?.uid ?? '',
+                                              )
+                                              .where(
+                                                'status',
+                                                whereIn: ['accepted', 'active'],
+                                              )
+                                              .snapshots(),
+                                          builder: (context, snapshot) {
+                                            final docs =
+                                                snapshot.data?.docs ?? [];
+                                            if (docs.any(
+                                              (doc) =>
+                                                  doc['status'] == 'accepted',
+                                            )) {
+                                              return Text(
+                                                'Există o cerere acceptată.',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  color: Color(0xFF4B78D2),
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              );
+                                            } else if (docs.isNotEmpty) {
+                                              return Text(
+                                                'Există cereri active.',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  color: Color(0xFF17B5A8),
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              );
+                                            } else {
+                                              return Text(
+                                                'Nu există nicio cerere activă.',
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  color: Color(0xFF2E3B4E),
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              );
+                                            }
+                                          },
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                         const Spacer(),
                       ],
                     ),
@@ -418,34 +669,4 @@ class _UnreadMessagesTile extends StatelessWidget {
   }
 }
 
-class _AccessInfoCard extends StatelessWidget {
-  final String classId;
-
-  const _AccessInfoCard({required this.classId});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F5F4),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD0D6D4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Clasa: $classId',
-            style: const TextStyle(
-              fontSize: 24,
-              color: Color(0xFF48515A),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// ...existing code...

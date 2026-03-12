@@ -19,23 +19,7 @@ class _InboxScreenState extends State<InboxScreen> {
     // _markAsRead() eliminat, va fi apelat doar la navigare
   }
 
-  Future<void> _markAsRead() async {
-    final uid = AppSession.uid;
-    print('[Inbox] _markAsRead() called, uid: $uid');
-    if (uid == null || uid.isEmpty) {
-      print('[Inbox] _markAsRead() aborted: uid null/gol');
-      return;
-    }
-
-    try {
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'inboxLastOpenedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      print('[Inbox] _markAsRead() Firestore update OK');
-    } catch (e) {
-      print('[Inbox] _markAsRead() Firestore error: $e');
-    }
-  }
+  // ...existing code...
 
   String _formatTimeAgo(DateTime dateTime) {
     final diff = DateTime.now().difference(dateTime);
@@ -314,8 +298,8 @@ class _InboxMessageTile extends StatelessWidget {
                           child: Text(
                             data.title,
                             style: const TextStyle(
-                              fontSize: 31,
-                              height: 1.0,
+                              fontSize: 28,
+                              height: 1.1,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF2A2E33),
                             ),
@@ -325,9 +309,10 @@ class _InboxMessageTile extends StatelessWidget {
                         Text(
                           data.time,
                           style: const TextStyle(
-                            fontSize: 27,
+                            fontSize: 20,
                             color: Color(0xFF5E6670),
                             height: 1.0,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -336,10 +321,10 @@ class _InboxMessageTile extends StatelessWidget {
                     Text(
                       data.subtitle,
                       style: const TextStyle(
-                        fontSize: 31,
+                        fontSize: 22,
                         color: Color(0xFF2F353B),
-                        height: 1.06,
-                        fontWeight: FontWeight.w500,
+                        height: 1.18,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                   ],
