@@ -494,6 +494,10 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                             value: "gate",
                                             child: Text("gate"),
                                           ),
+                                          DropdownMenuItem(
+                                            value: "parent",
+                                            child: Text("parent"),
+                                          ),
                                         ],
                                         onChanged: (v) => setState(
                                           () => role = v ?? "student",
