@@ -16,18 +16,25 @@ class _InboxScreenState extends State<InboxScreen> {
   @override
   void initState() {
     super.initState();
-    _markAsRead();
+    // _markAsRead() eliminat, va fi apelat doar la navigare
   }
 
   Future<void> _markAsRead() async {
     final uid = AppSession.uid;
+    print('[Inbox] _markAsRead() called, uid: $uid');
     if (uid == null || uid.isEmpty) {
+      print('[Inbox] _markAsRead() aborted: uid null/gol');
       return;
     }
 
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'inboxLastOpenedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'inboxLastOpenedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      print('[Inbox] _markAsRead() Firestore update OK');
+    } catch (e) {
+      print('[Inbox] _markAsRead() Firestore error: $e');
+    }
   }
 
   String _formatTimeAgo(DateTime dateTime) {
@@ -122,6 +129,7 @@ class _InboxScreenState extends State<InboxScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ...existing code...
     return Scaffold(
       backgroundColor: const Color(0xFF7AAF5B),
       appBar: AppBar(
