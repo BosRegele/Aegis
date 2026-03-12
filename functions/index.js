@@ -1,4 +1,5 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -509,7 +510,7 @@ exports.redeemQrToken = onCall(async (request) => {
         const snap = await tx.get(tokenRef);
 
         if (!snap.exists) {
-            return { ok: false, reason: "NOT_FOUND" };
+            return { ok: false, reason: "NOT_FOUND", type: "deny" };
         }
 
         const data = snap.data() || {};
@@ -518,7 +519,7 @@ exports.redeemQrToken = onCall(async (request) => {
         const expiresAt = data.expiresAt;
 
         if (used) {
-            return { ok: false, reason: "ALREADY_USED", userId };
+            return { ok: false, reason: "ALREADY_USED", userId, type: "deny" };
         }
 
         if (!expiresAt || typeof expiresAt.toDate !== "function") {
@@ -529,14 +530,14 @@ exports.redeemQrToken = onCall(async (request) => {
         const expMs = expiresAt.toDate().getTime();
 
         if (expMs <= nowMs) {
-            return { ok: false, reason: "EXPIRED", userId };
+            return { ok: false, reason: "EXPIRED", userId, type: "deny" };
         }
 
         const userRef = db.collection("users").doc(userId);
         const userSnap = await tx.get(userRef);
 
         if (!userSnap.exists) {
-            return { ok: false, reason: "USER_NOT_FOUND", userId };
+            return { ok: false, reason: "USER_NOT_FOUND", userId, type: "deny" };
         }
 
         const userData = userSnap.data() || {};
@@ -552,6 +553,7 @@ exports.redeemQrToken = onCall(async (request) => {
                 userId,
                 fullName,
                 classId,
+                type: "deny"
             };
         }
 
@@ -563,6 +565,7 @@ exports.redeemQrToken = onCall(async (request) => {
                 userId,
                 fullName,
                 classId,
+                type: "deny"
             };
         }
 
@@ -571,8 +574,10 @@ exports.redeemQrToken = onCall(async (request) => {
         const classData = classSnap.exists ? classSnap.data() || {} : {};
         const schedule = classData.schedule || {};
 
-        const now = new Date();
-        const dayIdx = now.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+        // Use local school timezone (e.g. Europe/Bucharest) for timetable checks,
+        // because Cloud Functions uses UTC by default and can be 2-3h behind local time.
+        const localNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
+        const dayIdx = localNow.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
         if (dayIdx < 1 || dayIdx > 5) {
             return {
                 ok: false,
@@ -580,8 +585,11 @@ exports.redeemQrToken = onCall(async (request) => {
                 userId,
                 fullName,
                 classId,
+                type: "deny"
             };
         }
+
+        const now = localNow;
 
         const dayKey = String(dayIdx);
         const daySchedule = schedule[dayKey];
@@ -592,6 +600,7 @@ exports.redeemQrToken = onCall(async (request) => {
                 userId,
                 fullName,
                 classId,
+                type: "deny"
             };
         }
 
@@ -613,22 +622,13 @@ exports.redeemQrToken = onCall(async (request) => {
                 userId,
                 fullName,
                 classId,
+                type: "deny"
             };
         }
 
         const nowMinutes = now.getHours() * 60 + now.getMinutes();
         const isWithinSchedule = nowMinutes >= startMinutes && nowMinutes <= endMinutes;
         const isAfterSchedule = nowMinutes > endMinutes;
-
-        if (!inSchool && !isWithinSchedule) {
-            return {
-                ok: false,
-                reason: "OUTSIDE_CLASS_TIME",
-                userId,
-                fullName,
-                classId,
-            };
-        }
 
         const nowTs = admin.firestore.FieldValue.serverTimestamp();
 
@@ -638,38 +638,41 @@ exports.redeemQrToken = onCall(async (request) => {
             redeemedBy: callerUid,
         });
 
-        let newInSchool = inSchool;
         let eventType = "entry";
+        let result = {
+            ok: true,
+            userId,
+            fullName,
+            classId,
+            type: "entry"
+        };
 
-        if (!inSchool && isWithinSchedule) {
-            // student entering school
-            newInSchool = true;
+        if (!inSchool) {
+            // student entering school (now allowed regardless of timetable)
             tx.update(userRef, {
                 inSchool: true,
                 lastInAt: nowTs,
-                lastOutAt: null,
+                // keep lastOutAt as is, do not clear it
             });
         } else if (inSchool && isAfterSchedule) {
             // student exiting after class hours
-            newInSchool = false;
             eventType = "exit";
             tx.update(userRef, {
                 inSchool: false,
-                lastInAt: null,
+                // keep lastInAt as is, do not clear it
                 lastOutAt: nowTs,
             });
-        } else if (inSchool) {
-            // still in school during allowed hours; keep as is
-            newInSchool = true;
-            // no user update needed
+            result.type = "exit";
         } else {
-            // outside schedule and not in school (should not normally reach here)
-            return {
+            // student already in school during or before end schedule
+            eventType = "deny";
+            result = {
                 ok: false,
-                reason: "OUTSIDE_CLASS_TIME",
+                reason: "ALREADY_IN_SCHOOL",
                 userId,
                 fullName,
                 classId,
+                type: "deny"
             };
         }
 
@@ -681,16 +684,39 @@ exports.redeemQrToken = onCall(async (request) => {
             classId,
             gateUid: callerUid,
             timestamp: nowTs,
-            type: "entry",
+            type: eventType,
+            reason: result.ok ? null : result.reason,
         });
 
-        return {
-            ok: true,
-            userId,
-            fullName,
-            classId,
-        };
+        return result;
     });
 
     return result;
+});
+
+exports.cleanupExpiredQrTokens = onSchedule("every 60 minutes", async (event) => {
+    const db = admin.firestore();
+    const cutoff = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+    const expiredSnap = await db.collection("qrTokens")
+        .where("expiresAt", "<=", cutoff)
+        .get();
+
+    if (expiredSnap.empty) {
+        console.log("cleanupExpiredQrTokens: no expired QR tokens found");
+        return;
+    }
+
+    const docs = expiredSnap.docs;
+    const chunkSize = 500;
+    let deletedCount = 0;
+
+    for (let i = 0; i < docs.length; i += chunkSize) {
+        const chunk = docs.slice(i, i + chunkSize);
+        const batch = db.batch();
+        chunk.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+        deletedCount += chunk.length;
+    }
+
+    console.log(`cleanupExpiredQrTokens: deleted ${deletedCount} expired QR tokens`);
 });
