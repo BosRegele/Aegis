@@ -183,10 +183,39 @@ class MeniuScreen extends StatelessWidget {
                               child: _UnreadMessagesTile(
                                 userId: currentUser?.uid,
                                 lastOpenedAt: lastOpenedAt,
-                                onTap: () {
+                                onTap: () async {
+                                  print('[Menu] Mesaje onTap');
                                   if (onNavigateTab != null) {
                                     onNavigateTab!(4);
                                     return;
+                                  }
+
+                                  // Apelăm markAsRead direct aici
+                                  final uid = AppSession.uid;
+                                  print(
+                                    '[Inbox] _markAsRead() called, uid: $uid',
+                                  );
+                                  if (uid != null && uid.isNotEmpty) {
+                                    try {
+                                      await FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(uid)
+                                          .set({
+                                            'inboxLastOpenedAt':
+                                                FieldValue.serverTimestamp(),
+                                          }, SetOptions(merge: true));
+                                      print(
+                                        '[Inbox] _markAsRead() Firestore update OK',
+                                      );
+                                    } catch (e) {
+                                      print(
+                                        '[Inbox] _markAsRead() Firestore error: $e',
+                                      );
+                                    }
+                                  } else {
+                                    print(
+                                      '[Inbox] _markAsRead() aborted: uid null/gol',
+                                    );
                                   }
 
                                   Navigator.of(context).push(
