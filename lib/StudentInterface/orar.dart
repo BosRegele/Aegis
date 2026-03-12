@@ -21,6 +21,105 @@ class _OrarScreenState extends State<OrarScreen> {
     _dataFuture = _loadData();
   }
 
+  Future<void> _logout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+          backgroundColor: const Color(0xFFE6EBEE),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: const Text(
+            'Confirmare logout',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF223127),
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: const [
+              SizedBox(height: 4),
+              Text(
+                'Esti sigur ca vrei sa iesi din cont?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF3A4A3F),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w400,
+                  height: 1.2,
+                ),
+              ),
+              SizedBox(height: 12),
+            ],
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            SizedBox(
+              width: 120,
+              height: 44,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF7AAF5B),
+                  textStyle: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                child: const Text('Anuleaza'),
+              ),
+            ),
+            SizedBox(
+              width: 120,
+              height: 44,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7AAF5B),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  textStyle: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                child: const Text('Logout'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout != true) {
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.signOut();
+      AppSession.clear();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nu am putut face logout. Incearca din nou.'),
+        ),
+      );
+    }
+  }
+
   Future<_OrarViewData> _loadData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -168,6 +267,13 @@ class _OrarScreenState extends State<OrarScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Logout',
+            onPressed: _logout,
+            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+          ),
+        ],
       ),
       body: SafeArea(
         top: false,

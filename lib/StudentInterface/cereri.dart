@@ -36,6 +36,25 @@ class _CereriScreenState extends State<CereriScreen> {
       initialDate: _selectedDate ?? now,
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 2),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            dialogBackgroundColor: const Color(0xFFE6EBEE),
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF7AAF5B), // accent verde
+              onPrimary: Colors.white,
+              surface: Color(0xFFE6EBEE),
+              onSurface: Color(0xFF223127),
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF5D8A43),
+              ),
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
 
     if (pickedDate == null) {
@@ -53,6 +72,25 @@ class _CereriScreenState extends State<CereriScreen> {
     final pickedTime = await showTimePicker(
       context: context,
       initialTime: _selectedTime ?? const TimeOfDay(hour: 10, minute: 30),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            dialogBackgroundColor: const Color(0xFFE6EBEE),
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF7AAF5B),
+              onPrimary: Colors.white,
+              surface: Color(0xFFE6EBEE),
+              onSurface: Color(0xFF223127),
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF5D8A43),
+              ),
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
 
     if (pickedTime == null) {
