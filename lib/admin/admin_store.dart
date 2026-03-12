@@ -17,7 +17,7 @@ class AdminStore {
     if (username.isEmpty || password.isEmpty || fullName.isEmpty) {
       throw Exception("Campuri lipsa");
     }
-    if (!["student", "teacher", "admin", "gate"].contains(role)) {
+    if (!["student", "teacher", "admin", "gate", "parent"].contains(role)) {
       throw Exception("Role invalid");
     }
     if ((role == "student" || role == "teacher") &&
