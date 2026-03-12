@@ -510,7 +510,7 @@ exports.redeemQrToken = onCall(async (request) => {
         const snap = await tx.get(tokenRef);
 
         if (!snap.exists) {
-            return { ok: false, reason: "NOT_FOUND" };
+            return { ok: false, reason: "NOT_FOUND", type: "deny" };
         }
 
         const data = snap.data() || {};
@@ -519,7 +519,7 @@ exports.redeemQrToken = onCall(async (request) => {
         const expiresAt = data.expiresAt;
 
         if (used) {
-            return { ok: false, reason: "ALREADY_USED", userId };
+            return { ok: false, reason: "ALREADY_USED", userId, type: "deny" };
         }
 
         if (!expiresAt || typeof expiresAt.toDate !== "function") {
@@ -530,14 +530,14 @@ exports.redeemQrToken = onCall(async (request) => {
         const expMs = expiresAt.toDate().getTime();
 
         if (expMs <= nowMs) {
-            return { ok: false, reason: "EXPIRED", userId };
+            return { ok: false, reason: "EXPIRED", userId, type: "deny" };
         }
 
         const userRef = db.collection("users").doc(userId);
         const userSnap = await tx.get(userRef);
 
         if (!userSnap.exists) {
-            return { ok: false, reason: "USER_NOT_FOUND", userId };
+            return { ok: false, reason: "USER_NOT_FOUND", userId, type: "deny" };
         }
 
         const userData = userSnap.data() || {};
@@ -553,6 +553,7 @@ exports.redeemQrToken = onCall(async (request) => {
                 userId,
                 fullName,
                 classId,
+                type: "deny"
             };
         }
 
@@ -564,6 +565,7 @@ exports.redeemQrToken = onCall(async (request) => {
                 userId,
                 fullName,
                 classId,
+                type: "deny"
             };
         }
 
@@ -572,8 +574,10 @@ exports.redeemQrToken = onCall(async (request) => {
         const classData = classSnap.exists ? classSnap.data() || {} : {};
         const schedule = classData.schedule || {};
 
-        const now = new Date();
-        const dayIdx = now.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+        // Use local school timezone (e.g. Europe/Bucharest) for timetable checks,
+        // because Cloud Functions uses UTC by default and can be 2-3h behind local time.
+        const localNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
+        const dayIdx = localNow.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
         if (dayIdx < 1 || dayIdx > 5) {
             return {
                 ok: false,
@@ -581,8 +585,11 @@ exports.redeemQrToken = onCall(async (request) => {
                 userId,
                 fullName,
                 classId,
+                type: "deny"
             };
         }
+
+        const now = localNow;
 
         const dayKey = String(dayIdx);
         const daySchedule = schedule[dayKey];
@@ -593,6 +600,7 @@ exports.redeemQrToken = onCall(async (request) => {
                 userId,
                 fullName,
                 classId,
+                type: "deny"
             };
         }
 
@@ -614,6 +622,7 @@ exports.redeemQrToken = onCall(async (request) => {
                 userId,
                 fullName,
                 classId,
+                type: "deny"
             };
         }
 
@@ -629,30 +638,42 @@ exports.redeemQrToken = onCall(async (request) => {
             redeemedBy: callerUid,
         });
 
-        let newInSchool = inSchool;
         let eventType = "entry";
+        let result = {
+            ok: true,
+            userId,
+            fullName,
+            classId,
+            type: "entry"
+        };
 
         if (!inSchool) {
             // student entering school (now allowed regardless of timetable)
-            newInSchool = true;
             tx.update(userRef, {
                 inSchool: true,
                 lastInAt: nowTs,
-                lastOutAt: null,
+                // keep lastOutAt as is, do not clear it
             });
         } else if (inSchool && isAfterSchedule) {
             // student exiting after class hours
-            newInSchool = false;
             eventType = "exit";
             tx.update(userRef, {
                 inSchool: false,
-                lastInAt: null,
+                // keep lastInAt as is, do not clear it
                 lastOutAt: nowTs,
             });
+            result.type = "exit";
         } else {
-            // still in school (during or before end schedule) - keep as is
-            newInSchool = true;
-            // no user update needed
+            // student already in school during or before end schedule
+            eventType = "deny";
+            result = {
+                ok: false,
+                reason: "ALREADY_IN_SCHOOL",
+                userId,
+                fullName,
+                classId,
+                type: "deny"
+            };
         }
 
         const eventRef = db.collection("accessEvents").doc();
@@ -664,14 +685,10 @@ exports.redeemQrToken = onCall(async (request) => {
             gateUid: callerUid,
             timestamp: nowTs,
             type: eventType,
+            reason: result.ok ? null : result.reason,
         });
 
-        return {
-            ok: true,
-            userId,
-            fullName,
-            classId,
-        };
+        return result;
     });
 
     return result;
