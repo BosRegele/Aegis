@@ -149,70 +149,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                             fullName: fullName,
                             classId: classId,
                             status: status,
+                            parentIds: List<String>.from(data['parents'] ?? []),
                           ),
                         ),
-                        // show assigned parents if any
-                        if ((data['parents'] ?? []).isNotEmpty)
-                          FutureBuilder<List<DocumentSnapshot>>(
-                            future: Future.wait(
-                              List<String>.from(data['parents'] ?? []).map(
-                                (id) => FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(id)
-                                    .get(),
-                              ),
-                            ),
-                            builder: (context, psnap) {
-                              if (psnap.hasError)
-                                return const SizedBox.shrink();
-                              if (!psnap.hasData)
-                                return const SizedBox.shrink();
-                              final docs = psnap.data!;
-                              if (docs.isEmpty) return const SizedBox.shrink();
-                              return Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 16,
-                                  right: 16,
-                                  bottom: 8,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Părinți:'),
-                                    const SizedBox(height: 6),
-                                    ...docs.map((ds) {
-                                      final md =
-                                          ds.data() as Map<String, dynamic>? ??
-                                          {};
-                                      final pname =
-                                          (md['fullName'] ??
-                                                  md['username'] ??
-                                                  ds.id)
-                                              .toString();
-                                      final pun = (md['username'] ?? ds.id)
-                                          .toString();
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 6,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Expanded(child: Text(pname)),
-                                            Text(
-                                              'user: $pun',
-                                              style: const TextStyle(
-                                                color: Colors.black54,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
                         Divider(height: 1, color: darkGreen.withOpacity(0.3)),
                       ],
                     );
@@ -232,13 +171,71 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     required String fullName,
     required String classId,
     required String status,
+    required List<String> parentIds,
   }) async {
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(fullName),
-        content: SelectableText(
-          "username: $username\nclassId: $classId\nstatus: $status",
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SelectableText(
+                "username: $username\nclassId: $classId\nstatus: $status",
+              ),
+              if (parentIds.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Părinți:',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                FutureBuilder<List<DocumentSnapshot>>(
+                  future: Future.wait(
+                    parentIds.map(
+                      (id) => FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(id)
+                          .get(),
+                    ),
+                  ),
+                  builder: (context, psnap) {
+                    if (psnap.hasError) return const SizedBox.shrink();
+                    if (!psnap.hasData)
+                      return const CircularProgressIndicator();
+                    final docs = psnap.data!;
+                    if (docs.isEmpty) return const Text('Niciun părinte');
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ...docs.map((ds) {
+                          final md = ds.data() as Map<String, dynamic>? ?? {};
+                          final pname =
+                              (md['fullName'] ?? md['username'] ?? ds.id)
+                                  .toString();
+                          final pun = (md['username'] ?? ds.id).toString();
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              children: [
+                                Expanded(child: Text(pname)),
+                                Text(
+                                  'user: $pun',
+                                  style: const TextStyle(color: Colors.black54),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
         ),
         actions: [
           TextButton(

@@ -138,70 +138,11 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                             username: username,
                             fullName: fullName,
                             status: status,
+                            childrenIds: List<String>.from(
+                              data['children'] ?? [],
+                            ),
                           ),
                         ),
-                        // show assigned students if any
-                        if ((data['children'] ?? []).isNotEmpty)
-                          FutureBuilder<List<DocumentSnapshot>>(
-                            future: Future.wait(
-                              List<String>.from(data['children'] ?? []).map(
-                                (id) => FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(id)
-                                    .get(),
-                              ),
-                            ),
-                            builder: (context, csnap) {
-                              if (csnap.hasError)
-                                return const SizedBox.shrink();
-                              if (!csnap.hasData)
-                                return const SizedBox.shrink();
-                              final docs = csnap.data!;
-                              if (docs.isEmpty) return const SizedBox.shrink();
-                              return Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 16,
-                                  right: 16,
-                                  bottom: 8,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Nume copii:'),
-                                    const SizedBox(height: 6),
-                                    ...docs.map((ds) {
-                                      final md =
-                                          ds.data() as Map<String, dynamic>? ??
-                                          {};
-                                      final cname =
-                                          (md['fullName'] ??
-                                                  md['username'] ??
-                                                  ds.id)
-                                              .toString();
-                                      final cun = (md['username'] ?? ds.id)
-                                          .toString();
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 6,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Expanded(child: Text(cname)),
-                                            Text(
-                                              'username: $cun',
-                                              style: const TextStyle(
-                                                color: Colors.black54,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
                         Divider(height: 1, color: darkGreen.withOpacity(0.3)),
                       ],
                     );
@@ -220,29 +161,69 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
     required String username,
     required String fullName,
     required String status,
+    required List<String> childrenIds,
   }) async {
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(fullName),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SelectableText("username: $username\nstatus: $status"),
-            const SizedBox(height: 12),
-            // show children in dialog as well
-            FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(username)
-                  .get(),
-              builder: (context, psnap) {
-                // fallback: try to find parent doc by username field if doc id is not username
-                return const SizedBox.shrink();
-              },
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SelectableText("username: $username\nstatus: $status"),
+              if (childrenIds.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Copii:',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                FutureBuilder<List<DocumentSnapshot>>(
+                  future: Future.wait(
+                    childrenIds.map(
+                      (id) => FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(id)
+                          .get(),
+                    ),
+                  ),
+                  builder: (context, csnap) {
+                    if (csnap.hasError) return const SizedBox.shrink();
+                    if (!csnap.hasData)
+                      return const CircularProgressIndicator();
+                    final docs = csnap.data!;
+                    if (docs.isEmpty) return const Text('Niciun copil');
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ...docs.map((ds) {
+                          final md = ds.data() as Map<String, dynamic>? ?? {};
+                          final cname =
+                              (md['fullName'] ?? md['username'] ?? ds.id)
+                                  .toString();
+                          final cun = (md['username'] ?? ds.id).toString();
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              children: [
+                                Expanded(child: Text(cname)),
+                                Text(
+                                  'user: $cun',
+                                  style: const TextStyle(color: Colors.black54),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
