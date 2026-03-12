@@ -27,13 +27,14 @@ class _GateScanPageState extends State<GateScanPage> {
     required String tokenId,
     required bool allowed,
     required String reason,
+    required String scanType,
     String? userId,
   }) async {
     await FirebaseFirestore.instance.collection('accessEvents').add({
       'tokenId': tokenId,
       'userId': userId,
       'timestamp': Timestamp.now(),
-      'scanType': 'entry',
+      'scanType': scanType,
       'result': allowed ? 'allow' : 'deny',
       'reason': reason,
     });
@@ -52,19 +53,36 @@ class _GateScanPageState extends State<GateScanPage> {
       final fullName = (res["fullName"] ?? "").toString();
       final classId = (res["classId"] ?? "").toString();
       final reason = (res["reason"] ?? "").toString();
+      final scanType = (res["type"] ?? (ok ? "entry" : "deny")).toString();
 
       await _logAccessEvent(
         tokenId: tokenId,
         allowed: ok,
         reason: reason,
+        scanType: scanType,
         userId: userId == '-' ? null : userId,
       );
 
+      String statusMessage;
+      if (ok) {
+        if (scanType == "exit") {
+          statusMessage = "✅ EXIT\n$fullName\n$classId\n(userId=$userId)";
+        } else {
+          statusMessage = "✅ ALLOW\n$fullName\n$classId\n(userId=$userId)";
+        }
+      } else if (reason == "ALREADY_IN_SCHOOL") {
+        statusMessage = "❌ DENY (already in school)\nClasele nu s-au terminat încă";
+      } else if (reason == "OUTSIDE_CLASS_DAY") {
+        statusMessage = "❌ DENY (outside class day)\nNu se pot ieși în afara zilei de școală";
+      } else if (reason == "NO_SCHEDULE") {
+        statusMessage = "❌ DENY (no schedule)\nOrarul nu este setat pentru clasa acestui elev";
+      } else {
+        statusMessage = "❌ DENY ($reason)\n$fullName\n$classId\n(userId=$userId)";
+      }
+
       setState(() {
         _isAllowed = ok;
-        _status = ok
-            ? "✅ ALLOW\n$fullName\n$classId\n(userId=$userId)"
-            : "❌ DENY ($reason)\n$fullName\n$classId\n(userId=$userId)";
+        _status = statusMessage;
       });
     } catch (e) {
       setState(() {
