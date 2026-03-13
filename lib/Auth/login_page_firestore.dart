@@ -27,16 +27,24 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
     try {
       final username = userC.text.trim().toLowerCase();
       final password = passC.text.trim();
-      if (username.isEmpty || password.isEmpty) throw Exception("Completeaza username si parola");
+      if (username.isEmpty || password.isEmpty) {
+        throw Exception("Completeaza username si parola");
+      }
 
       final email = "$username@school.local";
-      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
       final uid = cred.user!.uid;
       final usersCol = FirebaseFirestore.instance.collection('users');
       QuerySnapshot? qsnap;
       DocumentSnapshot? doc;
 
-      qsnap = await usersCol.where('username', isEqualTo: username).limit(1).get();
+      qsnap = await usersCol
+          .where('username', isEqualTo: username)
+          .limit(1)
+          .get();
       if (qsnap.docs.isNotEmpty) doc = qsnap.docs.first;
       if (doc == null) {
         final d = await usersCol.doc(uid).get();
@@ -48,7 +56,13 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       }
       if (doc == null || !doc.exists) {
         await FirebaseAuth.instance.signOut();
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profilul utilizatorului nu exista in Firestore')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profilul utilizatorului nu exista in Firestore'),
+            ),
+          );
+        }
         return;
       }
 
@@ -60,31 +74,62 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
 
       final role = (data["role"] ?? "").toString();
       final usernameFromDb = (data["username"] ?? username).toString();
-      AppSession.setUser(uidValue: uid, usernameValue: usernameFromDb, roleValue: role);
+      AppSession.setUser(
+        uidValue: uid,
+        usernameValue: usernameFromDb,
+        roleValue: role,
+      );
 
       if (!mounted) return;
       if (role == "student") {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AppShell()));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AppShell()),
+        );
       } else if (role == "gate") {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const GateScanPage()));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const GateScanPage()),
+        );
       } else if (role == "admin") {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SecretariatRawPage()));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const SecretariatRawPage()),
+        );
       } else if (role == "teacher") {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const TeacherDashboardPage()));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const TeacherDashboardPage()),
+        );
       } else if (role == "parent") {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ParentHomePage()));
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ParentHomePage()),
+        );
       } else {
         throw Exception("Rol necunoscut");
       }
     } on FirebaseAuthException catch (e) {
       String msg = "Eroare autentificare";
       if (e.code == "user-not-found") msg = "Utilizator inexistent";
-      if (e.code == "wrong-password" || e.code == "invalid-credential") msg = "Parola gresita";
+      if (e.code == "wrong-password" || e.code == "invalid-credential") {
+        msg = "Parola gresita";
+      }
       if (e.code == "invalid-email") msg = "Username invalid";
-      if (e.code == "too-many-requests") msg = "Prea multe incercari. Incearca mai tarziu.";
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      if (e.code == "too-many-requests") {
+        msg = "Prea multe incercari. Incearca mai tarziu.";
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
+      }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Eroare: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Eroare: $e")));
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -105,7 +150,10 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color.fromRGBO(122, 175, 91, 1), Color.fromRGBO(90, 150, 65, 1)],
+                colors: [
+                  Color.fromRGBO(122, 175, 91, 1),
+                  Color.fromRGBO(90, 150, 65, 1),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -120,10 +168,21 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                 borderRadius: BorderRadius.circular(30),
                 color: Colors.white.withOpacity(0.95),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 30, offset: const Offset(0, 15)),
-                  BoxShadow(color: Colors.green.withOpacity(0.1), blurRadius: 25, spreadRadius: -10),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.25),
+                    blurRadius: 30,
+                    offset: const Offset(0, 15),
+                  ),
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.1),
+                    blurRadius: 25,
+                    spreadRadius: -10,
+                  ),
                 ],
-                border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1.5,
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -133,32 +192,60 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: const LinearGradient(
-                        colors: [Color.fromRGBO(122, 175, 91, 1), Color.fromRGBO(90, 150, 65, 1)],
+                        colors: [
+                          Color.fromRGBO(122, 175, 91, 1),
+                          Color.fromRGBO(90, 150, 65, 1),
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      boxShadow: [BoxShadow(color: Colors.green.withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 5))],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.4),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
                     ),
-                    child: const Icon(Icons.shield_rounded, size: 60, color: Colors.white),
+                    child: const Icon(
+                      Icons.shield_rounded,
+                      size: 60,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 20),
-                  const Text("Autentificare", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                  const Text(
+                    "Autentificare",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                   const SizedBox(height: 30),
 
                   TextField(
                     controller: userC,
                     decoration: InputDecoration(
                       hintText: "Nume de utilizator",
-                      prefixIcon: const Icon(Icons.person_outline, color: Color.fromRGBO(122, 175, 91, 1)),
+                      prefixIcon: const Icon(
+                        Icons.person_outline,
+                        color: Color.fromRGBO(122, 175, 91, 1),
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(18),
-                        borderSide: BorderSide(color: Colors.green.withOpacity(0.3)),
+                        borderSide: BorderSide(
+                          color: Colors.green.withOpacity(0.3),
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(18),
-                        borderSide: const BorderSide(color: Color.fromRGBO(122, 175, 91, 1), width: 2),
+                        borderSide: const BorderSide(
+                          color: Color.fromRGBO(122, 175, 91, 1),
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -169,20 +256,30 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                     obscureText: !passwordVisible,
                     decoration: InputDecoration(
                       hintText: "Parola",
-                      prefixIcon: const Icon(Icons.lock_outline, color: Color.fromRGBO(122, 175, 91, 1)),
+                      prefixIcon: const Icon(
+                        Icons.lock_outline,
+                        color: Color.fromRGBO(122, 175, 91, 1),
+                      ),
                       filled: true,
                       fillColor: Colors.white,
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(18),
-                        borderSide: BorderSide(color: Colors.green.withOpacity(0.3)),
+                        borderSide: BorderSide(
+                          color: Colors.green.withOpacity(0.3),
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(18),
-                        borderSide: const BorderSide(color: Color.fromRGBO(122, 175, 91, 1), width: 2),
+                        borderSide: const BorderSide(
+                          color: Color.fromRGBO(122, 175, 91, 1),
+                          width: 2,
+                        ),
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          passwordVisible ? Icons.visibility : Icons.visibility_off,
+                          passwordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                           color: Colors.grey,
                         ),
                         onPressed: () {
@@ -204,16 +301,29 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                         backgroundColor: const Color.fromRGBO(122, 175, 91, 1),
                         elevation: 8,
                         shadowColor: Colors.green.withOpacity(0.6),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
                       ),
                       child: Text(
                         loading ? "Se conecteaza..." : "Conectează-te",
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(width: 80, height: 4, decoration: BoxDecoration(color: Colors.green.withOpacity(0.5), borderRadius: BorderRadius.circular(2))),
+                  Container(
+                    width: 80,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ],
               ),
             ),

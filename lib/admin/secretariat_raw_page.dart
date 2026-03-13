@@ -1040,12 +1040,14 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                               )
                                               .snapshots(),
                                           builder: (context, snap) {
-                                            if (snap.hasError)
+                                            if (snap.hasError) {
                                               return Text(
                                                 'Eroare: ${snap.error}',
                                               );
-                                            if (!snap.hasData)
+                                            }
+                                            if (!snap.hasData) {
                                               return const CircularProgressIndicator();
+                                            }
 
                                             final opts = snap.data!.docs.map((
                                               d,
@@ -1073,8 +1075,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                               Map<String, String>
                                             >(
                                               optionsBuilder: (txt) {
-                                                if (txt.text.isEmpty)
+                                                if (txt.text.isEmpty) {
                                                   return opts;
+                                                }
                                                 return opts.where(
                                                   (o) => o['name']!
                                                       .toLowerCase()
@@ -1123,12 +1126,14 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                 )
                                                 .snapshots(),
                                             builder: (context, snap) {
-                                              if (snap.hasError)
+                                              if (snap.hasError) {
                                                 return Text(
                                                   'Eroare: ${snap.error}',
                                                 );
-                                              if (!snap.hasData)
+                                              }
+                                              if (!snap.hasData) {
                                                 return const CircularProgressIndicator();
+                                              }
                                               final data =
                                                   snap.data!.data()
                                                       as Map<
@@ -1157,8 +1162,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                         .doc(puid)
                                                         .get(),
                                                     builder: (context, psnap) {
-                                                      if (!psnap.hasData)
+                                                      if (!psnap.hasData) {
                                                         return const SizedBox.shrink();
+                                                      }
                                                       final pdata =
                                                           psnap.data!.data()
                                                               as Map<
@@ -1220,8 +1226,10 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                 ],
                                                               ),
                                                             );
-                                                            if (confirm != true)
+                                                            if (confirm !=
+                                                                true) {
                                                               return;
+                                                            }
                                                             try {
                                                               final stuRef =
                                                                   FirebaseFirestore
@@ -1253,7 +1261,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                       selectedAssignStudent!['id'],
                                                                     ]),
                                                               });
-                                                              if (mounted)
+                                                              if (mounted) {
                                                                 ScaffoldMessenger.of(
                                                                   context,
                                                                 ).showSnackBar(
@@ -1263,8 +1271,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     ),
                                                                   ),
                                                                 );
+                                                              }
                                                             } catch (e) {
-                                                              if (mounted)
+                                                              if (mounted) {
                                                                 ScaffoldMessenger.of(
                                                                   context,
                                                                 ).showSnackBar(
@@ -1274,6 +1283,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     ),
                                                                   ),
                                                                 );
+                                                              }
                                                             }
                                                           },
                                                         ),
@@ -1298,12 +1308,14 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                 )
                                                 .snapshots(),
                                             builder: (context, psnap) {
-                                              if (psnap.hasError)
+                                              if (psnap.hasError) {
                                                 return Text(
                                                   'Eroare: ${psnap.error}',
                                                 );
-                                              if (!psnap.hasData)
+                                              }
+                                              if (!psnap.hasData) {
                                                 return const CircularProgressIndicator();
+                                              }
                                               final popts = psnap.data!.docs.map((
                                                 d,
                                               ) {
@@ -1333,8 +1345,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                 Map<String, String>
                                               >(
                                                 optionsBuilder: (txt) {
-                                                  if (txt.text.isEmpty)
+                                                  if (txt.text.isEmpty) {
                                                     return popts;
+                                                  }
                                                   return popts.where(
                                                     (o) => o['name']!
                                                         .toLowerCase()
@@ -1399,11 +1412,8 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                 await stuRef
                                                                     .get();
                                                             final stuData =
-                                                                stuSnap.data()
-                                                                    as Map<
-                                                                      String,
-                                                                      dynamic
-                                                                    >? ??
+                                                                stuSnap
+                                                                    .data() ??
                                                                 {};
                                                             final parents =
                                                                 List<
@@ -1414,7 +1424,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                 );
                                                             if (parents
                                                                 .contains(pp)) {
-                                                              if (mounted)
+                                                              if (mounted) {
                                                                 ScaffoldMessenger.of(
                                                                   context,
                                                                 ).showSnackBar(
@@ -1424,12 +1434,13 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     ),
                                                                   ),
                                                                 );
+                                                              }
                                                               return;
                                                             }
                                                             if (parents
                                                                     .length >=
                                                                 2) {
-                                                              if (mounted)
+                                                              if (mounted) {
                                                                 ScaffoldMessenger.of(
                                                                   context,
                                                                 ).showSnackBar(
@@ -1439,6 +1450,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     ),
                                                                   ),
                                                                 );
+                                                              }
                                                               return;
                                                             }
                                                             final parRef =
@@ -1460,7 +1472,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     [sp],
                                                                   ),
                                                             });
-                                                            if (mounted)
+                                                            if (mounted) {
                                                               ScaffoldMessenger.of(
                                                                 context,
                                                               ).showSnackBar(
@@ -1470,8 +1482,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                   ),
                                                                 ),
                                                               );
+                                                            }
                                                           } catch (e) {
-                                                            if (mounted)
+                                                            if (mounted) {
                                                               ScaffoldMessenger.of(
                                                                 context,
                                                               ).showSnackBar(
@@ -1481,6 +1494,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                   ),
                                                                 ),
                                                               );
+                                                            }
                                                           }
                                                         },
                                                   child: const Text(
