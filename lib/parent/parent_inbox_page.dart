@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class ParentInboxPage extends StatelessWidget {
@@ -5,55 +6,94 @@ class ParentInboxPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const Color primaryGreen = Color(0xFF7AAF5B);
     const Color bgGrey = Color(0xFFE7EDF0);
 
     return Scaffold(
       backgroundColor: bgGrey,
       appBar: AppBar(
         title: const Text("Inbox"),
-        backgroundColor: const Color(0xFF7AAF5B),
+        backgroundColor: primaryGreen,
         foregroundColor: Colors.white,
       ),
-      body: Container(
-        color: bgGrey,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: 80,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "Inbox Gol",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Nu aveți mesaje noi momentan.",
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[500],
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7AAF5B),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text("Actualizează"),
-            )
-          ],
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('leaveRequests')
+              .where('status', whereIn: ['approved', 'rejected'])
+              .orderBy('reviewedAt', descending: true)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(child: Text("Eroare: ${snapshot.error}"));
+            }
+
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final docs = snapshot.data!.docs;
+
+            if (docs.isEmpty) {
+              return const Center(
+                child: Text(
+                  "Nu există mesaje în inbox.",
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+              );
+            }
+
+            return ListView.separated(
+              itemCount: docs.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final data = docs[index].data() as Map<String, dynamic>;
+
+                final studentName = data['studentName'] ?? "Elev necunoscut";
+                final classId = data['classId'] ?? "-";
+                final reviewer = data['reviewedByName'] ?? "Necunoscut";
+                final time = data['timeText'] ?? "-";
+                final status = data['status'] ?? "pending";
+
+                final bool approved = status == 'approved';
+
+                return Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: ListTile(
+                    visualDensity: VisualDensity.compact,
+                    contentPadding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                    leading: Icon(
+                      approved ? Icons.check_circle : Icons.cancel,
+                      color: approved ? Colors.green : Colors.red,
+                      size: 32,
+                    ),
+                    title: Text(
+                      approved ? "Cerere acceptată" : "Cerere respinsă",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 0),
+                        Text("Elev: $studentName"),
+                        Text("Clasa: $classId"),
+                        Text("De la: $reviewer"),
+                        Text("Ora: $time"),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         ),
-      ),
       ),
     );
   }
