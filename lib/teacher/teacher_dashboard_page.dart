@@ -1,6 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../session.dart';
+import 'orardir.dart';
+import 'cereriasteptare.dart';
+import 'statuselevi.dart';
+import 'mesajedir.dart';
 
 class TeacherDashboardPage extends StatefulWidget {
   const TeacherDashboardPage({super.key});
@@ -10,24 +14,6 @@ class TeacherDashboardPage extends StatefulWidget {
 }
 
 class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
-  Future<void> _reviewRequest({
-    required String requestId,
-    required String status,
-  }) async {
-    final teacherUid = AppSession.uid;
-    if (teacherUid == null || teacherUid.isEmpty) return;
-
-    await FirebaseFirestore.instance
-        .collection('leaveRequests')
-        .doc(requestId)
-        .update({
-          'status': status,
-          'reviewedAt': Timestamp.now(),
-          'reviewedByUid': teacherUid,
-          'reviewedByName': (AppSession.username ?? '').toString(),
-        });
-  }
-
   @override
   Widget build(BuildContext context) {
     final teacherUid = AppSession.uid;
@@ -40,9 +26,16 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         .doc(teacherUid);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Diriginte")),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: teacherDoc.snapshots(),
+      backgroundColor: Colors.grey[200],
+      appBar: AppBar(
+        backgroundColor: const Color.fromRGBO(122, 175, 91, 1),
+        title: const Text(
+          "Pagina Diriginte",
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+      body: FutureBuilder<DocumentSnapshot>(
+        future: teacherDoc.get(),
         builder: (context, snap) {
           if (snap.hasError) {
             return Center(child: Text("Eroare: ${snap.error}"));
@@ -55,9 +48,6 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
           }
 
           final data = snap.data!.data() as Map<String, dynamic>;
-          final fullName =
-              (data["fullName"] ?? AppSession.username ?? teacherUid)
-                  .toString();
           final classId = (data["classId"] ?? "").toString().trim();
 
           if (classId.isEmpty) {
@@ -68,180 +58,155 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
             );
           }
 
-          final studentsQuery = FirebaseFirestore.instance
-              .collection('users')
-              .where('role', isEqualTo: 'student')
-              .where('classId', isEqualTo: classId);
+          final fullName =
+              (data["fullName"] ?? AppSession.username ?? teacherUid)
+                  .toString();
 
-          final requestsQuery = FirebaseFirestore.instance
-              .collection('leaveRequests')
-              .where('classId', isEqualTo: classId)
-              .where('status', isEqualTo: 'pending');
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  "$fullName\nClasa: $classId",
-                  style: const TextStyle(fontSize: 18),
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Bun venit, $fullName',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-                child: Text(
-                  'Cereri in asteptare',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              SizedBox(
-                height: 220,
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: requestsQuery.snapshots(),
-                  builder: (context, rSnap) {
-                    if (rSnap.hasError) {
-                      return Center(
-                        child: Text('Eroare cereri: ${rSnap.error}'),
-                      );
-                    }
-                    if (!rSnap.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    final docs = rSnap.data!.docs.toList()
-                      ..sort((a, b) {
-                        final at =
-                            (a['requestedAt'] as Timestamp?)?.toDate() ??
-                            DateTime.fromMillisecondsSinceEpoch(0);
-                        final bt =
-                            (b['requestedAt'] as Timestamp?)?.toDate() ??
-                            DateTime.fromMillisecondsSinceEpoch(0);
-                        return bt.compareTo(at);
-                      });
-
-                    if (docs.isEmpty) {
-                      return const Center(child: Text('Nu exista cereri noi.'));
-                    }
-
-                    return ListView.builder(
-                      itemCount: docs.length,
-                      itemBuilder: (context, i) {
-                        final d = docs[i];
-                        final m = d.data() as Map<String, dynamic>;
-                        final student =
-                            (m['studentName'] ?? m['studentUsername'])
-                                .toString();
-                        final dateText = (m['dateText'] ?? '-').toString();
-                        final timeText = (m['timeText'] ?? '-').toString();
-                        final message = (m['message'] ?? '').toString();
-
-                        return Card(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '$student - $dateText $timeText',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(message),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    ElevatedButton(
-                                      onPressed: () => _reviewRequest(
-                                        requestId: d.id,
-                                        status: 'approved',
-                                      ),
-                                      child: const Text('Accepta'),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    OutlinedButton(
-                                      onPressed: () => _reviewRequest(
-                                        requestId: d.id,
-                                        status: 'rejected',
-                                      ),
-                                      child: const Text('Respinge'),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                const SizedBox(height: 20),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: GridView.count(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 20,
+                    crossAxisSpacing: 20,
+                    childAspectRatio: 2.5,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      _dashboardButton(
+                        context,
+                        'Cereri in asteptare',
+                        const Color(0xFF14A9A0),
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CereriAsteptarePage(),
                             ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+                          );
+                        },
+                      ),
+                      _dashboardButton(
+                        context,
+                        'Mesaje',
+                        const Color(0xFF7A56D1),
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const MesajeDirPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      _dashboardButton(
+                        context,
+                        'Orar elevi',
+                        const Color(0xFFEA9136),
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const OrarDirPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      _dashboardButton(
+                        context,
+                        'Status elevi',
+                        const Color.fromRGBO(122, 175, 91, 1),
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const StatusEleviPage(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-                child: Text(
-                  'Elevii clasei',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: studentsQuery.snapshots(),
-                  builder: (context, s2) {
-                    if (s2.hasError) {
-                      return Center(child: Text("Eroare elevi: ${s2.error}"));
-                    }
-                    if (!s2.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    final docs = s2.data!.docs;
-                    if (docs.isEmpty) {
-                      return const Center(
-                        child: Text("Nu exista elevi in clasa asta"),
-                      );
-                    }
-
-                    // sort local
-                    final list = docs.toList()
-                      ..sort((a, b) {
-                        final an = ((a.data() as Map)['fullName'] ?? '')
-                            .toString();
-                        final bn = ((b.data() as Map)['fullName'] ?? '')
-                            .toString();
-                        return an.compareTo(bn);
-                      });
-
-                    return ListView.builder(
-                      itemCount: list.length,
-                      itemBuilder: (_, i) {
-                        final d = list[i];
-                        final sd = d.data() as Map<String, dynamic>;
-                        final u = d.id;
-                        final n = (sd["fullName"] ?? u).toString();
-                        final status = (sd["status"] ?? "active").toString();
-
-                        return ListTile(
-                          title: Text(n),
-                          subtitle: Text("user: $u | $status"),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
+    );
+  }
+
+  Widget _dashboardButton(
+    BuildContext context,
+    String label,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    IconData icon;
+    if (label.toLowerCase().contains('cereri')) {
+      icon = Icons.list_alt;
+    } else if (label.toLowerCase().contains('mesaje')) {
+      icon = Icons.message;
+    } else if (label.toLowerCase().contains('orar')) {
+      icon = Icons.calendar_month;
+    } else if (label.toLowerCase().contains('status')) {
+      icon = Icons.check_circle;
+    } else {
+      icon = Icons.circle;
+    }
+
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        elevation: 4,
+      ),
+      onPressed: onPressed,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 32, color: Colors.white),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SimplePage extends StatelessWidget {
+  final String title;
+
+  const SimplePage({required this.title, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(child: Text(title, style: const TextStyle(fontSize: 24))),
     );
   }
 }
