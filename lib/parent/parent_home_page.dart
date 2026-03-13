@@ -38,6 +38,28 @@ class _ParentHomePageState extends State<ParentHomePage> {
 
   // Method for signing out
   Future<void> _signOut() async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Deconectare"),
+          content: const Text("Ești sigur că vrei să te deconectezi?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text("Anulează"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text("Deconectare", style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -78,10 +100,14 @@ class _ParentHomePageState extends State<ParentHomePage> {
                     color: Colors.white,
                   ),
                   Positioned(
-                    top: 0,
-                    right: 0,
-                    child: IconButton(
+                    top: 10,
+                    right: 4,
+                    child: TextButton.icon(
                       icon: const Icon(Icons.logout, color: Colors.white),
+                      label: const Text(
+                        "Deconectare",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
                       onPressed: _signOut,
                     ),
                   ),

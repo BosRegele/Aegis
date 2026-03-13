@@ -82,12 +82,13 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
                         elevation: 2,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          title: Text(studentName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                          visualDensity: VisualDensity.compact,
+                          contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                          title: Text(studentName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 2),
                               Text("Data: $date"),
                               Text("Motiv: $message", style: const TextStyle(fontStyle: FontStyle.italic)),
                               const SizedBox(height: 12),
@@ -96,13 +97,13 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
                                 children: [
                                   TextButton(
                                     onPressed: () => _handleRequest(doc.id, false),
-                                    child: const Text("Respinge", style: TextStyle(color: Colors.red)),
+                                    child: const Text("Respinge", style: TextStyle(color: Colors.red, fontSize: 18, fontWeight: FontWeight.bold)),
                                   ),
                                   const SizedBox(width: 8),
                                   ElevatedButton(
                                     onPressed: () => _handleRequest(doc.id, true),
-                                    style: ElevatedButton.styleFrom(backgroundColor: primaryGreen, foregroundColor: Colors.white),
-                                    child: const Text("Aprobă"),
+                                    style: ElevatedButton.styleFrom(backgroundColor: primaryGreen, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
+                                    child: const Text("Aprobă", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                                   ),
                                 ],
                               )
