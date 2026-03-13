@@ -39,7 +39,6 @@ class _CereriScreenState extends State<CereriScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            dialogBackgroundColor: const Color(0xFFE6EBEE),
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF7AAF5B), // accent verde
               onPrimary: Colors.white,
@@ -50,6 +49,9 @@ class _CereriScreenState extends State<CereriScreen> {
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF5D8A43),
               ),
+            ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: const Color(0xFFE6EBEE),
             ),
           ),
           child: child ?? const SizedBox.shrink(),
@@ -75,7 +77,6 @@ class _CereriScreenState extends State<CereriScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            dialogBackgroundColor: const Color(0xFFE6EBEE),
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF7AAF5B),
               onPrimary: Colors.white,
@@ -86,6 +87,9 @@ class _CereriScreenState extends State<CereriScreen> {
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF5D8A43),
               ),
+            ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: const Color(0xFFE6EBEE),
             ),
           ),
           child: child ?? const SizedBox.shrink(),

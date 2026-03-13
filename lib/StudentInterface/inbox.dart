@@ -16,7 +16,6 @@ class _InboxScreenState extends State<InboxScreen> {
   @override
   void initState() {
     super.initState();
-    // _markAsRead() eliminat, va fi apelat doar la navigare
   }
 
   // ...existing code...

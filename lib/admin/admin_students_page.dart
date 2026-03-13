@@ -203,8 +203,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                   ),
                   builder: (context, psnap) {
                     if (psnap.hasError) return const SizedBox.shrink();
-                    if (!psnap.hasData)
+                    if (!psnap.hasData) {
                       return const CircularProgressIndicator();
+                    }
                     final docs = psnap.data!;
                     if (docs.isEmpty) return const Text('Niciun părinte');
                     return Column(
@@ -228,7 +229,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                               ],
                             ),
                           );
-                        }).toList(),
+                        }),
                       ],
                     );
                   },

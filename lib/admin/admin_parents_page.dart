@@ -191,8 +191,9 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                   ),
                   builder: (context, csnap) {
                     if (csnap.hasError) return const SizedBox.shrink();
-                    if (!csnap.hasData)
+                    if (!csnap.hasData) {
                       return const CircularProgressIndicator();
+                    }
                     final docs = csnap.data!;
                     if (docs.isEmpty) return const Text('Niciun copil');
                     return Column(
@@ -216,7 +217,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                               ],
                             ),
                           );
-                        }).toList(),
+                        }),
                       ],
                     );
                   },

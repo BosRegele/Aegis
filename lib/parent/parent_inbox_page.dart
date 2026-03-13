@@ -46,7 +46,7 @@ class ParentInboxPage extends StatelessWidget {
 
             return ListView.separated(
               itemCount: docs.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final data = docs[index].data() as Map<String, dynamic>;
 

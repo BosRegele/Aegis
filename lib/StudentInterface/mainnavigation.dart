@@ -36,22 +36,10 @@ class _AppShellState extends State<AppShell> {
     // Marcare ca văzut când se selectează tab-ul inbox (index 4)
     if (index == 4) {
       final uid = AppSession.uid;
-      print('[Inbox] _markAsRead() called from tab, uid: $uid');
       if (uid != null && uid.isNotEmpty) {
-        FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .set({
-              'inboxLastOpenedAt': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true))
-            .then((_) {
-              print('[Inbox] _markAsRead() Firestore update OK (tab)');
-            })
-            .catchError((e) {
-              print('[Inbox] _markAsRead() Firestore error (tab): $e');
-            });
-      } else {
-        print('[Inbox] _markAsRead() aborted: uid null/gol (tab)');
+        FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'inboxLastOpenedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
     }
 
