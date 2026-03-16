@@ -133,15 +133,10 @@ class _CereriScreenState extends State<CereriScreen> {
     setState(() => _submitting = true);
 
     try {
-      final userSnap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(studentUid)
-          .get();
-
-      final userData = userSnap.data() ?? <String, dynamic>{};
-      final classId = (userData['classId'] ?? '').toString();
-      final studentName = (userData['fullName'] ?? AppSession.username ?? '')
-          .toString();
+      final classId = AppSession.classId ?? '';
+      final studentName = (AppSession.fullName?.isNotEmpty == true)
+          ? AppSession.fullName!
+          : (AppSession.username ?? '');
 
       await FirebaseFirestore.instance.collection('leaveRequests').add({
         'studentUid': studentUid,
@@ -157,6 +152,10 @@ class _CereriScreenState extends State<CereriScreen> {
         'reviewedByUid': null,
         'reviewedByName': null,
       });
+
+      await FirebaseFirestore.instance.collection('users').doc(studentUid).set({
+        'unreadCount': FieldValue.increment(1),
+      }, SetOptions(merge: true));
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

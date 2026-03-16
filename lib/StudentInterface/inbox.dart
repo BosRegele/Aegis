@@ -13,9 +13,27 @@ class InboxScreen extends StatefulWidget {
 }
 
 class _InboxScreenState extends State<InboxScreen> {
+  Stream<QuerySnapshot>? _leaveStream;
+  Stream<QuerySnapshot>? _accessStream;
+
   @override
   void initState() {
     super.initState();
+    final uid = AppSession.uid;
+    if (uid != null && uid.isNotEmpty) {
+      _leaveStream = FirebaseFirestore.instance
+          .collection('leaveRequests')
+          .where('studentUid', isEqualTo: uid)
+          .orderBy('requestedAt', descending: true)
+          .limit(50)
+          .snapshots();
+      _accessStream = FirebaseFirestore.instance
+          .collection('accessEvents')
+          .where('userId', isEqualTo: uid)
+          .orderBy('timestamp', descending: true)
+          .limit(50)
+          .snapshots();
+    }
   }
 
   // ...existing code...
@@ -156,30 +174,19 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 
   Widget _buildInboxList() {
-    final uid = AppSession.uid;
-    if (uid == null || uid.isEmpty) {
+    if (_leaveStream == null || _accessStream == null) {
       return const Center(child: Text('Sesiune invalida.'));
     }
 
-    final leaveRequestsStream = FirebaseFirestore.instance
-        .collection('leaveRequests')
-        .where('studentUid', isEqualTo: uid)
-        .snapshots();
-
-    final accessEventsStream = FirebaseFirestore.instance
-        .collection('accessEvents')
-        .where('userId', isEqualTo: uid)
-        .snapshots();
-
     return StreamBuilder<QuerySnapshot>(
-      stream: leaveRequestsStream,
+      stream: _leaveStream,
       builder: (context, leaveSnap) {
         if (leaveSnap.hasError) {
           return Center(child: Text('Eroare cereri: ${leaveSnap.error}'));
         }
 
         return StreamBuilder<QuerySnapshot>(
-          stream: accessEventsStream,
+          stream: _accessStream,
           builder: (context, accessSnap) {
             if (accessSnap.hasError) {
               return Center(

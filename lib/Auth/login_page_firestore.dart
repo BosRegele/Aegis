@@ -78,6 +78,8 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
         uidValue: uid,
         usernameValue: usernameFromDb,
         roleValue: role,
+        fullNameValue: (data["fullName"] ?? "").toString(),
+        classIdValue: (data["classId"] ?? "").toString(),
       );
 
       if (!mounted) return;

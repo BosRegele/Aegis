@@ -1,5 +1,6 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -719,4 +720,40 @@ exports.cleanupExpiredQrTokens = onSchedule("every 60 minutes", async (event) =>
     }
 
     console.log(`cleanupExpiredQrTokens: deleted ${deletedCount} expired QR tokens`);
+});
+
+// Increment unreadCount when a new accessEvent is created for a student
+exports.onAccessEventCreated = onDocumentCreated("accessEvents/{docId}", async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const userId = String(data.userId || "").trim();
+    if (!userId) return;
+
+    await admin.firestore().collection("users").doc(userId).set(
+        { unreadCount: admin.firestore.FieldValue.increment(1) },
+        { merge: true }
+    );
+});
+
+// Increment unreadCount for student when leave request is approved or rejected
+exports.onLeaveRequestStatusChanged = onDocumentUpdated("leaveRequests/{docId}", async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before || !after) return;
+
+    const prevStatus = String(before.status || "");
+    const newStatus = String(after.status || "");
+
+    // Only fire when status changes to approved or rejected
+    if (prevStatus === newStatus) return;
+    if (newStatus !== "approved" && newStatus !== "rejected") return;
+
+    const studentUid = String(after.studentUid || "").trim();
+    if (!studentUid) return;
+
+    await admin.firestore().collection("users").doc(studentUid).set(
+        { unreadCount: admin.firestore.FieldValue.increment(1) },
+        { merge: true }
+    );
 });
