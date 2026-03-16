@@ -10,8 +10,9 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 class TeodorScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigateTab;
+  final bool isActive;
 
-  const TeodorScreen({super.key, this.onNavigateTab});
+  const TeodorScreen({super.key, this.onNavigateTab, this.isActive = true});
 
   @override
   State<TeodorScreen> createState() => _TeodorScreenState();
@@ -25,6 +26,25 @@ class _TeodorScreenState extends State<TeodorScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.isActive) {
+      _startTimer();
+    }
+  }
+
+  @override
+  void didUpdateWidget(TeodorScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _regen();
+      _startTimer();
+    } else if (!widget.isActive && oldWidget.isActive) {
+      _timer?.cancel();
+      _timer = null;
+    }
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
     _regen();
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _regen());
   }

@@ -92,6 +92,8 @@ class _LoginPageState extends State<LoginPage> {
         uidValue: uid,
         usernameValue: unameKey,
         roleValue: role,
+        fullNameValue: (data?['fullName'] ?? '').toString(),
+        classIdValue: (data?['classId'] ?? '').toString(),
       );
 
       if (!mounted) return;

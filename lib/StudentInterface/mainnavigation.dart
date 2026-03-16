@@ -39,6 +39,7 @@ class _AppShellState extends State<AppShell> {
       if (uid != null && uid.isNotEmpty) {
         FirebaseFirestore.instance.collection('users').doc(uid).set({
           'inboxLastOpenedAt': FieldValue.serverTimestamp(),
+          'unreadCount': 0,
         }, SetOptions(merge: true));
       }
     }
@@ -58,7 +59,7 @@ class _AppShellState extends State<AppShell> {
         index: _currentIndex,
         children: [
           MeniuScreen(onNavigateTab: _setTab, onOpenOrar: () => _setTab(2)),
-          TeodorScreen(onNavigateTab: _setTab),
+          TeodorScreen(onNavigateTab: _setTab, isActive: _currentIndex == 1),
           OrarScreen(onBackToHome: () => _setTab(0)),
           CereriScreen(onNavigateTab: _setTab),
           InboxScreen(onNavigateTab: _setTab),

@@ -1,0 +1,22 @@
+
+[1m[37m===[39m Deploying to 'studentid-cd43b'...[22m
+
+[36m[1mi [22m[39m deploying [1mfirestore[22m
+[36m[1mi  firestore:[22m[39m ensuring required API [1mfirestore.googleapis.com[22m is enabled...
+[36m[1mi  firestore:[22m[39m ensuring required API [1mfirestore.googleapis.com[22m is enabled...
+[36m[1mi [22m[39m [1m[36mfirestore:[39m[22m reading indexes from [1mfirestore.indexes.json[22m...
+[36m[1mi [22m[39m [1m[36mfirestore: [39m[22mdeploying indexes...
+[36m[1mi  firestore:[22m[39m The following indexes are defined in your project but are not present in your firestore indexes file:
+	[36m(leaveRequests)[39m -- (status,ASCENDING) (requestedAt,DESCENDING)  -- [36mDensity:SPARSE_ALL [39m
+	[36m(leaveRequests)[39m -- (studentUid,ASCENDING) (reviewedAt,DESCENDING)  -- [36mDensity:SPARSE_ALL [39m
+	[36m(leaveRequests)[39m -- (status,ASCENDING) (reviewedAt,DESCENDING)  -- [36mDensity:SPARSE_ALL [39m
+	[36m(leaveRequests)[39m -- (studentUid,ASCENDING) (status,ASCENDING) (requestedAt,DESCENDING)  -- [36mDensity:SPARSE_ALL [39m
+[34m?[39m [1mWould you like to delete these indexes? Selecting no will continue the rest of[22m
+[1m the deployment.[22m [2m(y/N)[22m[1A[104G[105G[1B[2K[1A[2K[G[34m?[39m [1mWould you like to delete these indexes? Selecting no will continue the rest of[22m
+[1m the deployment.[22m [2m(y/N)[22m[1A[105G[104G[1B[2K[1A[2K[G[32m✔[39m [1mWould you like to delete these indexes? Selecting no will continue the rest of[22m
+[1m the deployment.[22m [36mNo[39m[1A[100G[1B
+[?25h[32m[1m+ [22m[39m [1m[32mfirestore:[39m[22m deployed indexes in [1mfirestore.indexes.json[22m successfully for (default) database
+
+[32m[1m+ [22m[39m [1m[4mDeploy complete![24m[22m
+
+[1mProject Console:[22m https://console.firebase.google.com/project/studentid-cd43b/overview

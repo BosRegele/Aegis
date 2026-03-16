@@ -22,6 +22,9 @@
       }
     }
   },
+  "firestore": {
+    "indexes": "firestore.indexes.json"
+  },
   "functions": [
     {
       "codebase": "default",

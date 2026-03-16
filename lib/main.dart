@@ -41,6 +41,8 @@ class MyApp extends StatelessWidget {
       uidValue: user.uid,
       usernameValue: username,
       roleValue: role,
+      fullNameValue: (data['fullName'] ?? '').toString(),
+      classIdValue: (data['classId'] ?? '').toString(),
     );
 
     if (role == 'student') {

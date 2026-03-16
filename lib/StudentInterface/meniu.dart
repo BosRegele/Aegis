@@ -7,11 +7,43 @@ import 'package:firster/StudentInterface/paginaqr.dart';
 import 'package:firster/session.dart';
 import 'package:flutter/material.dart';
 
-class MeniuScreen extends StatelessWidget {
+class MeniuScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigateTab;
   final VoidCallback? onOpenOrar;
 
   const MeniuScreen({super.key, this.onNavigateTab, this.onOpenOrar});
+
+  @override
+  State<MeniuScreen> createState() => _MeniuScreenState();
+}
+
+class _MeniuScreenState extends State<MeniuScreen> {
+  Stream<DocumentSnapshot<Map<String, dynamic>>>? _userDocStream;
+  Stream<QuerySnapshot<Map<String, dynamic>>>? _lastScanStream;
+  Stream<QuerySnapshot<Map<String, dynamic>>>? _leaveActiveStream;
+
+  @override
+  void initState() {
+    super.initState();
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      _userDocStream = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .snapshots();
+      _lastScanStream = FirebaseFirestore.instance
+          .collection('accessEvents')
+          .where('userId', isEqualTo: currentUser.uid)
+          .orderBy('timestamp', descending: true)
+          .limit(1)
+          .snapshots();
+      _leaveActiveStream = FirebaseFirestore.instance
+          .collection('leaveRequests')
+          .where('studentUid', isEqualTo: currentUser.uid)
+          .where('status', whereIn: ['accepted', 'active'])
+          .snapshots();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,12 +51,6 @@ class MeniuScreen extends StatelessWidget {
         ? AppSession.username!.trim()
         : 'Elev';
     final currentUser = FirebaseAuth.instance.currentUser;
-    final userDocStream = currentUser == null
-        ? null
-        : FirebaseFirestore.instance
-              .collection('users')
-              .doc(currentUser.uid)
-              .snapshots();
 
     return Scaffold(
       backgroundColor: const Color(0xFF7AAF5B),
@@ -61,7 +87,7 @@ class MeniuScreen extends StatelessWidget {
             ),
             Expanded(
               child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                stream: userDocStream,
+                stream: _userDocStream,
                 builder: (context, snapshot) {
                   final userData =
                       snapshot.data?.data() ?? const <String, dynamic>{};
@@ -69,8 +95,7 @@ class MeniuScreen extends StatelessWidget {
                       .toString()
                       .trim();
                   // ...existing code...
-                  final lastOpenedAt =
-                      (userData['inboxLastOpenedAt'] as Timestamp?)?.toDate();
+                  final unreadCount = (userData['unreadCount'] as int?) ?? 0;
 
                   final displayName = fullName.isNotEmpty
                       ? fullName
@@ -112,8 +137,8 @@ class MeniuScreen extends StatelessWidget {
                                   Color(0xFF304EAF),
                                 ],
                                 onTap: () {
-                                  if (onNavigateTab != null) {
-                                    onNavigateTab!(1);
+                                  if (widget.onNavigateTab != null) {
+                                    widget.onNavigateTab!(1);
                                     return;
                                   }
 
@@ -135,8 +160,8 @@ class MeniuScreen extends StatelessWidget {
                                   Color(0xFFE47E2D),
                                 ],
                                 onTap: () {
-                                  if (onOpenOrar != null) {
-                                    onOpenOrar!();
+                                  if (widget.onOpenOrar != null) {
+                                    widget.onOpenOrar!();
                                     return;
                                   }
 
@@ -162,8 +187,8 @@ class MeniuScreen extends StatelessWidget {
                                   Color(0xFF0C8D80),
                                 ],
                                 onTap: () {
-                                  if (onNavigateTab != null) {
-                                    onNavigateTab!(3);
+                                  if (widget.onNavigateTab != null) {
+                                    widget.onNavigateTab!(3);
                                     return;
                                   }
 
@@ -178,11 +203,10 @@ class MeniuScreen extends StatelessWidget {
                             const SizedBox(width: 10),
                             Expanded(
                               child: _UnreadMessagesTile(
-                                userId: currentUser?.uid,
-                                lastOpenedAt: lastOpenedAt,
+                                unreadCount: unreadCount,
                                 onTap: () async {
-                                  if (onNavigateTab != null) {
-                                    onNavigateTab!(4);
+                                  if (widget.onNavigateTab != null) {
+                                    widget.onNavigateTab!(4);
                                     return;
                                   }
 
@@ -194,6 +218,7 @@ class MeniuScreen extends StatelessWidget {
                                         .set({
                                           'inboxLastOpenedAt':
                                               FieldValue.serverTimestamp(),
+                                          'unreadCount': 0,
                                         }, SetOptions(merge: true));
                                   }
 
@@ -308,19 +333,7 @@ class MeniuScreen extends StatelessWidget {
                                         StreamBuilder<
                                           QuerySnapshot<Map<String, dynamic>>
                                         >(
-                                          stream: FirebaseFirestore.instance
-                                              .collection('accessEvents')
-                                              .where(
-                                                'userId',
-                                                isEqualTo:
-                                                    currentUser?.uid ?? '',
-                                              )
-                                              .orderBy(
-                                                'timestamp',
-                                                descending: true,
-                                              )
-                                              .limit(1)
-                                              .snapshots(),
+                                          stream: _lastScanStream,
                                           builder: (context, snapshot) {
                                             final docs =
                                                 snapshot.data?.docs ?? [];
@@ -407,18 +420,7 @@ class MeniuScreen extends StatelessWidget {
                                         StreamBuilder<
                                           QuerySnapshot<Map<String, dynamic>>
                                         >(
-                                          stream: FirebaseFirestore.instance
-                                              .collection('leaveRequests')
-                                              .where(
-                                                'studentUid',
-                                                isEqualTo:
-                                                    currentUser?.uid ?? '',
-                                              )
-                                              .where(
-                                                'status',
-                                                whereIn: ['accepted', 'active'],
-                                              )
-                                              .snapshots(),
+                                          stream: _leaveActiveStream,
                                           builder: (context, snapshot) {
                                             final docs =
                                                 snapshot.data?.docs ?? [];
@@ -569,78 +571,19 @@ class _MenuTile extends StatelessWidget {
 }
 
 class _UnreadMessagesTile extends StatelessWidget {
-  final String? userId;
-  final DateTime? lastOpenedAt;
+  final int unreadCount;
   final VoidCallback onTap;
 
-  const _UnreadMessagesTile({
-    required this.userId,
-    required this.lastOpenedAt,
-    required this.onTap,
-  });
-
-  int _countUnread(
-    QuerySnapshot<Map<String, dynamic>> snapshot,
-    String timestampField,
-  ) {
-    if (lastOpenedAt == null) {
-      return snapshot.docs.length;
-    }
-
-    return snapshot.docs.where((doc) {
-      final ts = (doc.data()[timestampField] as Timestamp?)?.toDate();
-      if (ts == null) {
-        return false;
-      }
-      return ts.isAfter(lastOpenedAt!);
-    }).length;
-  }
+  const _UnreadMessagesTile({required this.unreadCount, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    if (userId == null || userId!.isEmpty) {
-      return _MenuTile(
-        label: 'Mesaje',
-        icon: Icons.chat_bubble_rounded,
-        colors: const [Color(0xFF9C84E0), Color(0xFF6E46C2)],
-        onTap: onTap,
-      );
-    }
-
-    final leaveRequestsStream = FirebaseFirestore.instance
-        .collection('leaveRequests')
-        .where('studentUid', isEqualTo: userId)
-        .snapshots();
-
-    final accessEventsStream = FirebaseFirestore.instance
-        .collection('accessEvents')
-        .where('userId', isEqualTo: userId)
-        .snapshots();
-
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: leaveRequestsStream,
-      builder: (context, leaveSnap) {
-        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: accessEventsStream,
-          builder: (context, accessSnap) {
-            var unreadCount = 0;
-            if (leaveSnap.hasData) {
-              unreadCount += _countUnread(leaveSnap.data!, 'requestedAt');
-            }
-            if (accessSnap.hasData) {
-              unreadCount += _countUnread(accessSnap.data!, 'timestamp');
-            }
-
-            return _MenuTile(
-              label: 'Mesaje',
-              icon: Icons.chat_bubble_rounded,
-              colors: const [Color(0xFF9C84E0), Color(0xFF6E46C2)],
-              onTap: onTap,
-              badgeCount: unreadCount,
-            );
-          },
-        );
-      },
+    return _MenuTile(
+      label: 'Mesaje',
+      icon: Icons.chat_bubble_rounded,
+      colors: const [Color(0xFF9C84E0), Color(0xFF6E46C2)],
+      onTap: onTap,
+      badgeCount: unreadCount,
     );
   }
 }
