@@ -21,6 +21,11 @@ class _CereriScreenState extends State<CereriScreen> {
   TimeOfDay? _selectedTime;
   bool _submitting = false;
 
+  // Schedule for the selected day (fetched from Firestore)
+  TimeOfDay? _scheduleStart;
+  TimeOfDay? _scheduleEnd;
+  bool _loadingSchedule = false;
+
   @override
   void dispose() {
     _dateController.dispose();
@@ -31,11 +36,22 @@ class _CereriScreenState extends State<CereriScreen> {
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
+
+    // Skip weekends when setting the initial date
+    DateTime initialDate = _selectedDate ?? now;
+    if (initialDate.weekday == DateTime.saturday) {
+      initialDate = initialDate.add(const Duration(days: 2));
+    } else if (initialDate.weekday == DateTime.sunday) {
+      initialDate = initialDate.add(const Duration(days: 1));
+    }
+
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? now,
-      firstDate: DateTime(now.year - 1),
+      initialDate: initialDate,
+      firstDate: DateTime(now.year, now.month, now.day),
       lastDate: DateTime(now.year + 2),
+      selectableDayPredicate: (day) =>
+          day.weekday != DateTime.saturday && day.weekday != DateTime.sunday,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -67,37 +83,135 @@ class _CereriScreenState extends State<CereriScreen> {
       _selectedDate = pickedDate;
       _dateController.text =
           '${pickedDate.day.toString().padLeft(2, '0')}.${pickedDate.month.toString().padLeft(2, '0')}.${pickedDate.year}';
+      // Reset time and cached schedule when date changes
+      _selectedTime = null;
+      _timeController.clear();
+      _scheduleStart = null;
+      _scheduleEnd = null;
     });
   }
 
+  TimeOfDay _parseHHmm(String s) {
+    final parts = s.split(':');
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+  }
+
+  int _toMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
+
+  Future<bool> _fetchDaySchedule(int weekday) async {
+    final classId = AppSession.classId;
+    if (classId == null || classId.isEmpty) return false;
+
+    setState(() => _loadingSchedule = true);
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(classId)
+          .get();
+      if (!doc.exists) return false;
+
+      final data = doc.data() ?? {};
+      final schedule = data['schedule'] as Map<String, dynamic>?;
+      if (schedule == null) return false;
+
+      // Firestore key matches Flutter weekday: 1=Mon..5=Fri
+      final dayData = schedule[weekday.toString()] as Map<String, dynamic>?;
+      if (dayData == null) return false;
+
+      final startStr = dayData['start'] as String?;
+      final endStr = dayData['end'] as String?;
+      if (startStr == null || endStr == null) return false;
+
+      if (mounted) {
+        setState(() {
+          _scheduleStart = _parseHHmm(startStr);
+          _scheduleEnd = _parseHHmm(endStr);
+        });
+      }
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      if (mounted) setState(() => _loadingSchedule = false);
+    }
+  }
+
   Future<void> _pickTime() async {
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime ?? const TimeOfDay(hour: 10, minute: 30),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF7AAF5B),
-              onPrimary: Colors.white,
-              surface: Color(0xFFE6EBEE),
-              onSurface: Color(0xFF223127),
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF5D8A43),
-              ),
-            ),
-            dialogTheme: DialogThemeData(
-              backgroundColor: const Color(0xFFE6EBEE),
+    if (_selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecteaza mai intai data invoirii.')),
+      );
+      return;
+    }
+
+    // Fetch schedule for this weekday if not already cached
+    if (_scheduleStart == null || _scheduleEnd == null) {
+      final ok = await _fetchDaySchedule(_selectedDate!.weekday);
+      if (!mounted) return;
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Orarul clasei tale nu este setat pentru ziua selectata.',
             ),
           ),
-          child: child ?? const SizedBox.shrink(),
+        );
+        return;
+      }
+    }
+
+    final rangeStart = _scheduleStart!;
+    final rangeEnd = _scheduleEnd!;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime ?? rangeStart,
+      initialEntryMode: TimePickerEntryMode.input,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.light(
+                primary: Color(0xFF7AAF5B),
+                onPrimary: Colors.white,
+                surface: Color(0xFFE6EBEE),
+                onSurface: Color(0xFF223127),
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF5D8A43),
+                ),
+              ),
+              dialogTheme: DialogThemeData(
+                backgroundColor: const Color(0xFFE6EBEE),
+              ),
+            ),
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );
 
     if (pickedTime == null) {
+      return;
+    }
+
+    final pickedMin = _toMinutes(pickedTime);
+    final startMin = _toMinutes(rangeStart);
+    final endMin = _toMinutes(rangeEnd);
+
+    if (pickedMin < startMin || pickedMin > endMin) {
+      if (!mounted) return;
+      final fmt = (TimeOfDay t) =>
+          '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Ora trebuie sa fie intre ${fmt(rangeStart)} si ${fmt(rangeEnd)} (orarul clasei tale).',
+          ),
+        ),
+      );
       return;
     }
 
@@ -148,6 +262,13 @@ class _CereriScreenState extends State<CereriScreen> {
         'message': message,
         'status': 'pending',
         'requestedAt': Timestamp.now(),
+        'requestedForDate': Timestamp.fromDate(
+          DateTime(
+            _selectedDate!.year,
+            _selectedDate!.month,
+            _selectedDate!.day,
+          ),
+        ),
         'reviewedAt': null,
         'reviewedByUid': null,
         'reviewedByName': null,
@@ -165,6 +286,8 @@ class _CereriScreenState extends State<CereriScreen> {
       setState(() {
         _selectedDate = null;
         _selectedTime = null;
+        _scheduleStart = null;
+        _scheduleEnd = null;
         _dateController.clear();
         _timeController.clear();
         _messageController.clear();
@@ -304,8 +427,32 @@ class _CereriScreenState extends State<CereriScreen> {
                                 controller: _timeController,
                                 hintText: 'Selecteaza ora',
                                 trailingIcon: Icons.chevron_right_rounded,
-                                onTap: _pickTime,
+                                onTap: _loadingSchedule ? null : _pickTime,
                               ),
+                              if (_loadingSchedule)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 4),
+                                  child: LinearProgressIndicator(),
+                                )
+                              else if (_scheduleStart != null &&
+                                  _scheduleEnd != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 4,
+                                    left: 4,
+                                  ),
+                                  child: Text(
+                                    'Interval valid: '
+                                    '${_scheduleStart!.hour.toString().padLeft(2, '0')}:${_scheduleStart!.minute.toString().padLeft(2, '0')}'
+                                    ' – '
+                                    '${_scheduleEnd!.hour.toString().padLeft(2, '0')}:${_scheduleEnd!.minute.toString().padLeft(2, '0')}',
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      color: Color(0xFF5D8A43),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               const SizedBox(height: 10),
                               const Text(
                                 'Mesaj cerere:',
@@ -392,7 +539,7 @@ class _ReadOnlyInput extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
   final IconData trailingIcon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _ReadOnlyInput({
     required this.controller,

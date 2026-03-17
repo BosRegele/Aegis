@@ -52,6 +52,8 @@ class _InboxScreenState extends State<InboxScreen> {
         return 'Cerere aprobata';
       case 'rejected':
         return 'Cerere respinsa';
+      case 'expired':
+        return 'Cerere expirata';
       default:
         return 'Cerere in asteptare';
     }
@@ -63,6 +65,8 @@ class _InboxScreenState extends State<InboxScreen> {
         return _InboxItemType.success;
       case 'rejected':
         return _InboxItemType.error;
+      case 'expired':
+        return _InboxItemType.warning;
       default:
         return _InboxItemType.info;
     }
@@ -254,6 +258,12 @@ class _InboxMessageTile extends StatelessWidget {
         iconContainerColor = const Color(0xFFC54844);
         iconColor = Colors.white;
         break;
+      case _InboxItemType.warning:
+        backgroundColor = const Color(0xFFFFF4E4);
+        leadingIcon = Icons.schedule_rounded;
+        iconContainerColor = const Color(0xFFD08000);
+        iconColor = Colors.white;
+        break;
       case _InboxItemType.info:
         backgroundColor = const Color(0xFFF4F5F7);
         leadingIcon = Icons.send_rounded;
@@ -360,4 +370,4 @@ class _InboxItemData {
   });
 }
 
-enum _InboxItemType { success, error, info }
+enum _InboxItemType { success, error, warning, info }
