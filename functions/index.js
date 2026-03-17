@@ -509,44 +509,34 @@ exports.redeemQrToken = onCall(async (request) => {
 
     const result = await db.runTransaction(async (tx) => {
         const snap = await tx.get(tokenRef);
-
         if (!snap.exists) {
             return { ok: false, reason: "NOT_FOUND", type: "deny" };
         }
-
         const data = snap.data() || {};
         const used = data.used === true;
         const userId = String(data.userId || "");
         const expiresAt = data.expiresAt;
-
         if (used) {
             return { ok: false, reason: "ALREADY_USED", userId, type: "deny" };
         }
-
         if (!expiresAt || typeof expiresAt.toDate !== "function") {
             return { ok: false, reason: "BAD_EXPIRES", userId };
         }
-
         const nowMs = Date.now();
         const expMs = expiresAt.toDate().getTime();
-
         if (expMs <= nowMs) {
             return { ok: false, reason: "EXPIRED", userId, type: "deny" };
         }
-
         const userRef = db.collection("users").doc(userId);
         const userSnap = await tx.get(userRef);
-
         if (!userSnap.exists) {
             return { ok: false, reason: "USER_NOT_FOUND", userId, type: "deny" };
         }
-
         const userData = userSnap.data() || {};
         const inSchool = userData.inSchool === true;
         const status = String(userData.status || "active");
         const fullName = String(userData.fullName || userData.username || userId);
         const classId = String(userData.classId || "");
-
         if (status === "disabled") {
             return {
                 ok: false,
@@ -557,8 +547,6 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
-
-        // --- Class timetable check added here ---
         if (!classId) {
             return {
                 ok: false,
@@ -569,14 +557,10 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
-
         const classRef = db.collection("classes").doc(classId);
         const classSnap = await tx.get(classRef);
         const classData = classSnap.exists ? classSnap.data() || {} : {};
         const schedule = classData.schedule || {};
-
-        // Use local school timezone (e.g. Europe/Bucharest) for timetable checks,
-        // because Cloud Functions uses UTC by default and can be 2-3h behind local time.
         const localNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
         const dayIdx = localNow.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
         if (dayIdx < 1 || dayIdx > 5) {
@@ -589,9 +573,7 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
-
         const now = localNow;
-
         const dayKey = String(dayIdx);
         const daySchedule = schedule[dayKey];
         if (!daySchedule || !daySchedule.start || !daySchedule.end) {
@@ -604,7 +586,6 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
-
         const parseTime = (s) => {
             const parts = String(s).split(":").map((x) => parseInt(x, 10));
             if (parts.length !== 2 || Number.isNaN(parts[0]) || Number.isNaN(parts[1])) {
@@ -612,10 +593,8 @@ exports.redeemQrToken = onCall(async (request) => {
             }
             return parts[0] * 60 + parts[1];
         };
-
         const startMinutes = parseTime(daySchedule.start);
         const endMinutes = parseTime(daySchedule.end);
-
         if (startMinutes == null || endMinutes == null || endMinutes < startMinutes) {
             return {
                 ok: false,
@@ -626,19 +605,15 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
-
         const nowMinutes = now.getHours() * 60 + now.getMinutes();
         const isWithinSchedule = nowMinutes >= startMinutes && nowMinutes <= endMinutes;
         const isAfterSchedule = nowMinutes > endMinutes;
-
         const nowTs = admin.firestore.FieldValue.serverTimestamp();
-
         tx.update(tokenRef, {
             used: true,
             usedAt: nowTs,
             redeemedBy: callerUid,
         });
-
         let eventType = "entry";
         let result = {
             ok: true,
@@ -647,25 +622,19 @@ exports.redeemQrToken = onCall(async (request) => {
             classId,
             type: "entry"
         };
-
         if (!inSchool) {
-            // student entering school (now allowed regardless of timetable)
             tx.update(userRef, {
                 inSchool: true,
                 lastInAt: nowTs,
-                // keep lastOutAt as is, do not clear it
             });
         } else if (inSchool && isAfterSchedule) {
-            // student exiting after class hours
             eventType = "exit";
             tx.update(userRef, {
                 inSchool: false,
-                // keep lastInAt as is, do not clear it
                 lastOutAt: nowTs,
             });
             result.type = "exit";
         } else {
-            // student already in school during or before end schedule
             eventType = "deny";
             result = {
                 ok: false,
@@ -676,19 +645,20 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
-
-        const eventRef = db.collection("accessEvents").doc();
-        tx.set(eventRef, {
-            tokenId,
-            userId,
-            fullName,
-            classId,
+        // Log access event in backend
+        const accessEvent = {
             gateUid: callerUid,
+            userId,
+            classId,
+            scanType: eventType,
+            result: result.ok ? 'allow' : 'deny',
+            reason: result.reason || '',
             timestamp: nowTs,
-            type: eventType,
-            reason: result.ok ? null : result.reason,
-        });
-
+            fullName,
+            tokenId,
+        };
+        const accessEventsRef = db.collection('accessEvents');
+        accessEventsRef.add(accessEvent);
         return result;
     });
 
