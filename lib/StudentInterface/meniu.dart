@@ -106,7 +106,8 @@ class _MeniuScreenState extends State<MeniuScreen> {
                         topRight: Radius.circular(28),
                       ),
                     ),
-                    child: Column(
+                    child: SingleChildScrollView(
+                      child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Center(
@@ -333,7 +334,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                                 snapshot.data?.docs ?? [];
                                             if (docs.isNotEmpty) {
                                               final doc = docs.first;
-                                              final type = (doc['type'] ?? '')
+                                              final type = ((doc.data()?['type']) ?? '')
                                                   .toString();
                                               final ts =
                                                   (doc['timestamp']
@@ -420,7 +421,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                                 snapshot.data?.docs ?? [];
                                             if (docs.any(
                                               (doc) =>
-                                                  doc['status'] == 'accepted',
+                                                  doc.data()?['status'] == 'accepted',
                                             )) {
                                               return Text(
                                                 'Există o cerere acceptată.',
@@ -460,8 +461,9 @@ class _MeniuScreenState extends State<MeniuScreen> {
                             ],
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(height: 16),
                       ],
+                    ),
                     ),
                   ),
                 ),
