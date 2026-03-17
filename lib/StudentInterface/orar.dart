@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firster/session.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class OrarScreen extends StatefulWidget {
   final VoidCallback? onBackToHome;
@@ -14,11 +16,103 @@ class OrarScreen extends StatefulWidget {
 
 class _OrarScreenState extends State<OrarScreen> {
   late final Future<_OrarViewData> _dataFuture;
+  bool _uploadingPhoto = false;
+  String? _photoUrl;
+
+  Future<void> _pickAndUploadPhoto(ImageSource source) async {
+    final uid = AppSession.uid;
+    if (uid == null || uid.isEmpty) return;
+
+    final picker = ImagePicker();
+    final XFile? file = await picker.pickImage(
+      source: source,
+      imageQuality: 75,
+      maxWidth: 512,
+      maxHeight: 512,
+    );
+    if (file == null) return;
+
+    setState(() => _uploadingPhoto = true);
+    try {
+      final ref = FirebaseStorage.instance.ref('profile_pics/$uid.jpg');
+      await ref.putData(
+        await file.readAsBytes(),
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+      final url = await ref.getDownloadURL();
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'photoUrl': url,
+      }, SetOptions(merge: true));
+      if (mounted) setState(() => _photoUrl = url);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Eroare la incarcarea pozei.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
+  }
+
+  void _showPhotoSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: const Text('Camera'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndUploadPhoto(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: const Text('Galerie'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndUploadPhoto(ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     _dataFuture = _loadData();
+    // Load existing photo URL
+    final uid = AppSession.uid;
+    if (uid != null && uid.isNotEmpty) {
+      FirebaseFirestore.instance.collection('users').doc(uid).get().then((doc) {
+        if (mounted) {
+          setState(() {
+            _photoUrl = doc.data()?['photoUrl'] as String?;
+          });
+        }
+      });
+    }
   }
 
   Future<void> _logout() async {
@@ -357,10 +451,66 @@ class _OrarScreenState extends State<OrarScreen> {
                                       color: const Color(0xFFDCEED5),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: const Icon(
-                                      Icons.person,
-                                      size: 56,
-                                      color: Color(0xFF6C7D62),
+                                    child: GestureDetector(
+                                      onTap: _uploadingPhoto
+                                          ? null
+                                          : _showPhotoSourceSheet,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Stack(
+                                          fit: StackFit.expand,
+                                          children: [
+                                            if (_photoUrl != null &&
+                                                _photoUrl!.isNotEmpty)
+                                              Image.network(
+                                                _photoUrl!,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) =>
+                                                    const Icon(
+                                                      Icons.person,
+                                                      size: 56,
+                                                      color: Color(0xFF6C7D62),
+                                                    ),
+                                              )
+                                            else
+                                              const Icon(
+                                                Icons.person,
+                                                size: 56,
+                                                color: Color(0xFF6C7D62),
+                                              ),
+                                            if (_uploadingPhoto)
+                                              const ColoredBox(
+                                                color: Color(0x88FFFFFF),
+                                                child: Center(
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2.5,
+                                                      ),
+                                                ),
+                                              )
+                                            else
+                                              Positioned(
+                                                bottom: 4,
+                                                right: 4,
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(
+                                                    3,
+                                                  ),
+                                                  decoration:
+                                                      const BoxDecoration(
+                                                        color: Colors.white,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                  child: const Icon(
+                                                    Icons.camera_alt_rounded,
+                                                    size: 14,
+                                                    color: Color(0xFF7AAF5B),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 12),

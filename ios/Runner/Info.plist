@@ -51,6 +51,12 @@
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Aplicatia are nevoie de acces la galerie pentru a seta poza de profil.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Aplicatia are nevoie de acces la camera pentru a face o poza de profil.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Aplicatia salveaza poza de profil in galerie.</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>UISupportedInterfaceOrientations</key>
