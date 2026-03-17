@@ -50,58 +50,52 @@ class _MeniuScreenState extends State<MeniuScreen> {
     final fallbackName = (AppSession.username?.trim().isNotEmpty ?? false)
         ? AppSession.username!.trim()
         : 'Elev';
-    final currentUser = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       backgroundColor: const Color(0xFF7AAF5B),
       body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              height: 110,
-              color: const Color(0xFF7AAF5B),
-              child: Center(
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Positioned(
-                      bottom: 8,
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.22),
-                          shape: BoxShape.circle,
+        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: _userDocStream,
+          builder: (context, snapshot) {
+            final userData = snapshot.data?.data() ?? const <String, dynamic>{};
+            final fullName = (userData['fullName'] ?? '').toString().trim();
+            // ...existing code...
+            final unreadCount = (userData['unreadCount'] as int?) ?? 0;
+
+            final displayName = fullName.isNotEmpty ? fullName : fallbackName;
+
+            return Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 110,
+                  color: const Color(0xFF7AAF5B),
+                  child: Center(
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Positioned(
+                          bottom: 8,
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.22),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                         ),
-                      ),
+                        const Icon(
+                          Icons.shield_rounded,
+                          size: 72,
+                          color: Colors.white,
+                        ),
+                      ],
                     ),
-                    const Icon(
-                      Icons.shield_rounded,
-                      size: 72,
-                      color: Colors.white,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-            Expanded(
-              child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                stream: _userDocStream,
-                builder: (context, snapshot) {
-                  final userData =
-                      snapshot.data?.data() ?? const <String, dynamic>{};
-                  final fullName = (userData['fullName'] ?? '')
-                      .toString()
-                      .trim();
-                  // ...existing code...
-                  final unreadCount = (userData['unreadCount'] as int?) ?? 0;
-
-                  final displayName = fullName.isNotEmpty
-                      ? fullName
-                      : fallbackName;
-
-                  return Container(
+                Expanded(
+                  child: Container(
                     width: double.infinity,
                     clipBehavior: Clip.antiAlias,
                     padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
@@ -469,11 +463,11 @@ class _MeniuScreenState extends State<MeniuScreen> {
                         const Spacer(),
                       ],
                     ),
-                  );
-                },
-              ),
-            ),
-          ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
