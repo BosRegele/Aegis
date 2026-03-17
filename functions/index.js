@@ -730,10 +730,33 @@ exports.onAccessEventCreated = onDocumentCreated("accessEvents/{docId}", async (
     const userId = String(data.userId || "").trim();
     if (!userId) return;
 
-    await admin.firestore().collection("users").doc(userId).set(
+    const userRef = admin.firestore().collection("users").doc(userId);
+
+    await userRef.set(
         { unreadCount: admin.firestore.FieldValue.increment(1) },
         { merge: true }
     );
+
+    // Send push notification
+    const userDoc = await userRef.get();
+    const fcmToken = userDoc.data()?.fcmToken;
+    if (!fcmToken) return;
+
+    const eventType = String(data.type || "");
+    const title = eventType === "exit" ? "Ai iesit din scoala" : "Ai intrat in scoala";
+    const body = eventType === "exit"
+        ? "Iesirea ta a fost inregistrata."
+        : "Intrarea ta a fost inregistrata.";
+
+    try {
+        await admin.messaging().send({
+            token: fcmToken,
+            notification: { title, body },
+            android: { notification: { channelId: "student_channel" } },
+        });
+    } catch (e) {
+        console.error("onAccessEventCreated: FCM send failed:", e.message);
+    }
 });
 
 // Cancel (expire) leave requests whose date has passed — runs every hour
@@ -822,8 +845,31 @@ exports.onLeaveRequestStatusChanged = onDocumentUpdated("leaveRequests/{docId}",
     const studentUid = String(after.studentUid || "").trim();
     if (!studentUid) return;
 
-    await admin.firestore().collection("users").doc(studentUid).set(
+    const userRef = admin.firestore().collection("users").doc(studentUid);
+
+    await userRef.set(
         { unreadCount: admin.firestore.FieldValue.increment(1) },
         { merge: true }
     );
+
+    // Send push notification
+    const userDoc = await userRef.get();
+    const fcmToken = userDoc.data()?.fcmToken;
+    if (!fcmToken) return;
+
+    const title = newStatus === "approved" ? "Cerere aprobata" : "Cerere respinsa";
+    const dateText = String(after.dateText || "");
+    const body = newStatus === "approved"
+        ? `Cererea ta pentru ${dateText} a fost aprobata.`
+        : `Cererea ta pentru ${dateText} a fost respinsa.`;
+
+    try {
+        await admin.messaging().send({
+            token: fcmToken,
+            notification: { title, body },
+            android: { notification: { channelId: "student_channel" } },
+        });
+    } catch (e) {
+        console.error("onLeaveRequestStatusChanged: FCM send failed:", e.message);
+    }
 });
