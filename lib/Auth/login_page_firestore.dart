@@ -140,7 +140,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       final username = userC.text.trim().toLowerCase();
       final password = passC.text.trim();
       if (username.isEmpty || password.isEmpty) {
-        throw Exception("Completeaza username si parola");
+        throw Exception("Date invalide");
       }
 
       final precheck = await FirebaseFunctions.instance
@@ -160,39 +160,18 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
         password: password,
       );
       final uid = cred.user!.uid;
-      final usersCol = FirebaseFirestore.instance.collection('users');
-      QuerySnapshot? qsnap;
-      DocumentSnapshot? doc;
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
-      qsnap = await usersCol
-          .where('username', isEqualTo: username)
-          .limit(1)
-          .get();
-      if (qsnap.docs.isNotEmpty) doc = qsnap.docs.first;
-      if (doc == null) {
-        final d = await usersCol.doc(uid).get();
-        if (d.exists) doc = d;
-      }
-      if (doc == null) {
-        qsnap = await usersCol.where('uid', isEqualTo: uid).limit(1).get();
-        if (qsnap.docs.isNotEmpty) doc = qsnap.docs.first;
-      }
-      if (doc == null || !doc.exists) {
+      if (!doc.exists) {
         await FirebaseAuth.instance.signOut();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profilul utilizatorului nu exista in Firestore'),
-            ),
-          );
-        }
-        return;
+        throw Exception('Date invalide');
       }
 
       final data = doc.data() as Map<String, dynamic>;
       if ((data["status"] ?? "active") == "disabled") {
         await FirebaseAuth.instance.signOut();
-        throw Exception("Cont dezactivat");
+        throw Exception("Autentificare indisponibila");
       }
 
       final role = (data["role"] ?? "").toString();
@@ -237,79 +216,53 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
           MaterialPageRoute(builder: (_) => const ParentHomePage()),
         );
       } else {
-        throw Exception("Rol necunoscut");
+        throw Exception("Autentificare indisponibila");
       }
     } on FirebaseAuthException catch (e) {
-      String msg = "Eroare autentificare";
-      if (e.code == "user-not-found") msg = "Utilizator inexistent";
-      if (e.code == "wrong-password" || e.code == "invalid-credential") {
+      String msg = "Date de autentificare invalide.";
+      if (e.code == "wrong-password" ||
+          e.code == "invalid-credential" ||
+          e.code == "user-not-found" ||
+          e.code == "invalid-email" ||
+          e.code == "user-disabled") {
         final username = userC.text.trim().toLowerCase();
         try {
-          if (attemptToken.isEmpty) {
-            msg = "Sesiune login expirata. Incearca din nou.";
-            if (mounted) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(msg)));
+          if (attemptToken.isNotEmpty) {
+            final failRes = await FirebaseFunctions.instance
+                .httpsCallable('authReportLoginFailure')
+                .call({'username': username, 'attemptToken': attemptToken});
+            final failData = Map<String, dynamic>.from(failRes.data as Map);
+            if (failData['blocked'] == true) {
+              final sec = _asInt(failData['remainingSeconds'], fallback: 120);
+              await _setBlockedForSeconds(sec, username);
+              msg =
+                  "Autentificare temporar indisponibila. Incearca din nou mai tarziu.";
             }
-            return;
-          }
-          final failRes = await FirebaseFunctions.instance
-              .httpsCallable('authReportLoginFailure')
-              .call({'username': username, 'attemptToken': attemptToken});
-          final failData = Map<String, dynamic>.from(failRes.data as Map);
-          if (failData['blocked'] == true) {
-            final sec = _asInt(failData['remainingSeconds'], fallback: 120);
-            await _setBlockedForSeconds(sec, username);
-            msg = "Prea multe incercari. Cont blocat ${sec}s.";
-          } else {
-            final left = _asInt(failData['attemptsLeft'], fallback: 0);
-            msg = "Parola gresita. Incercari ramase: $left";
           }
         } on FirebaseFunctionsException catch (fx) {
           if (fx.code == 'resource-exhausted') {
-            msg = fx.message ?? "Prea multe incercari. Incearca mai tarziu.";
+            msg =
+                "Autentificare temporar indisponibila. Incearca din nou mai tarziu.";
           } else if (fx.code == 'failed-precondition') {
-            msg = fx.message ?? "Sesiune login invalida. Incearca din nou.";
-          } else {
-            msg = "Parola gresita";
+            msg = "Date de autentificare invalide.";
           }
-        } catch (_) {
-          msg = "Parola gresita";
-        }
-      }
-      if (e.code == "invalid-email") msg = "Username invalid";
-      if (e.code == "user-disabled") {
-        final username = userC.text.trim().toLowerCase();
-        try {
-          final precheck = await FirebaseFunctions.instance
-              .httpsCallable('authPrecheckLogin')
-              .call({'username': username});
-          final preData = Map<String, dynamic>.from(precheck.data as Map);
-          if (preData['blocked'] == true) {
-            final sec = _asInt(preData['remainingSeconds'], fallback: 120);
-            await _setBlockedForSeconds(sec, username);
-            msg = "Cont blocat temporar. Incearca din nou in ${sec}s.";
-          } else {
-            msg = "Cont dezactivat";
-          }
-        } catch (_) {
-          msg = "Cont dezactivat";
         }
       }
       if (e.code == "too-many-requests") {
-        msg = "Prea multe incercari. Incearca mai tarziu.";
+        msg = "Autentificare temporar indisponibila. Incearca din nou mai tarziu.";
       }
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(msg)));
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text("Eroare: $e")));
+        ).showSnackBar(
+          const SnackBar(content: Text("Autentificare esuata. Incearca din nou.")),
+        );
       }
     } finally {
       if (mounted) setState(() => loading = false);
