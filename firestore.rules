@@ -1,0 +1,165 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function hasProfile() {
+      return isSignedIn() &&
+          exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function me() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return hasProfile() && me().role == 'admin';
+    }
+
+    function isParent() {
+      return hasProfile() && me().role == 'parent';
+    }
+
+    function isTeacher() {
+      return hasProfile() && me().role == 'teacher';
+    }
+
+    function isStudent() {
+      return hasProfile() && me().role == 'student';
+    }
+
+    function isGate() {
+      return hasProfile() && me().role == 'gate';
+    }
+
+    function isOwnUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isParentOfStudent(studentUid) {
+      return isParent() &&
+          me().children is list &&
+          me().children.hasAny([studentUid]);
+    }
+
+    function isTeacherForClass(classId) {
+      return isTeacher() && me().classId == classId;
+    }
+
+    function onlyOwnInboxFieldsChanged() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly([
+        'unreadCount',
+        'inboxLastOpenedAt',
+      ]);
+    }
+
+    function validLeaveRequestCreate() {
+      return isStudent() &&
+          request.resource.data.keys().hasAll([
+            'studentUid',
+            'studentUsername',
+            'studentName',
+            'classId',
+            'dateText',
+            'timeText',
+            'message',
+            'status',
+            'requestedAt',
+            'reviewedAt',
+            'reviewedByUid',
+            'reviewedByName',
+          ]) &&
+          request.resource.data.studentUid == request.auth.uid &&
+          request.resource.data.classId == me().classId &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.requestedAt is timestamp &&
+          request.resource.data.reviewedAt == null &&
+          request.resource.data.reviewedByUid == null &&
+          request.resource.data.reviewedByName == null;
+    }
+
+    function validLeaveReviewUpdate() {
+      return resource.data.status == 'pending' &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            'status',
+            'reviewedAt',
+            'reviewedByUid',
+            'reviewedByName',
+          ]) &&
+          ['approved', 'rejected'].hasAny([request.resource.data.status]) &&
+          request.resource.data.reviewedByUid == request.auth.uid &&
+          request.resource.data.reviewedAt is timestamp;
+    }
+
+    function canReadLeaveRequest() {
+      return isAdmin() ||
+          (isStudent() && resource.data.studentUid == request.auth.uid) ||
+          isParentOfStudent(resource.data.studentUid) ||
+          isTeacherForClass(resource.data.classId);
+    }
+
+    function canReviewLeaveRequest() {
+      return validLeaveReviewUpdate() &&
+          (isAdmin() ||
+              isParentOfStudent(resource.data.studentUid) ||
+              isTeacherForClass(resource.data.classId));
+    }
+
+    function canReadAccessEvent() {
+      return isAdmin() ||
+          isGate() ||
+          (isStudent() && resource.data.userId == request.auth.uid) ||
+          isParentOfStudent(resource.data.userId) ||
+          isTeacherForClass(resource.data.classId);
+    }
+
+    function validQrTokenCreate() {
+      return isStudent() &&
+          request.resource.data.keys().hasAll(['userId', 'expiresAt', 'used']) &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.expiresAt is timestamp &&
+          request.resource.data.used == false;
+    }
+
+    match /users/{userId} {
+      allow read: if hasProfile();
+      allow create: if isAdmin();
+      allow update: if isAdmin() ||
+          (isOwnUser(userId) && onlyOwnInboxFieldsChanged());
+      allow delete: if isAdmin();
+    }
+
+    match /classes/{classId} {
+      allow read: if hasProfile();
+      allow write: if isAdmin();
+    }
+
+    match /leaveRequests/{requestId} {
+      allow read: if canReadLeaveRequest();
+      allow create: if validLeaveRequestCreate();
+      allow update: if canReviewLeaveRequest();
+      allow delete: if isAdmin();
+    }
+
+    match /accessEvents/{eventId} {
+      allow read: if canReadAccessEvent();
+      allow create: if isGate() || isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /qrTokens/{tokenId} {
+      allow read: if isAdmin() ||
+          (isStudent() && resource.data.userId == request.auth.uid);
+      allow create: if validQrTokenCreate();
+      allow update: if false;
+      allow delete: if isAdmin() ||
+          (isStudent() && resource.data.userId == request.auth.uid);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

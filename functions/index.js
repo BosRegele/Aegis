@@ -2,8 +2,338 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 
 admin.initializeApp();
+
+const LOGIN_MAX_FAILURES = 5;
+const LOGIN_BLOCK_MS = 2 * 60 * 1000;
+const ATTEMPT_TOKEN_TTL_MS = 60 * 1000;
+
+function hashKey(value) {
+    return crypto.createHash("sha256").update(String(value || "")).digest("hex").slice(0, 40);
+}
+
+function usernameSecurityDocId(username) {
+    return `u_${hashKey(String(username || "").trim().toLowerCase())}`;
+}
+
+function getClientIp(request) {
+    const raw = request.rawRequest;
+    const xff = raw?.headers?.["x-forwarded-for"];
+    if (typeof xff === "string" && xff.trim()) {
+        return xff.split(",")[0].trim();
+    }
+    return String(raw?.ip || "unknown").trim();
+}
+
+async function consumeRateLimit({ scope, key, limit, windowMs }) {
+    const db = admin.firestore();
+    const now = Date.now();
+    const docId = `${scope}_${hashKey(key)}`;
+    const ref = db.collection("securityRateLimits").doc(docId);
+
+    return db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const data = snap.data() || {};
+        const windowStart = Number(data.windowStartMs || 0);
+        const count = Number(data.count || 0);
+
+        const sameWindow = windowStart > 0 && (now - windowStart) < windowMs;
+        const nextWindowStart = sameWindow ? windowStart : now;
+        const nextCount = sameWindow ? count + 1 : 1;
+        const limited = nextCount > limit;
+
+        tx.set(ref, {
+            scope,
+            keyHash: hashKey(key),
+            windowStartMs: nextWindowStart,
+            count: nextCount,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        const elapsed = Math.max(0, now - nextWindowStart);
+        const retryAfterSec = Math.max(1, Math.ceil((windowMs - elapsed) / 1000));
+        return { limited, retryAfterSec };
+    });
+}
+
+async function findUserUidByUsername(username) {
+    const uname = String(username || "").trim().toLowerCase();
+    if (!uname) return null;
+
+    const snap = await admin.firestore()
+        .collection("users")
+        .where("username", "==", uname)
+        .limit(1)
+        .get();
+
+    if (!snap.empty) return snap.docs[0].id;
+
+    // Fallback: unii useri vechi pot lipsi din indexarea pe username in Firestore.
+    // In acest caz incercam rezolvarea direct din Firebase Auth pe email-ul local.
+    try {
+        const authUser = await admin.auth().getUserByEmail(`${uname}@school.local`);
+        return authUser.uid;
+    } catch (e) {
+        return null;
+    }
+}
+
+exports.authPrecheckLogin = onCall(async (request) => {
+    const username = String(request.data?.username || "").trim().toLowerCase();
+    if (!username) {
+        throw new HttpsError("invalid-argument", "username lipsa");
+    }
+
+    const clientIp = getClientIp(request);
+    const ipLimit = await consumeRateLimit({
+        scope: "login_precheck_ip",
+        key: clientIp,
+        limit: 60,
+        windowMs: 60 * 1000,
+    });
+    if (ipLimit.limited) {
+        throw new HttpsError("resource-exhausted", `Prea multe cereri. Reincearca in ${ipLimit.retryAfterSec}s.`);
+    }
+
+    const pairLimit = await consumeRateLimit({
+        scope: "login_precheck_pair",
+        key: `${clientIp}|${username}`,
+        limit: 20,
+        windowMs: 60 * 1000,
+    });
+    if (pairLimit.limited) {
+        throw new HttpsError("resource-exhausted", `Prea multe cereri. Reincearca in ${pairLimit.retryAfterSec}s.`);
+    }
+
+    const db = admin.firestore();
+    const attemptToken = crypto.randomUUID();
+    await db.collection("loginAttempts").doc(attemptToken).set({
+        username,
+        ipHash: hashKey(clientIp),
+        createdAtMs: Date.now(),
+        consumed: false,
+        consumedAt: null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: false });
+
+    const uid = await findUserUidByUsername(username);
+    const secRef = db.collection("loginSecurity").doc(usernameSecurityDocId(username));
+    const secSnap = await secRef.get();
+    const secData = secSnap.data() || {};
+    const blockedUntil = secData.blockedUntil;
+    const blockedUntilMs = blockedUntil && typeof blockedUntil.toMillis === "function"
+        ? blockedUntil.toMillis()
+        : 0;
+    const nowMs = Date.now();
+
+    if (blockedUntilMs > nowMs) {
+        return {
+            blocked: true,
+            remainingSeconds: Math.ceil((blockedUntilMs - nowMs) / 1000),
+            attemptToken,
+        };
+    }
+
+    const shouldUnlockAuth = secData.tempLock === true;
+    if (shouldUnlockAuth && uid) {
+        try {
+            const authUser = await admin.auth().getUser(uid);
+            if (authUser.disabled) {
+                await admin.auth().updateUser(uid, { disabled: false });
+            }
+        } catch (e) {
+            // Ignore not-found and keep flow generic.
+        }
+        await secRef.set({
+            username,
+            uid: uid || null,
+            failedCount: 0,
+            blockedUntil: null,
+            tempLock: false,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }
+
+    return { blocked: false, remainingSeconds: 0, attemptToken };
+});
+
+exports.authReportLoginFailure = onCall(async (request) => {
+    const username = String(request.data?.username || "").trim().toLowerCase();
+    const attemptToken = String(request.data?.attemptToken || "").trim();
+    if (!username) {
+        throw new HttpsError("invalid-argument", "username lipsa");
+    }
+    if (!attemptToken) {
+        throw new HttpsError("invalid-argument", "attemptToken lipsa");
+    }
+
+    const clientIp = getClientIp(request);
+    const ipLimit = await consumeRateLimit({
+        scope: "login_failure_ip",
+        key: clientIp,
+        limit: 30,
+        windowMs: 60 * 1000,
+    });
+    if (ipLimit.limited) {
+        throw new HttpsError("resource-exhausted", `Prea multe incercari. Reincearca in ${ipLimit.retryAfterSec}s.`);
+    }
+
+    const pairLimit = await consumeRateLimit({
+        scope: "login_failure_pair",
+        key: `${clientIp}|${username}`,
+        limit: 12,
+        windowMs: 60 * 1000,
+    });
+    if (pairLimit.limited) {
+        throw new HttpsError("resource-exhausted", `Prea multe incercari. Reincearca in ${pairLimit.retryAfterSec}s.`);
+    }
+
+    const db = admin.firestore();
+    const attemptRef = db.collection("loginAttempts").doc(attemptToken);
+    const attemptSnap = await attemptRef.get();
+    const attemptData = attemptSnap.data() || {};
+    const tokenUsername = String(attemptData.username || "").trim().toLowerCase();
+    const tokenIpHash = String(attemptData.ipHash || "").trim();
+    const tokenCreatedAtMs = Number(attemptData.createdAtMs || 0);
+    const tokenConsumed = attemptData.consumed === true;
+
+    if (!attemptSnap.exists || !tokenUsername || tokenUsername !== username) {
+        throw new HttpsError("failed-precondition", "Sesiune login invalida. Reincearca.");
+    }
+    if (tokenConsumed) {
+        throw new HttpsError("failed-precondition", "Sesiune login expirata. Reincearca.");
+    }
+    if (tokenIpHash && tokenIpHash !== hashKey(clientIp)) {
+        throw new HttpsError("failed-precondition", "Sesiune login invalida. Reincearca.");
+    }
+    if (!tokenCreatedAtMs || (Date.now() - tokenCreatedAtMs) > ATTEMPT_TOKEN_TTL_MS) {
+        throw new HttpsError("failed-precondition", "Sesiune login expirata. Reincearca.");
+    }
+
+    await attemptRef.set({
+        consumed: true,
+        consumedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    const uid = await findUserUidByUsername(username);
+    const secRef = db.collection("loginSecurity").doc(usernameSecurityDocId(username));
+
+    const txResult = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(secRef);
+        const data = snap.data() || {};
+        const nowMs = Date.now();
+        const prevBlockedUntil = data.blockedUntil;
+        const prevBlockedUntilMs = prevBlockedUntil && typeof prevBlockedUntil.toMillis === "function"
+            ? prevBlockedUntil.toMillis()
+            : 0;
+
+        if (prevBlockedUntilMs > nowMs) {
+            return {
+                blocked: true,
+                blockedUntilMs: prevBlockedUntilMs,
+                attemptsLeft: 0,
+            };
+        }
+
+        const prevFailed = Number(data.failedCount || 0);
+        const nextFailed = prevFailed + 1;
+        const shouldBlock = nextFailed >= LOGIN_MAX_FAILURES;
+        const nextBlockedUntilMs = shouldBlock ? (nowMs + LOGIN_BLOCK_MS) : 0;
+
+        tx.set(secRef, {
+            username,
+            uid: uid || null,
+            failedCount: nextFailed,
+            blockedUntil: shouldBlock
+                ? admin.firestore.Timestamp.fromMillis(nextBlockedUntilMs)
+                : null,
+            tempLock: shouldBlock,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        return {
+            blocked: shouldBlock,
+            blockedUntilMs: nextBlockedUntilMs,
+            attemptsLeft: Math.max(0, LOGIN_MAX_FAILURES - nextFailed),
+        };
+    });
+
+    if (txResult.blocked && uid) {
+        try {
+            await admin.auth().updateUser(uid, { disabled: true });
+        } catch (e) {
+            // Ignore if account is already disabled/not found.
+        }
+    }
+
+    const nowMs = Date.now();
+    const remainingSeconds = txResult.blocked
+        ? Math.max(1, Math.ceil((txResult.blockedUntilMs - nowMs) / 1000))
+        : 0;
+
+    return {
+        blocked: txResult.blocked,
+        attemptsLeft: txResult.attemptsLeft,
+        remainingSeconds,
+    };
+});
+
+exports.authRegisterLoginSuccess = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login required");
+    }
+
+    const uid = request.auth.uid;
+    const db = admin.firestore();
+    const userDoc = await db.collection("users").doc(uid).get();
+    let username = "";
+    if (userDoc.exists) {
+        username = String(userDoc.data()?.username || "").trim().toLowerCase();
+    }
+    if (!username) {
+        try {
+            const au = await admin.auth().getUser(uid);
+            const email = String(au.email || "").toLowerCase();
+            if (email.endsWith("@school.local")) {
+                username = email.replace("@school.local", "");
+            }
+        } catch (e) {
+            // Ignore and keep fallback username empty.
+        }
+    }
+    if (!username) {
+        return { ok: true };
+    }
+
+    const secRef = db.collection("loginSecurity").doc(usernameSecurityDocId(username));
+    const secSnap = await secRef.get();
+    const secData = secSnap.data() || {};
+
+    if (secData.tempLock === true) {
+        try {
+            const authUser = await admin.auth().getUser(uid);
+            if (authUser.disabled) {
+                await admin.auth().updateUser(uid, { disabled: false });
+            }
+        } catch (e) {
+            // Ignore if account missing.
+        }
+    }
+
+    await secRef.set({
+        username,
+        uid,
+        failedCount: 0,
+        blockedUntil: null,
+        tempLock: false,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    return { ok: true };
+});
 
 exports.adminCreateUser = onCall(async (request) => {
     if (!request.auth) {
@@ -730,10 +1060,103 @@ exports.onAccessEventCreated = onDocumentCreated("accessEvents/{docId}", async (
     const userId = String(data.userId || "").trim();
     if (!userId) return;
 
-    await admin.firestore().collection("users").doc(userId).set(
+    const userRef = admin.firestore().collection("users").doc(userId);
+
+    await userRef.set(
         { unreadCount: admin.firestore.FieldValue.increment(1) },
         { merge: true }
     );
+
+    // Send push notification
+    const userDoc = await userRef.get();
+    const fcmToken = userDoc.data()?.fcmToken;
+    if (!fcmToken) return;
+
+    const eventType = String(data.type || "");
+    const title = eventType === "exit" ? "Ai iesit din scoala" : "Ai intrat in scoala";
+    const body = eventType === "exit"
+        ? "Iesirea ta a fost inregistrata."
+        : "Intrarea ta a fost inregistrata.";
+
+    try {
+        await admin.messaging().send({
+            token: fcmToken,
+            notification: { title, body },
+            android: { notification: { channelId: "student_channel" } },
+        });
+    } catch (e) {
+        console.error("onAccessEventCreated: FCM send failed:", e.message);
+    }
+});
+
+// Cancel (expire) leave requests whose date has passed — runs every hour
+exports.cleanupExpiredLeaveRequests = onSchedule("every 60 minutes", async (event) => {
+    const db = admin.firestore();
+
+    // Get today's date in Romania (Bucharest) timezone
+    const now = new Date();
+    const roNow = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
+    const roYear = roNow.getFullYear();
+    const roMonth = roNow.getMonth() + 1; // 1-based
+    const roDay = roNow.getDate();
+
+    // Fetch all pending & approved leave requests
+    const snap = await db.collection("leaveRequests")
+        .where("status", "in", ["pending", "approved"])
+        .get();
+
+    if (snap.empty) {
+        console.log("cleanupExpiredLeaveRequests: no pending/approved requests found");
+        return;
+    }
+
+    const toExpire = [];
+
+    for (const doc of snap.docs) {
+        const data = doc.data();
+        const dateText = String(data.dateText || "");
+
+        // Parse DD.MM.YYYY
+        const parts = dateText.split(".");
+        if (parts.length !== 3) continue;
+
+        const reqDay = parseInt(parts[0], 10);
+        const reqMonth = parseInt(parts[1], 10);
+        const reqYear = parseInt(parts[2], 10);
+
+        if (isNaN(reqDay) || isNaN(reqMonth) || isNaN(reqYear)) continue;
+
+        // Expire if requested date is strictly before today (Romania timezone)
+        const isPast =
+            reqYear < roYear ||
+            (reqYear === roYear && reqMonth < roMonth) ||
+            (reqYear === roYear && reqMonth === roMonth && reqDay < roDay);
+
+        if (isPast) {
+            toExpire.push(doc.ref);
+        }
+    }
+
+    if (toExpire.length === 0) {
+        console.log("cleanupExpiredLeaveRequests: nothing to expire");
+        return;
+    }
+
+    // Firestore batch limit is 500
+    const chunkSize = 500;
+    for (let i = 0; i < toExpire.length; i += chunkSize) {
+        const chunk = toExpire.slice(i, i + chunkSize);
+        const batch = db.batch();
+        for (const ref of chunk) {
+            batch.update(ref, {
+                status: "expired",
+                expiredAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+        await batch.commit();
+    }
+
+    console.log(`cleanupExpiredLeaveRequests: expired ${toExpire.length} leave request(s)`);
 });
 
 // Increment unreadCount for student when leave request is approved or rejected
@@ -752,8 +1175,31 @@ exports.onLeaveRequestStatusChanged = onDocumentUpdated("leaveRequests/{docId}",
     const studentUid = String(after.studentUid || "").trim();
     if (!studentUid) return;
 
-    await admin.firestore().collection("users").doc(studentUid).set(
+    const userRef = admin.firestore().collection("users").doc(studentUid);
+
+    await userRef.set(
         { unreadCount: admin.firestore.FieldValue.increment(1) },
         { merge: true }
     );
+
+    // Send push notification
+    const userDoc = await userRef.get();
+    const fcmToken = userDoc.data()?.fcmToken;
+    if (!fcmToken) return;
+
+    const title = newStatus === "approved" ? "Cerere aprobata" : "Cerere respinsa";
+    const dateText = String(after.dateText || "");
+    const body = newStatus === "approved"
+        ? `Cererea ta pentru ${dateText} a fost aprobata.`
+        : `Cererea ta pentru ${dateText} a fost respinsa.`;
+
+    try {
+        await admin.messaging().send({
+            token: fcmToken,
+            notification: { title, body },
+            android: { notification: { channelId: "student_channel" } },
+        });
+    } catch (e) {
+        console.error("onLeaveRequestStatusChanged: FCM send failed:", e.message);
+    }
 });

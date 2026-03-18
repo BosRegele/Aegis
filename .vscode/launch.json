@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "StudentId (Flutter A065)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "args": ["-d", "chrome"]
+    }
+  ]
+}
