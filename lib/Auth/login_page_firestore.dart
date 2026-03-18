@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../StudentInterface/mainnavigation.dart';
 import '../session.dart';
 import '../gate_scan_page.dart';
-import '../admin/secretariat_raw_page.dart';
+import '../admin/secretariat_raw_page.dart' show SecretariatRawPage;
 import '../teacher/teacher_dashboard_page.dart';
 import '../parent/parent_home_page.dart';
 
@@ -160,8 +160,10 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
         password: password,
       );
       final uid = cred.user!.uid;
-      final doc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
 
       if (!doc.exists) {
         await FirebaseAuth.instance.signOut();
@@ -249,7 +251,8 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
         }
       }
       if (e.code == "too-many-requests") {
-        msg = "Autentificare temporar indisponibila. Incearca din nou mai tarziu.";
+        msg =
+            "Autentificare temporar indisponibila. Incearca din nou mai tarziu.";
       }
       if (mounted) {
         ScaffoldMessenger.of(
@@ -258,10 +261,10 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
-          const SnackBar(content: Text("Autentificare esuata. Incearca din nou.")),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Autentificare esuata. Incearca din nou."),
+          ),
         );
       }
     } finally {

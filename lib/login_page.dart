@@ -72,23 +72,21 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(builder: (_) => const ParentHomePage()),
         );
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
-          const SnackBar(content: Text("Autentificare esuata. Incearca din nou.")),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Autentificare esuata. Incearca din nou."),
+          ),
         );
       }
     } on FirebaseAuthException {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Date de autentificare invalide.")),
       );
     } catch (_) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-        const SnackBar(content: Text("Autentificare esuata. Incearca din nou.")),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Autentificare esuata. Incearca din nou."),
+        ),
       );
     }
   }

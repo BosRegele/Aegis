@@ -56,8 +56,22 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
 
   String log = "";
   final _rng = Random.secure();
+  final Set<String> _busyActions = <String>{};
 
   void _log(String s) => setState(() => log = "$s\n$log");
+
+  bool _isActionBusy(String key) => _busyActions.contains(key);
+
+  Future<void> _runGuarded(String key, Future<void> Function() action) async {
+    if (_busyActions.contains(key)) return;
+    setState(() => _busyActions.add(key));
+    try {
+      await action();
+    } finally {
+      _busyActions.remove(key);
+      if (mounted) setState(() {});
+    }
+  }
 
   String _normalizeName(String s) {
     return s.trim().toLowerCase();
@@ -160,6 +174,31 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
         ],
       ),
     );
+  }
+
+  Future<bool> _confirmMajorAction({
+    required String title,
+    required String message,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Nu'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Da'),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
   }
 
   @override
@@ -726,115 +765,128 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                           label: "Crează utilizator",
                                           primaryGreen: primaryGreen,
                                           fullWidth: true,
-                                          onPressed: () async {
-                                            final uname = usernameC.text.trim();
-                                            final pass = passwordC.text;
-                                            final full = fullNameC.text.trim();
+                                          onPressed:
+                                              _isActionBusy('create-user')
+                                              ? null
+                                              : () {
+                                                  _runGuarded('create-user', () async {
+                                                    final uname = usernameC.text
+                                                        .trim();
+                                                    final pass = passwordC.text;
+                                                    final full = fullNameC.text
+                                                        .trim();
 
-                                            // Basic client-side validation to avoid cloud failures
-                                            if (full.isEmpty) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Completează numele complet',
-                                                  ),
-                                                ),
-                                              );
-                                              return;
-                                            }
-                                            if (uname.isEmpty) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Completează username',
-                                                  ),
-                                                ),
-                                              );
-                                              return;
-                                            }
-                                            if (uname.contains(RegExp(r'\s'))) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Username nu poate conține spații',
-                                                  ),
-                                                ),
-                                              );
-                                              return;
-                                            }
-                                            if (pass.length < 6) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Parola trebuie să aibă cel puțin 6 caractere',
-                                                  ),
-                                                ),
-                                              );
-                                              return;
-                                            }
+                                                    // Basic client-side validation to avoid cloud failures
+                                                    if (full.isEmpty) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                            'Completează numele complet',
+                                                          ),
+                                                        ),
+                                                      );
+                                                      return;
+                                                    }
+                                                    if (uname.isEmpty) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                            'Completează username',
+                                                          ),
+                                                        ),
+                                                      );
+                                                      return;
+                                                    }
+                                                    if (uname.contains(
+                                                      RegExp(r'\s'),
+                                                    )) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                            'Username nu poate conține spații',
+                                                          ),
+                                                        ),
+                                                      );
+                                                      return;
+                                                    }
+                                                    if (pass.length < 6) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                            'Parola trebuie să aibă cel puțin 6 caractere',
+                                                          ),
+                                                        ),
+                                                      );
+                                                      return;
+                                                    }
 
-                                            try {
-                                              final u = FirebaseAuth
-                                                  .instance
-                                                  .currentUser;
-                                              _log(
-                                                "AUTH user = ${u?.uid} | email=${u?.email}",
-                                              );
+                                                    try {
+                                                      final u = FirebaseAuth
+                                                          .instance
+                                                          .currentUser;
+                                                      _log(
+                                                        "AUTH user = ${u?.uid} | email=${u?.email}",
+                                                      );
 
-                                              // cloud function
-                                              final res = await api.createUser(
-                                                username: uname.toLowerCase(),
-                                                password: pass,
-                                                role: role,
-                                                fullName: full,
-                                                classId:
-                                                    role == "student" ||
-                                                        role == "teacher"
-                                                    ? selectedCreateUserClassId
-                                                    : null,
-                                              );
+                                                      // cloud function
+                                                      final res = await api.createUser(
+                                                        username: uname
+                                                            .toLowerCase(),
+                                                        password: pass,
+                                                        role: role,
+                                                        fullName: full,
+                                                        classId:
+                                                            role == "student" ||
+                                                                role ==
+                                                                    "teacher"
+                                                            ? selectedCreateUserClassId
+                                                            : null,
+                                                      );
 
-                                              _log(
-                                                "API CREATE OK: $uname | uid=${res['uid']}",
-                                              );
+                                                      _log(
+                                                        "API CREATE OK: $uname | uid=${res['uid']}",
+                                                      );
 
-                                              if (!mounted) return;
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                    "User creat: $uname",
-                                                  ),
-                                                  backgroundColor: Colors.green,
-                                                  duration: const Duration(
-                                                    seconds: 2,
-                                                  ),
-                                                ),
-                                              );
-                                            } catch (e) {
-                                              _log("CREATE ERROR: $e");
-                                              if (mounted) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      'Eroare creare user: $e',
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                            }
-                                          },
+                                                      if (!mounted) return;
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            "User creat: $uname",
+                                                          ),
+                                                          backgroundColor:
+                                                              Colors.green,
+                                                          duration:
+                                                              const Duration(
+                                                                seconds: 2,
+                                                              ),
+                                                        ),
+                                                      );
+                                                    } catch (e) {
+                                                      _log("CREATE ERROR: $e");
+                                                      if (mounted) {
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                              'Eroare creare user: $e',
+                                                            ),
+                                                          ),
+                                                        );
+                                                      }
+                                                    }
+                                                  });
+                                                },
                                         ),
                                       ],
                                     ),
@@ -937,61 +989,93 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                               child: _buildButton(
                                                 label: "Creeaza/Actualizeaza",
                                                 primaryGreen: primaryGreen,
-                                                onPressed: () async {
-                                                  final classId =
-                                                      "$selectedNumber$selectedLetter";
-                                                  try {
-                                                    await api
-                                                        .createClass(
-                                                          name: classId,
-                                                        )
-                                                        .then(
-                                                          (_) => _log(
-                                                            "CLASS OK: $classId",
-                                                          ),
-                                                        );
-                                                    if (!mounted) return;
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                          "Clasă creată: $classId",
-                                                        ),
-                                                        backgroundColor:
-                                                            Colors.green,
-                                                        duration:
-                                                            const Duration(
-                                                              seconds: 2,
-                                                            ),
-                                                      ),
-                                                    );
-                                                  } catch (e) {
-                                                    _log("CLASS ERROR: $e");
-                                                  }
-                                                },
+                                                onPressed:
+                                                    _isActionBusy(
+                                                      'create-class',
+                                                    )
+                                                    ? null
+                                                    : () {
+                                                        _runGuarded('create-class', () async {
+                                                          final classId =
+                                                              "$selectedNumber$selectedLetter";
+                                                          try {
+                                                            await api
+                                                                .createClass(
+                                                                  name: classId,
+                                                                )
+                                                                .then(
+                                                                  (_) => _log(
+                                                                    "CLASS OK: $classId",
+                                                                  ),
+                                                                );
+                                                            if (!mounted) {
+                                                              return;
+                                                            }
+                                                            ScaffoldMessenger.of(
+                                                              context,
+                                                            ).showSnackBar(
+                                                              SnackBar(
+                                                                content: Text(
+                                                                  "Clasă creată: $classId",
+                                                                ),
+                                                                backgroundColor:
+                                                                    Colors
+                                                                        .green,
+                                                                duration:
+                                                                    const Duration(
+                                                                      seconds:
+                                                                          2,
+                                                                    ),
+                                                              ),
+                                                            );
+                                                          } catch (e) {
+                                                            _log(
+                                                              "CLASS ERROR: $e",
+                                                            );
+                                                          }
+                                                        });
+                                                      },
                                               ),
                                             ),
                                             const SizedBox(width: 12),
                                             Expanded(
                                               child: ElevatedButton(
-                                                onPressed: () async {
-                                                  final classId =
-                                                      "$selectedNumber$selectedLetter";
-                                                  try {
-                                                    await api
-                                                        .deleteClassCascade(
-                                                          classId: classId,
-                                                        );
-                                                    _log(
-                                                      "DELETE CLASS OK: $classId",
-                                                    );
-                                                  } catch (e) {
-                                                    _log(
-                                                      "DELETE CLASS ERROR: $e",
-                                                    );
-                                                  }
-                                                },
+                                                onPressed:
+                                                    _isActionBusy(
+                                                      'delete-class',
+                                                    )
+                                                    ? null
+                                                    : () {
+                                                        _runGuarded('delete-class', () async {
+                                                          final shouldProceed =
+                                                              await _confirmMajorAction(
+                                                                title:
+                                                                    'Confirmare',
+                                                                message:
+                                                                    'Esti sigur ca vrei sa stergi clasa selectata?',
+                                                              );
+                                                          if (!shouldProceed) {
+                                                            return;
+                                                          }
+
+                                                          final classId =
+                                                              "$selectedNumber$selectedLetter";
+                                                          try {
+                                                            await api
+                                                                .deleteClassCascade(
+                                                                  classId:
+                                                                      classId,
+                                                                );
+                                                            _log(
+                                                              "DELETE CLASS OK: $classId",
+                                                            );
+                                                          } catch (e) {
+                                                            _log(
+                                                              "DELETE CLASS ERROR: $e",
+                                                            );
+                                                          }
+                                                        });
+                                                      },
                                                 style: ElevatedButton.styleFrom(
                                                   backgroundColor:
                                                       Colors.red[600],
@@ -1039,31 +1123,39 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                 isEqualTo: 'student',
                                               )
                                               .snapshots(),
-                                          builder: (context, snap) {
-                                            if (snap.hasError) {
+                                          builder: (context, ssnap) {
+                                            if (ssnap.hasError) {
                                               return Text(
-                                                'Eroare: ${snap.error}',
+                                                'Eroare: ${ssnap.error}',
                                               );
                                             }
-                                            if (!snap.hasData) {
+                                            if (!ssnap.hasData) {
                                               return const CircularProgressIndicator();
                                             }
 
-                                            final opts = snap.data!.docs.map((
-                                              d,
-                                            ) {
-                                              final data =
-                                                  d.data()
-                                                      as Map<String, dynamic>;
-                                              final name =
-                                                  (data['fullName'] ??
-                                                          data['username'] ??
-                                                          d.id)
-                                                      .toString();
-                                              return {'id': d.id, 'name': name};
-                                            }).toList();
+                                            final studentOptions = ssnap
+                                                .data!
+                                                .docs
+                                                .map((d) {
+                                                  final data =
+                                                      d.data()
+                                                          as Map<
+                                                            String,
+                                                            dynamic
+                                                          >;
+                                                  final name =
+                                                      (data['fullName'] ??
+                                                              data['username'] ??
+                                                              d.id)
+                                                          .toString();
+                                                  return {
+                                                    'id': d.id,
+                                                    'name': name,
+                                                  };
+                                                })
+                                                .toList();
 
-                                            opts.sort(
+                                            studentOptions.sort(
                                               (a, b) => a['name']!
                                                   .toLowerCase()
                                                   .compareTo(
@@ -1076,9 +1168,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                             >(
                                               optionsBuilder: (txt) {
                                                 if (txt.text.isEmpty) {
-                                                  return opts;
+                                                  return studentOptions;
                                                 }
-                                                return opts.where(
+                                                return studentOptions.where(
                                                   (o) => o['name']!
                                                       .toLowerCase()
                                                       .contains(
@@ -1088,9 +1180,10 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                               },
                                               displayStringForOption: (o) =>
                                                   o['name']!,
-                                              onSelected: (o) => setState(
-                                                () => selectedAssignStudent = o,
-                                              ),
+                                              onSelected: (o) => setState(() {
+                                                selectedAssignStudent = o;
+                                                selectedAssignParent = null;
+                                              }),
                                               fieldViewBuilder:
                                                   (
                                                     context,
@@ -1189,103 +1282,107 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                             Icons.remove_circle,
                                                             color: Colors.red,
                                                           ),
-                                                          onPressed: () async {
-                                                            final confirm = await showDialog<bool>(
-                                                              context: context,
-                                                              builder: (_) => AlertDialog(
-                                                                title:
-                                                                    const Text(
-                                                                      'Confirm',
-                                                                    ),
-                                                                content: Text(
-                                                                  'Sunteți sigur că vreți să scoateți părintele $pname din elevul ${selectedAssignStudent!['name']}?',
-                                                                ),
-                                                                actions: [
-                                                                  TextButton(
-                                                                    onPressed: () =>
-                                                                        Navigator.pop(
-                                                                          context,
-                                                                          false,
+                                                          onPressed:
+                                                              _isActionBusy(
+                                                                'remove-parent-$puid',
+                                                              )
+                                                              ? null
+                                                              : () {
+                                                                  _runGuarded(
+                                                                    'remove-parent-$puid',
+                                                                    () async {
+                                                                      final confirm = await showDialog<bool>(
+                                                                        context:
+                                                                            context,
+                                                                        builder: (_) => AlertDialog(
+                                                                          title: const Text(
+                                                                            'Confirm',
+                                                                          ),
+                                                                          content: Text(
+                                                                            'Sunteți sigur că vreți să scoateți părintele $pname din elevul ${selectedAssignStudent!['name']}?',
+                                                                          ),
+                                                                          actions: [
+                                                                            TextButton(
+                                                                              onPressed: () => Navigator.pop(
+                                                                                context,
+                                                                                false,
+                                                                              ),
+                                                                              child: const Text(
+                                                                                'Nu',
+                                                                              ),
+                                                                            ),
+                                                                            TextButton(
+                                                                              onPressed: () => Navigator.pop(
+                                                                                context,
+                                                                                true,
+                                                                              ),
+                                                                              child: const Text(
+                                                                                'Da',
+                                                                              ),
+                                                                            ),
+                                                                          ],
                                                                         ),
-                                                                    child:
-                                                                        const Text(
-                                                                          'Nu',
-                                                                        ),
-                                                                  ),
-                                                                  TextButton(
-                                                                    onPressed: () =>
-                                                                        Navigator.pop(
-                                                                          context,
-                                                                          true,
-                                                                        ),
-                                                                    child:
-                                                                        const Text(
-                                                                          'Da',
-                                                                        ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            );
-                                                            if (confirm !=
-                                                                true) {
-                                                              return;
-                                                            }
-                                                            try {
-                                                              final stuRef =
-                                                                  FirebaseFirestore
-                                                                      .instance
-                                                                      .collection(
-                                                                        'users',
-                                                                      )
-                                                                      .doc(
-                                                                        selectedAssignStudent!['id'],
                                                                       );
-                                                              final parRef =
-                                                                  FirebaseFirestore
-                                                                      .instance
-                                                                      .collection(
-                                                                        'users',
-                                                                      )
-                                                                      .doc(
-                                                                        puid,
-                                                                      );
-                                                              await stuRef.update({
-                                                                'parents':
-                                                                    FieldValue.arrayRemove(
-                                                                      [puid],
-                                                                    ),
-                                                              });
-                                                              await parRef.update({
-                                                                'children':
-                                                                    FieldValue.arrayRemove([
-                                                                      selectedAssignStudent!['id'],
-                                                                    ]),
-                                                              });
-                                                              if (mounted) {
-                                                                ScaffoldMessenger.of(
-                                                                  context,
-                                                                ).showSnackBar(
-                                                                  const SnackBar(
-                                                                    content: Text(
-                                                                      'Părinte scos cu succes',
-                                                                    ),
-                                                                  ),
-                                                                );
-                                                              }
-                                                            } catch (e) {
-                                                              if (mounted) {
-                                                                ScaffoldMessenger.of(
-                                                                  context,
-                                                                ).showSnackBar(
-                                                                  SnackBar(
-                                                                    content: Text(
-                                                                      'Eroare: $e',
-                                                                    ),
-                                                                  ),
-                                                                );
-                                                              }
-                                                            }
-                                                          },
+                                                                      if (confirm !=
+                                                                          true) {
+                                                                        return;
+                                                                      }
+                                                                      try {
+                                                                        final stuRef = FirebaseFirestore
+                                                                            .instance
+                                                                            .collection(
+                                                                              'users',
+                                                                            )
+                                                                            .doc(
+                                                                              selectedAssignStudent!['id'],
+                                                                            );
+                                                                        final parRef = FirebaseFirestore
+                                                                            .instance
+                                                                            .collection(
+                                                                              'users',
+                                                                            )
+                                                                            .doc(
+                                                                              puid,
+                                                                            );
+                                                                        await stuRef.update({
+                                                                          'parents': FieldValue.arrayRemove([
+                                                                            puid,
+                                                                          ]),
+                                                                        });
+                                                                        await parRef.update({
+                                                                          'children': FieldValue.arrayRemove([
+                                                                            selectedAssignStudent!['id'],
+                                                                          ]),
+                                                                        });
+                                                                        if (mounted) {
+                                                                          ScaffoldMessenger.of(
+                                                                            context,
+                                                                          ).showSnackBar(
+                                                                            const SnackBar(
+                                                                              content: Text(
+                                                                                'Părinte scos cu succes',
+                                                                              ),
+                                                                            ),
+                                                                          );
+                                                                        }
+                                                                      } catch (
+                                                                        e
+                                                                      ) {
+                                                                        if (mounted) {
+                                                                          ScaffoldMessenger.of(
+                                                                            context,
+                                                                          ).showSnackBar(
+                                                                            SnackBar(
+                                                                              content: Text(
+                                                                                'Eroare: $e',
+                                                                              ),
+                                                                            ),
+                                                                          );
+                                                                        }
+                                                                      }
+                                                                    },
+                                                                  );
+                                                                },
                                                         ),
                                                       );
                                                     },
@@ -1559,30 +1656,51 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                         _buildButton(
                                           label: "Resetare Parolă",
                                           primaryGreen: primaryGreen,
-                                          onPressed: () async {
-                                            try {
-                                              final res = await api
-                                                  .resetPassword(
-                                                    username: targetUserC.text,
+                                          onPressed:
+                                              _isActionBusy('reset-password')
+                                              ? null
+                                              : () {
+                                                  _runGuarded(
+                                                    'reset-password',
+                                                    () async {
+                                                      final shouldProceed =
+                                                          await _confirmMajorAction(
+                                                            title: 'Confirmare',
+                                                            message:
+                                                                'Esti sigur ca vrei sa resetezi parola utilizatorului?',
+                                                          );
+                                                      if (!shouldProceed) {
+                                                        return;
+                                                      }
+
+                                                      try {
+                                                        final res = await api
+                                                            .resetPassword(
+                                                              username:
+                                                                  targetUserC
+                                                                      .text,
+                                                            );
+                                                        final newPass =
+                                                            res['password'];
+                                                        _log(
+                                                          "RESET OK: newPass=$newPass",
+                                                        );
+                                                        if (!mounted) return;
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                              "Parola noua: $newPass",
+                                                            ),
+                                                          ),
+                                                        );
+                                                      } catch (e) {
+                                                        _log("RESET ERROR: $e");
+                                                      }
+                                                    },
                                                   );
-                                              final newPass = res['password'];
-                                              _log(
-                                                "RESET OK: newPass=$newPass",
-                                              );
-                                              if (!mounted) return;
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                    "Parola noua: $newPass",
-                                                  ),
-                                                ),
-                                              );
-                                            } catch (e) {
-                                              _log("RESET ERROR: $e");
-                                            }
-                                          },
+                                                },
                                           fullWidth: true,
                                         ),
                                         const SizedBox(height: 12),
@@ -1592,18 +1710,44 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                               child: _buildButton(
                                                 label: "Dezactiveaza",
                                                 primaryGreen: primaryGreen,
-                                                onPressed: () async {
-                                                  try {
-                                                    await api.setDisabled(
-                                                      username:
-                                                          targetUserC.text,
-                                                      disabled: true,
-                                                    );
-                                                    _log("DISABLE OK");
-                                                  } catch (e) {
-                                                    _log("DISABLE ERROR: $e");
-                                                  }
-                                                },
+                                                onPressed:
+                                                    _isActionBusy(
+                                                      'disable-user',
+                                                    )
+                                                    ? null
+                                                    : () {
+                                                        _runGuarded(
+                                                          'disable-user',
+                                                          () async {
+                                                            final shouldProceed =
+                                                                await _confirmMajorAction(
+                                                                  title:
+                                                                      'Confirmare',
+                                                                  message:
+                                                                      'Esti sigur ca vrei sa dezactivezi contul?',
+                                                                );
+                                                            if (!shouldProceed) {
+                                                              return;
+                                                            }
+
+                                                            try {
+                                                              await api.setDisabled(
+                                                                username:
+                                                                    targetUserC
+                                                                        .text,
+                                                                disabled: true,
+                                                              );
+                                                              _log(
+                                                                "DISABLE OK",
+                                                              );
+                                                            } catch (e) {
+                                                              _log(
+                                                                "DISABLE ERROR: $e",
+                                                              );
+                                                            }
+                                                          },
+                                                        );
+                                                      },
                                               ),
                                             ),
                                             const SizedBox(width: 12),
@@ -1611,18 +1755,39 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                               child: _buildButton(
                                                 label: "Activeaza",
                                                 primaryGreen: primaryGreen,
-                                                onPressed: () async {
-                                                  try {
-                                                    await api.setDisabled(
-                                                      username:
-                                                          targetUserC.text,
-                                                      disabled: false,
-                                                    );
-                                                    _log("ENABLE OK");
-                                                  } catch (e) {
-                                                    _log("ENABLE ERROR: $e");
-                                                  }
-                                                },
+                                                onPressed:
+                                                    _isActionBusy('enable-user')
+                                                    ? null
+                                                    : () {
+                                                        _runGuarded('enable-user', () async {
+                                                          final shouldProceed =
+                                                              await _confirmMajorAction(
+                                                                title:
+                                                                    'Confirmare',
+                                                                message:
+                                                                    'Esti sigur ca vrei sa activezi contul?',
+                                                              );
+                                                          if (!shouldProceed) {
+                                                            return;
+                                                          }
+
+                                                          try {
+                                                            await api
+                                                                .setDisabled(
+                                                                  username:
+                                                                      targetUserC
+                                                                          .text,
+                                                                  disabled:
+                                                                      false,
+                                                                );
+                                                            _log("ENABLE OK");
+                                                          } catch (e) {
+                                                            _log(
+                                                              "ENABLE ERROR: $e",
+                                                            );
+                                                          }
+                                                        });
+                                                      },
                                               ),
                                             ),
                                           ],
@@ -1794,17 +1959,26 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                         _buildButton(
                                           label: "Mută utilizator",
                                           primaryGreen: primaryGreen,
-                                          onPressed: () async {
-                                            try {
-                                              await api.moveStudentClass(
-                                                username: targetUserC.text,
-                                                newClassId: selectedMoveClassId,
-                                              );
-                                              _log("MOVE OK");
-                                            } catch (e) {
-                                              _log("MOVE ERROR: $e");
-                                            }
-                                          },
+                                          onPressed: _isActionBusy('move-user')
+                                              ? null
+                                              : () {
+                                                  _runGuarded(
+                                                    'move-user',
+                                                    () async {
+                                                      try {
+                                                        await api.moveStudentClass(
+                                                          username:
+                                                              targetUserC.text,
+                                                          newClassId:
+                                                              selectedMoveClassId,
+                                                        );
+                                                        _log("MOVE OK");
+                                                      } catch (e) {
+                                                        _log("MOVE ERROR: $e");
+                                                      }
+                                                    },
+                                                  );
+                                                },
                                           fullWidth: true,
                                         ),
                                         const SizedBox(height: 12),
@@ -1812,32 +1986,56 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                         _buildButton(
                                           label: "Sterge utilizator",
                                           primaryGreen: Colors.red[600]!,
-                                          onPressed: () async {
-                                            final uname = targetUserC.text
-                                                .trim()
-                                                .toLowerCase();
-                                            if (uname.isEmpty) {
-                                              _log(
-                                                "DELETE ERROR: username gol",
-                                              );
-                                              return;
-                                            }
-                                            try {
-                                              // try cloud function first
-                                              await api.deleteUser(
-                                                username: uname,
-                                              );
-                                              _log("API DELETE OK: $uname");
-                                            } catch (e) {
-                                              _log("API DELETE ERROR: $e");
-                                            }
-                                            try {
-                                              await store.deleteUser(uname);
-                                              _log("STORE DELETE OK: $uname");
-                                            } catch (e) {
-                                              _log("STORE DELETE ERROR: $e");
-                                            }
-                                          },
+                                          onPressed:
+                                              _isActionBusy('delete-user')
+                                              ? null
+                                              : () {
+                                                  _runGuarded('delete-user', () async {
+                                                    final shouldProceed =
+                                                        await _confirmMajorAction(
+                                                          title: 'Confirmare',
+                                                          message:
+                                                              'Esti sigur ca vrei sa stergi utilizatorul selectat?',
+                                                        );
+                                                    if (!shouldProceed) return;
+
+                                                    final uname = targetUserC
+                                                        .text
+                                                        .trim()
+                                                        .toLowerCase();
+                                                    if (uname.isEmpty) {
+                                                      _log(
+                                                        "DELETE ERROR: username gol",
+                                                      );
+                                                      return;
+                                                    }
+                                                    try {
+                                                      // try cloud function first
+                                                      await api.deleteUser(
+                                                        username: uname,
+                                                      );
+                                                      _log(
+                                                        "API DELETE OK: $uname",
+                                                      );
+                                                    } catch (e) {
+                                                      _log(
+                                                        "API DELETE ERROR: $e",
+                                                      );
+                                                    }
+                                                    try {
+                                                      await store.deleteUser(
+                                                        uname,
+                                                      );
+                                                      _log(
+                                                        "STORE DELETE OK: $uname",
+                                                      );
+                                                    } catch (e) {
+                                                      _log(
+                                                        "STORE DELETE ERROR: $e",
+                                                      );
+                                                    }
+                                                  });
+                                                },
                                           fullWidth: true,
                                         ),
                                       ],
@@ -2251,69 +2449,95 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                         _buildButton(
                                           label: "Save schedule",
                                           primaryGreen: primaryGreen,
-                                          onPressed: () async {
-                                            if (selectedScheduleClassId
-                                                .isEmpty) {
-                                              _log(
-                                                "ORAR ERROR: Select class first",
-                                              );
-                                              return;
-                                            }
-                                            final selectedDaysList =
-                                                selectedDays.entries
-                                                    .where((e) => e.value)
-                                                    .map((e) => e.key)
-                                                    .toList();
-                                            if (selectedDaysList.isEmpty) {
-                                              _log(
-                                                "ORAR ERROR: Select at least one day",
-                                              );
-                                              return;
-                                            }
-                                            // Converteste zilele din Romanian la numere
-                                            final dayMapping = {
-                                              'Luni': 1,
-                                              'Marți': 2,
-                                              'Miercuri': 3,
-                                              'Joi': 4,
-                                              'Vineri': 5,
-                                            };
-                                            // Build schedule map: {day_number: {start: "HH:mm", end: "HH:mm"}}
-                                            final schedulePerDay =
-                                                <int, Map<String, String>>{};
-                                            for (final day
-                                                in selectedDaysList) {
-                                              final dayNum = dayMapping[day]!;
-                                              final times = dayTimes[day]!;
-                                              schedulePerDay[dayNum] = {
-                                                'start': _formatTimeOfDay(
-                                                  times['start']!,
-                                                ),
-                                                'end': _formatTimeOfDay(
-                                                  times['end']!,
-                                                ),
-                                              };
-                                            }
-                                            _log(
-                                              "DEBUG: Sending schedule per day: $schedulePerDay",
-                                            );
-                                            try {
-                                              await api
-                                                  .setClassSchedulePerDay(
-                                                    classId:
-                                                        selectedScheduleClassId,
-                                                    schedulePerDay:
-                                                        schedulePerDay,
-                                                  )
-                                                  .then(
-                                                    (_) => _log(
-                                                      "SCHEDULE OK: $selectedScheduleClassId for days ${selectedDaysList.join(', ')}",
-                                                    ),
-                                                  );
-                                            } catch (e) {
-                                              _log("SCHEDULE ERROR: $e");
-                                            }
-                                          },
+                                          onPressed:
+                                              _isActionBusy('save-schedule')
+                                              ? null
+                                              : () {
+                                                  _runGuarded('save-schedule', () async {
+                                                    final shouldProceed =
+                                                        await _confirmMajorAction(
+                                                          title: 'Confirmare',
+                                                          message:
+                                                              'Esti sigur ca vrei sa salvezi acest orar?',
+                                                        );
+                                                    if (!shouldProceed) {
+                                                      return;
+                                                    }
+
+                                                    if (selectedScheduleClassId
+                                                        .isEmpty) {
+                                                      _log(
+                                                        "ORAR ERROR: Select class first",
+                                                      );
+                                                      return;
+                                                    }
+                                                    final selectedDaysList =
+                                                        selectedDays.entries
+                                                            .where(
+                                                              (e) => e.value,
+                                                            )
+                                                            .map((e) => e.key)
+                                                            .toList();
+                                                    if (selectedDaysList
+                                                        .isEmpty) {
+                                                      _log(
+                                                        "ORAR ERROR: Select at least one day",
+                                                      );
+                                                      return;
+                                                    }
+                                                    // Converteste zilele din Romanian la numere
+                                                    final dayMapping = {
+                                                      'Luni': 1,
+                                                      'Marți': 2,
+                                                      'Miercuri': 3,
+                                                      'Joi': 4,
+                                                      'Vineri': 5,
+                                                    };
+                                                    // Build schedule map: {day_number: {start: "HH:mm", end: "HH:mm"}}
+                                                    final schedulePerDay =
+                                                        <
+                                                          int,
+                                                          Map<String, String>
+                                                        >{};
+                                                    for (final day
+                                                        in selectedDaysList) {
+                                                      final dayNum =
+                                                          dayMapping[day]!;
+                                                      final times =
+                                                          dayTimes[day]!;
+                                                      schedulePerDay[dayNum] = {
+                                                        'start':
+                                                            _formatTimeOfDay(
+                                                              times['start']!,
+                                                            ),
+                                                        'end': _formatTimeOfDay(
+                                                          times['end']!,
+                                                        ),
+                                                      };
+                                                    }
+                                                    _log(
+                                                      "DEBUG: Sending schedule per day: $schedulePerDay",
+                                                    );
+                                                    try {
+                                                      await api
+                                                          .setClassSchedulePerDay(
+                                                            classId:
+                                                                selectedScheduleClassId,
+                                                            schedulePerDay:
+                                                                schedulePerDay,
+                                                          )
+                                                          .then(
+                                                            (_) => _log(
+                                                              "SCHEDULE OK: $selectedScheduleClassId for days ${selectedDaysList.join(', ')}",
+                                                            ),
+                                                          );
+                                                    } catch (e) {
+                                                      _log(
+                                                        "SCHEDULE ERROR: $e",
+                                                      );
+                                                    }
+                                                  });
+                                                },
                                           fullWidth: true,
                                         ),
                                       ],
@@ -2408,7 +2632,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
   Widget _buildButton({
     required String label,
     required Color primaryGreen,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
     bool fullWidth = false,
   }) {
     return ElevatedButton(
