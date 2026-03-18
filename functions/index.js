@@ -1060,10 +1060,103 @@ exports.onAccessEventCreated = onDocumentCreated("accessEvents/{docId}", async (
     const userId = String(data.userId || "").trim();
     if (!userId) return;
 
-    await admin.firestore().collection("users").doc(userId).set(
+    const userRef = admin.firestore().collection("users").doc(userId);
+
+    await userRef.set(
         { unreadCount: admin.firestore.FieldValue.increment(1) },
         { merge: true }
     );
+
+    // Send push notification
+    const userDoc = await userRef.get();
+    const fcmToken = userDoc.data()?.fcmToken;
+    if (!fcmToken) return;
+
+    const eventType = String(data.type || "");
+    const title = eventType === "exit" ? "Ai iesit din scoala" : "Ai intrat in scoala";
+    const body = eventType === "exit"
+        ? "Iesirea ta a fost inregistrata."
+        : "Intrarea ta a fost inregistrata.";
+
+    try {
+        await admin.messaging().send({
+            token: fcmToken,
+            notification: { title, body },
+            android: { notification: { channelId: "student_channel" } },
+        });
+    } catch (e) {
+        console.error("onAccessEventCreated: FCM send failed:", e.message);
+    }
+});
+
+// Cancel (expire) leave requests whose date has passed — runs every hour
+exports.cleanupExpiredLeaveRequests = onSchedule("every 60 minutes", async (event) => {
+    const db = admin.firestore();
+
+    // Get today's date in Romania (Bucharest) timezone
+    const now = new Date();
+    const roNow = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
+    const roYear = roNow.getFullYear();
+    const roMonth = roNow.getMonth() + 1; // 1-based
+    const roDay = roNow.getDate();
+
+    // Fetch all pending & approved leave requests
+    const snap = await db.collection("leaveRequests")
+        .where("status", "in", ["pending", "approved"])
+        .get();
+
+    if (snap.empty) {
+        console.log("cleanupExpiredLeaveRequests: no pending/approved requests found");
+        return;
+    }
+
+    const toExpire = [];
+
+    for (const doc of snap.docs) {
+        const data = doc.data();
+        const dateText = String(data.dateText || "");
+
+        // Parse DD.MM.YYYY
+        const parts = dateText.split(".");
+        if (parts.length !== 3) continue;
+
+        const reqDay = parseInt(parts[0], 10);
+        const reqMonth = parseInt(parts[1], 10);
+        const reqYear = parseInt(parts[2], 10);
+
+        if (isNaN(reqDay) || isNaN(reqMonth) || isNaN(reqYear)) continue;
+
+        // Expire if requested date is strictly before today (Romania timezone)
+        const isPast =
+            reqYear < roYear ||
+            (reqYear === roYear && reqMonth < roMonth) ||
+            (reqYear === roYear && reqMonth === roMonth && reqDay < roDay);
+
+        if (isPast) {
+            toExpire.push(doc.ref);
+        }
+    }
+
+    if (toExpire.length === 0) {
+        console.log("cleanupExpiredLeaveRequests: nothing to expire");
+        return;
+    }
+
+    // Firestore batch limit is 500
+    const chunkSize = 500;
+    for (let i = 0; i < toExpire.length; i += chunkSize) {
+        const chunk = toExpire.slice(i, i + chunkSize);
+        const batch = db.batch();
+        for (const ref of chunk) {
+            batch.update(ref, {
+                status: "expired",
+                expiredAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+        await batch.commit();
+    }
+
+    console.log(`cleanupExpiredLeaveRequests: expired ${toExpire.length} leave request(s)`);
 });
 
 // Increment unreadCount for student when leave request is approved or rejected
@@ -1082,8 +1175,31 @@ exports.onLeaveRequestStatusChanged = onDocumentUpdated("leaveRequests/{docId}",
     const studentUid = String(after.studentUid || "").trim();
     if (!studentUid) return;
 
-    await admin.firestore().collection("users").doc(studentUid).set(
+    const userRef = admin.firestore().collection("users").doc(studentUid);
+
+    await userRef.set(
         { unreadCount: admin.firestore.FieldValue.increment(1) },
         { merge: true }
     );
+
+    // Send push notification
+    const userDoc = await userRef.get();
+    const fcmToken = userDoc.data()?.fcmToken;
+    if (!fcmToken) return;
+
+    const title = newStatus === "approved" ? "Cerere aprobata" : "Cerere respinsa";
+    const dateText = String(after.dateText || "");
+    const body = newStatus === "approved"
+        ? `Cererea ta pentru ${dateText} a fost aprobata.`
+        : `Cererea ta pentru ${dateText} a fost respinsa.`;
+
+    try {
+        await admin.messaging().send({
+            token: fcmToken,
+            notification: { title, body },
+            android: { notification: { channelId: "student_channel" } },
+        });
+    } catch (e) {
+        console.error("onLeaveRequestStatusChanged: FCM send failed:", e.message);
+    }
 });

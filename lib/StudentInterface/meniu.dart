@@ -50,58 +50,52 @@ class _MeniuScreenState extends State<MeniuScreen> {
     final fallbackName = (AppSession.username?.trim().isNotEmpty ?? false)
         ? AppSession.username!.trim()
         : 'Elev';
-    final currentUser = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       backgroundColor: const Color(0xFF7AAF5B),
       body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              height: 110,
-              color: const Color(0xFF7AAF5B),
-              child: Center(
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Positioned(
-                      bottom: 8,
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.22),
-                          shape: BoxShape.circle,
+        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: _userDocStream,
+          builder: (context, snapshot) {
+            final userData = snapshot.data?.data() ?? const <String, dynamic>{};
+            final fullName = (userData['fullName'] ?? '').toString().trim();
+            // ...existing code...
+            final unreadCount = (userData['unreadCount'] as int?) ?? 0;
+
+            final displayName = fullName.isNotEmpty ? fullName : fallbackName;
+
+            return Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 110,
+                  color: const Color(0xFF7AAF5B),
+                  child: Center(
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Positioned(
+                          bottom: 8,
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.22),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
                         ),
-                      ),
+                        const Icon(
+                          Icons.shield_rounded,
+                          size: 72,
+                          color: Colors.white,
+                        ),
+                      ],
                     ),
-                    const Icon(
-                      Icons.shield_rounded,
-                      size: 72,
-                      color: Colors.white,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-            Expanded(
-              child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                stream: _userDocStream,
-                builder: (context, snapshot) {
-                  final userData =
-                      snapshot.data?.data() ?? const <String, dynamic>{};
-                  final fullName = (userData['fullName'] ?? '')
-                      .toString()
-                      .trim();
-                  // ...existing code...
-                  final unreadCount = (userData['unreadCount'] as int?) ?? 0;
-
-                  final displayName = fullName.isNotEmpty
-                      ? fullName
-                      : fallbackName;
-
-                  return Container(
+                Expanded(
+                  child: Container(
                     width: double.infinity,
                     clipBehavior: Clip.antiAlias,
                     padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
@@ -112,266 +106,286 @@ class _MeniuScreenState extends State<MeniuScreen> {
                         topRight: Radius.circular(28),
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(
-                          child: Text(
-                            'Bun venit, $displayName!',
-                            style: const TextStyle(
-                              fontSize: 40,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF2E3B4E),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Text(
+                              'Bun venit, $displayName!',
+                              style: const TextStyle(
+                                fontSize: 40,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2E3B4E),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _MenuTile(
-                                label: 'Acces\nQR',
-                                icon: Icons.qr_code_2_rounded,
-                                colors: const [
-                                  Color(0xFF4B78D2),
-                                  Color(0xFF304EAF),
-                                ],
-                                onTap: () {
-                                  if (widget.onNavigateTab != null) {
-                                    widget.onNavigateTab!(1);
-                                    return;
-                                  }
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _MenuTile(
+                                  label: 'Acces\nQR',
+                                  icon: Icons.qr_code_2_rounded,
+                                  colors: const [
+                                    Color(0xFF4B78D2),
+                                    Color(0xFF304EAF),
+                                  ],
+                                  onTap: () {
+                                    if (widget.onNavigateTab != null) {
+                                      widget.onNavigateTab!(1);
+                                      return;
+                                    }
 
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const TeodorScreen(),
-                                    ),
-                                  );
-                                },
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const TeodorScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _MenuTile(
-                                label: 'Orar',
-                                icon: Icons.calendar_month_rounded,
-                                colors: const [
-                                  Color(0xFFF0B15A),
-                                  Color(0xFFE47E2D),
-                                ],
-                                onTap: () {
-                                  if (widget.onOpenOrar != null) {
-                                    widget.onOpenOrar!();
-                                    return;
-                                  }
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _MenuTile(
+                                  label: 'Orar',
+                                  icon: Icons.calendar_month_rounded,
+                                  colors: const [
+                                    Color(0xFFF0B15A),
+                                    Color(0xFFE47E2D),
+                                  ],
+                                  onTap: () {
+                                    if (widget.onOpenOrar != null) {
+                                      widget.onOpenOrar!();
+                                      return;
+                                    }
 
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const OrarScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _MenuTile(
-                                label: 'Cereri\nInvoire',
-                                icon: Icons.article_rounded,
-                                colors: const [
-                                  Color(0xFF17B5A8),
-                                  Color(0xFF0C8D80),
-                                ],
-                                onTap: () {
-                                  if (widget.onNavigateTab != null) {
-                                    widget.onNavigateTab!(3);
-                                    return;
-                                  }
-
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const CereriScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _UnreadMessagesTile(
-                                unreadCount: unreadCount,
-                                onTap: () async {
-                                  if (widget.onNavigateTab != null) {
-                                    widget.onNavigateTab!(4);
-                                    return;
-                                  }
-
-                                  final uid = AppSession.uid;
-                                  if (uid != null && uid.isNotEmpty) {
-                                    await FirebaseFirestore.instance
-                                        .collection('users')
-                                        .doc(uid)
-                                        .set({
-                                          'inboxLastOpenedAt':
-                                              FieldValue.serverTimestamp(),
-                                          'unreadCount': 0,
-                                        }, SetOptions(merge: true));
-                                  }
-
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const InboxScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 18,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(
-                              color: Color(0xFF2E3B4E).withOpacity(0.22),
-                              width: 2.2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Color(0xFF2E3B4E).withOpacity(0.09),
-                                blurRadius: 18,
-                                offset: Offset(0, 6),
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const OrarScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ],
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(height: 10),
+                          Row(
                             children: [
-                              // Status elevului
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Statusul elevului:',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF2E3B4E),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  if (userData['inSchool'] == true)
-                                    Text(
-                                      'în incinta școlii',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        color: Color(0xFF4B78D2),
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    )
-                                  else ...[
-                                    Container(
-                                      width: 12,
-                                      height: 12,
-                                      margin: const EdgeInsets.only(right: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.red.withOpacity(0.2),
-                                            blurRadius: 2,
-                                            spreadRadius: 1,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Text(
-                                      'În afara incintei',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.w500,
-                                        fontFamily: 'Roboto',
-                                        letterSpacing: 0.2,
-                                      ),
-                                    ),
+                              Expanded(
+                                child: _MenuTile(
+                                  label: 'Cereri\nInvoire',
+                                  icon: Icons.article_rounded,
+                                  colors: const [
+                                    Color(0xFF17B5A8),
+                                    Color(0xFF0C8D80),
                                   ],
-                                ],
+                                  onTap: () {
+                                    if (widget.onNavigateTab != null) {
+                                      widget.onNavigateTab!(3);
+                                      return;
+                                    }
+
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const CereriScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
-                              Divider(
-                                color: Color(0xFF2E3B4E).withOpacity(0.18),
-                                thickness: 2,
-                                height: 16,
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _UnreadMessagesTile(
+                                  unreadCount: unreadCount,
+                                  onTap: () async {
+                                    if (widget.onNavigateTab != null) {
+                                      widget.onNavigateTab!(4);
+                                      return;
+                                    }
+
+                                    final uid = AppSession.uid;
+                                    if (uid != null && uid.isNotEmpty) {
+                                      await FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(uid)
+                                          .set({
+                                            'inboxLastOpenedAt':
+                                                FieldValue.serverTimestamp(),
+                                            'unreadCount': 0,
+                                          }, SetOptions(merge: true));
+                                    }
+
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const InboxScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
-                              // Ultima scanare
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Ultima scanare:',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF2E3B4E),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 18,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: Color(0xFF2E3B4E).withOpacity(0.22),
+                                width: 2.2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0xFF2E3B4E).withOpacity(0.09),
+                                  blurRadius: 18,
+                                  offset: Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Status elevului
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Statusul elevului:',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF2E3B4E),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child:
-                                        StreamBuilder<
-                                          QuerySnapshot<Map<String, dynamic>>
-                                        >(
-                                          stream: _lastScanStream,
-                                          builder: (context, snapshot) {
-                                            final docs =
-                                                snapshot.data?.docs ?? [];
-                                            if (docs.isNotEmpty) {
-                                              final doc = docs.first;
-                                              final type = (doc['type'] ?? '')
-                                                  .toString();
-                                              final ts =
-                                                  (doc['timestamp']
-                                                      as Timestamp?);
-                                              final dateStr = ts != null
-                                                  ? '${ts.toDate().day.toString().padLeft(2, '0')}.${ts.toDate().month.toString().padLeft(2, '0')}.${ts.toDate().year} ${ts.toDate().hour.toString().padLeft(2, '0')}:${ts.toDate().minute.toString().padLeft(2, '0')}'
-                                                  : '';
-                                              if (type == 'entry') {
-                                                return Text(
-                                                  'Intrare - $dateStr',
-                                                  style: TextStyle(
-                                                    fontSize: 15,
-                                                    color: Color(0xFF17B5A8),
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                );
-                                              } else if (type == 'exit') {
-                                                return Text(
-                                                  'Ieșire - $dateStr',
-                                                  style: TextStyle(
-                                                    fontSize: 15,
-                                                    color: Color(0xFFE47E2D),
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                );
+                                    const SizedBox(width: 8),
+                                    if (userData['inSchool'] == true)
+                                      Text(
+                                        'în incinta școlii',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          color: Color(0xFF4B78D2),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      )
+                                    else ...[
+                                      Container(
+                                        width: 12,
+                                        height: 12,
+                                        margin: const EdgeInsets.only(right: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.red.withOpacity(
+                                                0.2,
+                                              ),
+                                              blurRadius: 2,
+                                              spreadRadius: 1,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Text(
+                                        'În afara incintei',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'Roboto',
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                Divider(
+                                  color: Color(0xFF2E3B4E).withOpacity(0.18),
+                                  thickness: 2,
+                                  height: 16,
+                                ),
+                                // Ultima scanare
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Ultima scanare:',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF2E3B4E),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child:
+                                          StreamBuilder<
+                                            QuerySnapshot<Map<String, dynamic>>
+                                          >(
+                                            stream: _lastScanStream,
+                                            builder: (context, snapshot) {
+                                              final docs =
+                                                  snapshot.data?.docs ?? [];
+                                              if (docs.isNotEmpty) {
+                                                final doc = docs.first;
+                                                final type =
+                                                    ((doc.data()['type']) ??
+                                                            '')
+                                                        .toString();
+                                                final ts =
+                                                    (doc['timestamp']
+                                                        as Timestamp?);
+                                                final dateStr = ts != null
+                                                    ? '${ts.toDate().day.toString().padLeft(2, '0')}.${ts.toDate().month.toString().padLeft(2, '0')}.${ts.toDate().year} ${ts.toDate().hour.toString().padLeft(2, '0')}:${ts.toDate().minute.toString().padLeft(2, '0')}'
+                                                    : '';
+                                                if (type == 'entry') {
+                                                  return Text(
+                                                    'Intrare - $dateStr',
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      color: Color(0xFF17B5A8),
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  );
+                                                } else if (type == 'exit') {
+                                                  return Text(
+                                                    'Ieșire - $dateStr',
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      color: Color(0xFFE47E2D),
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  );
+                                                } else {
+                                                  return Text(
+                                                    'Scanare - $dateStr',
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      color: Color(0xFF2E3B4E),
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  );
+                                                }
                                               } else {
                                                 return Text(
-                                                  'Scanare - $dateStr',
+                                                  'Nu există scanări.',
                                                   style: TextStyle(
                                                     fontSize: 15,
                                                     color: Color(0xFF2E3B4E),
@@ -381,99 +395,93 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                                       TextOverflow.ellipsis,
                                                 );
                                               }
-                                            } else {
-                                              return Text(
-                                                'Nu există scanări.',
-                                                style: TextStyle(
-                                                  fontSize: 15,
-                                                  color: Color(0xFF2E3B4E),
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              );
-                                            }
-                                          },
-                                        ),
-                                  ),
-                                ],
-                              ),
-                              Divider(
-                                color: Color(0xFF2E3B4E).withOpacity(0.18),
-                                thickness: 2,
-                                height: 16,
-                              ),
-                              // Cereri de învoire
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'Cereri de învoire:',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF2E3B4E),
+                                            },
+                                          ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child:
-                                        StreamBuilder<
-                                          QuerySnapshot<Map<String, dynamic>>
-                                        >(
-                                          stream: _leaveActiveStream,
-                                          builder: (context, snapshot) {
-                                            final docs =
-                                                snapshot.data?.docs ?? [];
-                                            if (docs.any(
-                                              (doc) =>
-                                                  doc['status'] == 'accepted',
-                                            )) {
-                                              return Text(
-                                                'Există o cerere acceptată.',
-                                                style: TextStyle(
-                                                  fontSize: 15,
-                                                  color: Color(0xFF4B78D2),
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              );
-                                            } else if (docs.isNotEmpty) {
-                                              return Text(
-                                                'Există cereri active.',
-                                                style: TextStyle(
-                                                  fontSize: 15,
-                                                  color: Color(0xFF17B5A8),
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              );
-                                            } else {
-                                              return Text(
-                                                'Nu există nicio cerere activă.',
-                                                style: TextStyle(
-                                                  fontSize: 15,
-                                                  color: Color(0xFF2E3B4E),
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              );
-                                            }
-                                          },
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                  ],
+                                ),
+                                Divider(
+                                  color: Color(0xFF2E3B4E).withOpacity(0.18),
+                                  thickness: 2,
+                                  height: 16,
+                                ),
+                                // Cereri de învoire
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Cereri de învoire:',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF2E3B4E),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child:
+                                          StreamBuilder<
+                                            QuerySnapshot<Map<String, dynamic>>
+                                          >(
+                                            stream: _leaveActiveStream,
+                                            builder: (context, snapshot) {
+                                              final docs =
+                                                  snapshot.data?.docs ?? [];
+                                              if (docs.any(
+                                                (doc) =>
+                                                    doc.data()['status'] ==
+                                                    'accepted',
+                                              )) {
+                                                return Text(
+                                                  'Există o cerere acceptată.',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    color: Color(0xFF4B78D2),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                );
+                                              } else if (docs.isNotEmpty) {
+                                                return Text(
+                                                  'Există cereri active.',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    color: Color(0xFF17B5A8),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                );
+                                              } else {
+                                                return Text(
+                                                  'Nu există nicio cerere activă.',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    color: Color(0xFF2E3B4E),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                );
+                                              }
+                                            },
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const Spacer(),
-                      ],
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     ),
-                  );
-                },
-              ),
-            ),
-          ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

@@ -4,6 +4,7 @@ import '../session.dart';
 
 // Data model similar to _OrarViewData from orar.dart
 class _StudentProfileData {
+  final String uid;
   final String fullName;
   final String username;
   final String role;
@@ -13,6 +14,7 @@ class _StudentProfileData {
   final bool inSchool;
 
   const _StudentProfileData({
+    required this.uid,
     required this.fullName,
     required this.username,
     required this.role,
@@ -21,6 +23,7 @@ class _StudentProfileData {
     required this.schedule,
     required this.inSchool,
   });
+
 }
 
 class ParentStudentsPage extends StatefulWidget {
@@ -119,6 +122,7 @@ class _ParentStudentsPageState extends State<ParentStudentsPage> {
     }
 
     return _StudentProfileData(
+      uid: studentUid,
       fullName: fullName,
       username: username,
       role: role,
@@ -169,7 +173,7 @@ class _ParentStudentsPageState extends State<ParentStudentsPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
-          'Elevii Mei',
+          'Elevi',
           style: TextStyle(
             color: Colors.white,
             fontSize: 34,
@@ -184,7 +188,7 @@ class _ParentStudentsPageState extends State<ParentStudentsPage> {
           height: double.infinity,
           clipBehavior: Clip.antiAlias,
           decoration: const BoxDecoration(
-            color: Color(0xFFE6EBEE),
+            color: Color(0xFFF5F7FA), // Background nou
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(28),
               topRight: Radius.circular(28),
@@ -244,39 +248,35 @@ class _StudentSummaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayName = data.fullName.isNotEmpty ? data.fullName : data.username;
-    final statusColor = data.inSchool ? const Color(0xFF4CAF50) : const Color(0xFFE53935);
-    final statusText = data.inSchool ? "În școală" : "Absent / Ieșit";
+    final displayName =
+        data.fullName.isNotEmpty ? data.fullName : data.username;
 
-    return InkWell(
+    return _BouncingButton(
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ]),
         child: Row(
           children: [
             Container(
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: const Color(0xFFE3F2FD),
+                color: const Color(0xFFDCEED5), // Fundal actualizat (ca in pagina detalii)
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.person, size: 32, color: Color(0xFF1565C0)),
+              child: const Icon(Icons.person, size: 32, color: Color(0xFF6C7D62)), // Simbol actualizat (ca in pagina detalii)
             ),
             const SizedBox(width: 16),
             Expanded(
+
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -294,37 +294,136 @@ class _StudentSummaryButton extends StatelessWidget {
                     style: const TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                 ],
-              ),
-            ),
-            Column(
-              children: [
-                Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                       BoxShadow(color: statusColor.withOpacity(0.4), blurRadius: 4),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  statusText,
-                  style: TextStyle(fontSize: 12, color: statusColor, fontWeight: FontWeight.w600),
-                )
-              ],
+              ),),
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(data.uid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox();
+                }
+
+                if (!snapshot.hasData || !snapshot.data!.exists) {
+                  return const Text("Status necunoscut");
+                }
+
+                final dataMap = snapshot.data!.data() as Map<String, dynamic>;
+                final inSchool = dataMap['inSchool'] ?? false;
+
+                final statusColor = inSchool
+                    ? const Color(0xFF4CAF50)
+                    : const Color(0xFFE53935);
+
+                final statusText = inSchool ? "În școală" : "Absent / Ieșit";
+
+                return Column(
+                  children: [
+                    Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: statusColor.withOpacity(0.4),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      statusText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                  ],
+                );
+              },
             ),
             const SizedBox(width: 8),
             const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          ],
+        ),
+
+
+      ),
+    );
+  }
+}
+
+class _BouncingButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  final BorderRadius borderRadius;
+
+  const _BouncingButton({
+    required this.child,
+    required this.onTap,
+    required this.borderRadius,
+  });
+
+  @override
+  State<_BouncingButton> createState() => _BouncingButtonState();
+}
+
+class _BouncingButtonState extends State<_BouncingButton> {
+  double _scale = 1.0;
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() {
+        _scale = 0.95;
+        _isPressed = true;
+      }),
+      onTapUp: (_) {
+        setState(() {
+          _scale = 1.0;
+          _isPressed = false;
+        });
+        Future.delayed(const Duration(milliseconds: 100), widget.onTap);
+      },
+      onTapCancel: () => setState(() {
+        _scale = 1.0;
+        _isPressed = false;
+      }),
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeInOut,
+        child: Stack(
+          children: [
+            widget.child,
+            Positioned.fill(
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 100),
+                opacity: _isPressed ? 0.2 : 0.0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: widget.borderRadius,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 }
+
+
+
 
 class StudentDetailsPage extends StatelessWidget {
   final _StudentProfileData data;
@@ -362,7 +461,7 @@ class StudentDetailsPage extends StatelessWidget {
           height: double.infinity,
           clipBehavior: Clip.antiAlias,
           decoration: const BoxDecoration(
-            color: Color(0xFFE6EBEE),
+            color: Color(0xFFF5F7FA), // Background nou
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(28),
               topRight: Radius.circular(28),

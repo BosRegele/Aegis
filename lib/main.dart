@@ -9,14 +9,72 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'firebase_options.dart';
+
+final FlutterLocalNotificationsPlugin _localNotifications =
+    FlutterLocalNotificationsPlugin();
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  await _localNotifications.initialize(
+    const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: DarwinInitializationSettings(),
+    ),
+  );
+
+  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    final n = message.notification;
+    if (n == null) return;
+    _localNotifications.show(
+      n.hashCode,
+      n.title,
+      n.body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'student_channel',
+          'Notificari elev',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+    );
+  });
+
   runApp(const MyApp());
+}
+
+Future<void> _saveFcmToken(String uid) async {
+  try {
+    await FirebaseMessaging.instance.requestPermission();
+    final token = await FirebaseMessaging.instance.getToken();
+    if (token == null) return;
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'fcmToken': token,
+    }, SetOptions(merge: true));
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+      FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'fcmToken': newToken,
+      }, SetOptions(merge: true));
+    });
+  } catch (_) {}
 }
 
 class MyApp extends StatelessWidget {
@@ -44,6 +102,8 @@ class MyApp extends StatelessWidget {
       fullNameValue: (data['fullName'] ?? '').toString(),
       classIdValue: (data['classId'] ?? '').toString(),
     );
+
+    _saveFcmToken(user.uid);
 
     if (role == 'student') {
       return const AppShell();
