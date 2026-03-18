@@ -10,6 +10,32 @@ class ParentRequestsPage extends StatefulWidget {
 }
 
 class _ParentRequestsPageState extends State<ParentRequestsPage> {
+  late final Future<List<String>> _childrenUidsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _childrenUidsFuture = _loadChildrenUids();
+  }
+
+  Future<List<String>> _loadChildrenUids() async {
+    final parentUid = AppSession.uid;
+    if (parentUid == null || parentUid.isEmpty) {
+      throw Exception('Părinte neautentificat.');
+    }
+
+    final parentDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(parentUid)
+        .get();
+    if (!parentDoc.exists) {
+      throw Exception('Profilul părintelui nu a fost găsit.');
+    }
+
+    final data = parentDoc.data() ?? <String, dynamic>{};
+    return List<String>.from(data['children'] ?? const <String>[]);
+  }
+
   Future<void> _handleRequest(String docId, bool approved) async {
     final parentName = AppSession.username ?? "Parinte";
     try {
@@ -54,104 +80,120 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
         color: bgGrey,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('leaveRequests')
-                      .where('status', isEqualTo: 'pending')
-                      .orderBy('requestedAt', descending: true)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Eroare: ${snapshot.error}'));
-                    }
-                    if (!snapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+          child: FutureBuilder<List<String>>(
+            future: _childrenUidsFuture,
+            builder: (context, childrenSnapshot) {
+              if (childrenSnapshot.hasError) {
+                return Center(child: Text('Eroare: ${childrenSnapshot.error}'));
+              }
+              if (!childrenSnapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-                    final docs = snapshot.data!.docs;
-                    if (docs.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          "Nu există cereri noi.",
-                          style: TextStyle(color: Colors.grey, fontSize: 16),
+              final childrenUids = childrenSnapshot.data!;
+              if (childrenUids.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'Nu ai elevi asociați pe acest cont.',
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                );
+              }
+
+              return StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('leaveRequests')
+                    .where('studentUid', whereIn: childrenUids)
+                    .where('status', isEqualTo: 'pending')
+                    .orderBy('requestedAt', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Eroare: ${snapshot.error}'));
+                  }
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final docs = snapshot.data!.docs;
+                  if (docs.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Nu există cereri noi.',
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    itemCount: docs.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      final studentName =
+                          data['studentName'] ?? 'Elev necunoscut';
+                      final date = data['dateText'] ?? '-';
+                      final message = data['message'] ?? '';
+
+                      return Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(16),
+                          title: Text(
+                            studentName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Text('Data: $date'),
+                              Text(
+                                'Motiv: $message',
+                                style: const TextStyle(
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        _handleRequest(doc.id, false),
+                                    child: const Text(
+                                      'Respinge',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton(
+                                    onPressed: () =>
+                                        _handleRequest(doc.id, true),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: primaryGreen,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: const Text('Aprobă'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       );
-                    }
-
-                    return ListView.separated(
-                      itemCount: docs.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final doc = docs[index];
-                        final data = doc.data() as Map<String, dynamic>;
-                        final studentName =
-                            data['studentName'] ?? 'Elev necunoscut';
-                        final date = data['dateText'] ?? '-';
-                        final message = data['message'] ?? '';
-
-                        return Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            title: Text(
-                              studentName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Text("Data: $date"),
-                                Text(
-                                  "Motiv: $message",
-                                  style: const TextStyle(
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          _handleRequest(doc.id, false),
-                                      child: const Text(
-                                        "Respinge",
-                                        style: TextStyle(color: Colors.red),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    ElevatedButton(
-                                      onPressed: () =>
-                                          _handleRequest(doc.id, true),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: primaryGreen,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      child: const Text("Aprobă"),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+                    },
+                  );
+                },
+              );
+            },
           ),
         ),
       ),
