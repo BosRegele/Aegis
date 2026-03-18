@@ -337,7 +337,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                               if (docs.isNotEmpty) {
                                                 final doc = docs.first;
                                                 final type =
-                                                    ((doc.data()?['type']) ??
+                                                    ((doc.data()['type']) ??
                                                             '')
                                                         .toString();
                                                 final ts =
@@ -429,7 +429,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                                   snapshot.data?.docs ?? [];
                                               if (docs.any(
                                                 (doc) =>
-                                                    doc.data()?['status'] ==
+                                                    doc.data()['status'] ==
                                                     'accepted',
                                               )) {
                                                 return Text(
