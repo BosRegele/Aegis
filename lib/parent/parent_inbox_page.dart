@@ -22,10 +22,13 @@ class _ParentInboxPageState extends State<ParentInboxPage> {
   Future<void> _loadChildren() async {
     if (AppSession.uid != null) {
       try {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(AppSession.uid).get();
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(AppSession.uid)
+            .get();
         final children = doc.data()?['children'];
         if (children is List) {
-           _childrenUids = List<String>.from(children);
+          _childrenUids = List<String>.from(children);
         }
       } catch (_) {}
     }
@@ -81,26 +84,47 @@ class _ParentInboxPageState extends State<ParentInboxPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Elev: $studentName",
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+              Text(
+                "Elev: $studentName",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 16),
-              const Text("Detalii cerere inițială:",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Text("Trimisă la: $requestedAtText",
-                  style: const TextStyle(fontSize: 16)),
-              Text("Pentru data: $targetDate, $targetTime",
-                  style: const TextStyle(fontSize: 16, color: Colors.black87)),
+              const Text(
+                "Detalii cerere inițială:",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              Text(
+                "Trimisă la: $requestedAtText",
+                style: const TextStyle(fontSize: 16),
+              ),
+              Text(
+                "Pentru data: $targetDate, $targetTime",
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
+              ),
               const SizedBox(height: 16),
-              const Text("Motiv:",
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+              const Text(
+                "Motiv:",
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              ),
               Text(message, style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 12),
-              const Text("Detalii rezolvare:",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Text("Rezolvat de: $reviewer", style: const TextStyle(fontSize: 16)),
-              Text("La data: $reviewedAtText", style: const TextStyle(fontSize: 16)),
+              const Text(
+                "Detalii rezolvare:",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              Text(
+                "Rezolvat de: $reviewer",
+                style: const TextStyle(fontSize: 16),
+              ),
+              Text(
+                "La data: $reviewedAtText",
+                style: const TextStyle(fontSize: 16),
+              ),
             ],
           ),
         ),
@@ -113,7 +137,14 @@ class _ParentInboxPageState extends State<ParentInboxPage> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text("Închide", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 16)),
+              child: const Text(
+                "Închide",
+                style: TextStyle(
+                  color: Colors.blue,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
             ),
           ),
         ],
@@ -126,7 +157,6 @@ class _ParentInboxPageState extends State<ParentInboxPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF7AAF5B),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF7AAF5B),
         toolbarHeight: 68,
         elevation: 0,
         centerTitle: true,
@@ -150,7 +180,7 @@ class _ParentInboxPageState extends State<ParentInboxPage> {
           height: double.infinity,
           clipBehavior: Clip.antiAlias,
           decoration: const BoxDecoration(
-            color: Color(0xFFF5F7FA), // Background nou
+            color: Color(0xFFF5F7FA),
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(28),
               topRight: Radius.circular(28),
@@ -161,134 +191,163 @@ class _ParentInboxPageState extends State<ParentInboxPage> {
             child: _isLoadingChildren
                 ? const Center(child: CircularProgressIndicator())
                 : _childrenUids.isEmpty
-                    ? const Center(
-                        child: Text(
-                          "Nu există elevi atribuiți.",
-                          style: TextStyle(color: Colors.grey, fontSize: 16),
-                        ),
-                      )
-                    : StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('leaveRequests')
-                            .where('studentUid', whereIn: _childrenUids)
-                            // Nu putem folosi 'whereIn' status aici, filtram local
-                            .orderBy('reviewedAt', descending: true)
-                            .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: Text("Eroare: ${snapshot.error}"));
-                }
-
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                // Filtram local doar approved/rejected
-                final docs = snapshot.data!.docs.where((d) {
-                  final s = d['status'];
-                  return s == 'approved' || s == 'rejected';
-                }).toList();
-
-                if (docs.isEmpty) {
-                  return const Center(
+                ? const Center(
                     child: Text(
-                  "Nu există mesaje.",
+                      'Nu există elevi atribuiți.',
                       style: TextStyle(color: Colors.grey, fontSize: 16),
                     ),
-                  );
-                }
+                  )
+                : StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('leaveRequests')
+                        .where('studentUid', whereIn: _childrenUids)
+                        .orderBy('reviewedAt', descending: true)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Eroare: ${snapshot.error}'));
+                      }
 
-                return ListView.separated(
-                  itemCount: docs.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final data = docs[index].data() as Map<String, dynamic>;
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                    final studentName = data['studentName'] ?? "Elev necunoscut";
-                    final classId = data['classId'] ?? "-";
-                    final status = data['status'] ?? "pending";
-                    final requestedAt = data['requestedAt'] as Timestamp?;
-                    String sentAtString = '-';
-                    if (requestedAt != null) {
-                      sentAtString = _formatFullDate(requestedAt.toDate());
-                    }
+                      final docs = snapshot.data!.docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final status = (data['status'] ?? '').toString();
+                        return status == 'approved' || status == 'rejected';
+                      }).toList();
 
-                    final reviewedAt =
-                        (data['reviewedAt'] as Timestamp?)?.toDate();
-                    final timeAgo =
-                        reviewedAt != null ? _formatTimeAgo(reviewedAt) : '';
-
-                    final bool approved = status == 'approved';
-
-                    return _BouncingButton(
-                      onTap: () => _showMessageDetails(data),
-                      borderRadius: BorderRadius.circular(24),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4)),
-                        ]),
-                        child: Row(
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE8EAF6), // Light Indigo background
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(Icons.person,
-                                size: 32, color: const Color(0xFF5C6BC0)), // Indigo Icon
+                      if (docs.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'Nu există mesaje.',
+                            style: TextStyle(color: Colors.grey, fontSize: 16),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        approved
-                                            ? "Cerere acceptată"
-                                            : "Cerere respinsă",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 20,
-                                          color: approved
-                                              ? Colors.green
-                                              : Colors.red,
-                                        ),
-                                      ),
+                        );
+                      }
+
+                      return ListView.separated(
+                        itemCount: docs.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final data =
+                              docs[index].data() as Map<String, dynamic>;
+
+                          final studentName =
+                              data['studentName'] ?? 'Elev necunoscut';
+                          final classId = data['classId'] ?? '-';
+                          final status = data['status'] ?? 'pending';
+                          final requestedAt = data['requestedAt'] as Timestamp?;
+                          var sentAtString = '-';
+                          if (requestedAt != null) {
+                            sentAtString = _formatFullDate(
+                              requestedAt.toDate(),
+                            );
+                          }
+
+                          final reviewedAt = (data['reviewedAt'] as Timestamp?)
+                              ?.toDate();
+                          final timeAgo = reviewedAt != null
+                              ? _formatTimeAgo(reviewedAt)
+                              : '';
+
+                          final approved = status == 'approved';
+
+                          return _BouncingButton(
+                            onTap: () => _showMessageDetails(data),
+                            borderRadius: BorderRadius.circular(24),
+                            child: Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE8EAF6),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                    if (timeAgo.isNotEmpty)
-                                      Text(
-                                        timeAgo,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Color(0xFF90A4AE),
-                                          fontWeight: FontWeight.w600,
+                                    child: const Icon(
+                                      Icons.person,
+                                      size: 32,
+                                      color: Color(0xFF5C6BC0),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                approved
+                                                    ? 'Cerere acceptată'
+                                                    : 'Cerere respinsă',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 20,
+                                                  color: approved
+                                                      ? Colors.green
+                                                      : Colors.red,
+                                                ),
+                                              ),
+                                            ),
+                                            if (timeAgo.isNotEmpty)
+                                              Text(
+                                                timeAgo,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Color(0xFF90A4AE),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                          ],
                                         ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text("Elev: $studentName ($classId)", style: const TextStyle(fontSize: 18, color: Color(0xFF1F252B))),
-                                Text("Trimisă la: $sentAtString", style: const TextStyle(fontSize: 16, color: Colors.grey)),
-                              ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Elev: $studentName ($classId)',
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            color: Color(0xFF1F252B),
+                                          ),
+                                        ),
+                                        Text(
+                                          'Trimisă la: $sentAtString',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
           ),
         ),
       ),
