@@ -132,7 +132,9 @@ service cloud.firestore {
     }
 
     match /classes/{classId} {
-      allow read: if hasProfile();
+      // Secretariat UI reads class lists directly from Firestore.
+      // Keep writes admin-only, but allow reads for authenticated users.
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
