@@ -33,6 +33,27 @@ exports.adminCreateUser = onCall(async (request) => {
         throw new HttpsError("permission-denied", "Doar adminul poate crea conturi");
     }
 
+    if (role === "teacher") {
+        if (!classId) {
+            throw new HttpsError("invalid-argument", "Pentru profesor trebuie selectata o clasa");
+        }
+
+        const classSnap = await admin.firestore().collection("classes").doc(classId).get();
+        if (!classSnap.exists) {
+            throw new HttpsError("not-found", `Clasa ${classId} nu exista`);
+        }
+
+        const existingTeacher = String(classSnap.data()?.teacherUsername || "")
+            .trim()
+            .toLowerCase();
+        if (existingTeacher) {
+            throw new HttpsError(
+                "failed-precondition",
+                `Clasa ${classId} are deja diriginte: ${existingTeacher}`
+            );
+        }
+    }
+
     const email = `${username}@school.local`;
 
     const user = await admin.auth().createUser({
@@ -41,25 +62,56 @@ exports.adminCreateUser = onCall(async (request) => {
         displayName: fullName,
     });
 
-    await admin.firestore().collection("users").doc(user.uid).set({
-        username,
-        fullName,
-        role,
-        classId,
-        status: "active",
-        inSchool: false,
-        lastInAt: null,
-        lastOutAt: null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    // daca este profesor si are clasa -> seteaza dirigintele clasei
-    if (role === "teacher" && classId) {
-        await admin.firestore().collection("classes").doc(classId).set({
-            name: classId,
-            teacherUsername: username,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
+    try {
+        await admin.firestore().collection("users").doc(user.uid).set({
+            username,
+            fullName,
+            role,
+            classId,
+            status: "active",
+            inSchool: false,
+            lastInAt: null,
+            lastOutAt: null,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // daca este profesor si are clasa -> seteaza dirigintele clasei doar daca e libera
+        if (role === "teacher" && classId) {
+            await admin.firestore().runTransaction(async (tx) => {
+                const classRef = admin.firestore().collection("classes").doc(classId);
+                const classSnap = await tx.get(classRef);
+
+                if (!classSnap.exists) {
+                    throw new HttpsError("not-found", `Clasa ${classId} nu exista`);
+                }
+
+                const existingTeacher = String(classSnap.data()?.teacherUsername || "")
+                    .trim()
+                    .toLowerCase();
+                if (existingTeacher && existingTeacher !== username) {
+                    throw new HttpsError(
+                        "failed-precondition",
+                        `Clasa ${classId} are deja diriginte: ${existingTeacher}`
+                    );
+                }
+
+                tx.set(classRef, {
+                    name: classId,
+                    teacherUsername: username,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true });
+            });
+        }
+    } catch (e) {
+        // rollback auth user in case firestore/class assignment fails
+        try {
+            await admin.auth().deleteUser(user.uid);
+        } catch (_) {
+            // ignore rollback failures
+        }
+        throw e;
     }
+
     return { uid: user.uid };
 
 });
@@ -80,6 +132,26 @@ async function getUidByUsername(username) {
     }
 
     return snap.docs[0].id; // uid
+}
+
+async function getUidByUsernameOrEmail(username) {
+    const uname = String(username || "").trim().toLowerCase();
+    if (!uname) {
+        throw new HttpsError("invalid-argument", "username lipsa");
+    }
+
+    try {
+        return await getUidByUsername(uname);
+    } catch (e) {
+        // fallback on auth email when Firestore doc is already missing
+    }
+
+    try {
+        const authUser = await admin.auth().getUserByEmail(`${uname}@school.local`);
+        return authUser.uid;
+    } catch (e) {
+        throw new HttpsError("not-found", `User '${uname}' nu exista`);
+    }
 }
 exports.adminResetPassword = onCall(async (request) => {
     if (!request.auth) {
@@ -181,6 +253,21 @@ exports.adminMoveStudentClass = onCall(async (request) => {
             }, { merge: true });
         }
         const oldClassId = String(userData.classId || "").trim().toUpperCase();
+
+        if (role === "teacher") {
+            const classData = classSnap.exists ? (classSnap.data() || {}) : {};
+            const existingTeacher = String(classData.teacherUsername || "")
+                .trim()
+                .toLowerCase();
+
+            if (existingTeacher && existingTeacher !== username) {
+                throw new HttpsError(
+                    "failed-precondition",
+                    `Clasa ${newClassId} are deja diriginte: ${existingTeacher}`
+                );
+            }
+        }
+
         tx.update(userRef, {
             classId: newClassId,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -225,17 +312,67 @@ exports.adminDeleteUser = onCall(async (request) => {
         throw new HttpsError("invalid-argument", "username lipsa");
     }
 
-    const uid = await getUidByUsername(username);
+    const db = admin.firestore();
+    const uid = await getUidByUsernameOrEmail(username);
 
-    // delete auth account
+    // Determine user data from uid doc or username query fallback.
+    let userDocRef = db.collection("users").doc(uid);
+    let userDocSnap = await userDocRef.get();
+    let userData = userDocSnap.exists ? (userDocSnap.data() || {}) : null;
+
+    if (!userData) {
+        const byUsernameSnap = await db
+            .collection("users")
+            .where("username", "==", username)
+            .limit(1)
+            .get();
+        if (!byUsernameSnap.empty) {
+            userDocRef = byUsernameSnap.docs[0].ref;
+            userDocSnap = byUsernameSnap.docs[0];
+            userData = byUsernameSnap.docs[0].data() || {};
+        }
+    }
+
+    const role = String(userData?.role || "").trim().toLowerCase();
+    const classId = String(userData?.classId || "").trim().toUpperCase();
+
+    // If deleted user is homeroom teacher, clear class assignment.
+    if (role === "teacher" && classId) {
+        const classRef = db.collection("classes").doc(classId);
+        const classSnap = await classRef.get();
+        if (classSnap.exists) {
+            const currentTeacher = String(classSnap.data()?.teacherUsername || "")
+                .trim()
+                .toLowerCase();
+            if (currentTeacher === username) {
+                await classRef.set({
+                    teacherUsername: admin.firestore.FieldValue.delete(),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true });
+            }
+        }
+    }
+
+    // Delete Firestore user docs by uid and by username (for legacy inconsistencies).
+    if (userDocSnap.exists) {
+        await userDocRef.delete();
+    }
+    const duplicates = await db
+        .collection("users")
+        .where("username", "==", username)
+        .get();
+    for (const d of duplicates.docs) {
+        if (d.id !== userDocRef.id) {
+            await d.ref.delete();
+        }
+    }
+
+    // Delete auth account.
     try {
         await admin.auth().deleteUser(uid);
     } catch (e) {
         // ignore if user already gone
     }
-
-    // delete firestore doc (and also clear teacher assignment in store.deleteUser if needed)
-    await admin.firestore().collection("users").doc(uid).delete();
 
     return { ok: true, uid };
 });
@@ -246,16 +383,30 @@ exports.adminCreateClass = onCall(async (request) => {
         throw new HttpsError("unauthenticated", "Login required");
     }
 
-    const { name } = request.data;
+    const callerUid = request.auth.uid;
+    const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
+    if (!callerDoc.exists || callerDoc.data().role !== "admin") {
+        throw new HttpsError("permission-denied", "Doar adminul poate crea clase");
+    }
 
-    const classId = name.toUpperCase();
+    const classId = String(request.data?.name || "").trim().toUpperCase();
+    if (!classId) {
+        throw new HttpsError("invalid-argument", "Numele clasei este obligatoriu");
+    }
 
-    await admin.firestore().collection("classes").doc(classId).set({
+    const classRef = admin.firestore().collection("classes").doc(classId);
+    const classSnap = await classRef.get();
+    if (classSnap.exists) {
+        throw new HttpsError("already-exists", `Clasa ${classId} exista deja`);
+    }
+
+    await classRef.set({
         name: classId,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
 
-    return { ok: true };
+    return { ok: true, classId };
 });
 exports.adminSetClassNoExitSchedule = onCall(async (request) => {
     if (!request.auth) {

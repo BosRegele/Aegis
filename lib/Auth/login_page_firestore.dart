@@ -143,15 +143,22 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
         throw Exception("Date invalide");
       }
 
-      final precheck = await FirebaseFunctions.instance
-          .httpsCallable('authPrecheckLogin')
-          .call({'username': username});
-      final preData = Map<String, dynamic>.from(precheck.data as Map);
-      attemptToken = (preData['attemptToken'] ?? '').toString();
-      if (preData['blocked'] == true) {
-        final sec = _asInt(preData['remainingSeconds'], fallback: 120);
-        await _setBlockedForSeconds(sec, username);
-        throw Exception("Cont blocat temporar. Incearca din nou in ${sec}s.");
+      // Login should continue even if security precheck is temporarily unavailable.
+      try {
+        final precheck = await FirebaseFunctions.instance
+            .httpsCallable('authPrecheckLogin')
+            .call({'username': username});
+        final preData = Map<String, dynamic>.from(precheck.data as Map);
+        attemptToken = (preData['attemptToken'] ?? '').toString();
+        if (preData['blocked'] == true) {
+          final sec = _asInt(preData['remainingSeconds'], fallback: 120);
+          await _setBlockedForSeconds(sec, username);
+          throw Exception("Cont blocat temporar. Incearca din nou in ${sec}s.");
+        }
+      } on FirebaseFunctionsException {
+        attemptToken = '';
+      } catch (_) {
+        attemptToken = '';
       }
 
       final email = "$username@school.local";
@@ -179,9 +186,15 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       final role = (data["role"] ?? "").toString();
       final usernameFromDb = (data["username"] ?? username).toString();
 
-      await FirebaseFunctions.instance
-          .httpsCallable('authRegisterLoginSuccess')
-          .call();
+      try {
+        await FirebaseFunctions.instance
+            .httpsCallable('authRegisterLoginSuccess')
+            .call();
+      } on FirebaseFunctionsException {
+        // Keep login successful even if this post-login hook fails.
+      } catch (_) {
+        // Keep login successful even if this post-login hook fails.
+      }
 
       AppSession.setUser(
         uidValue: uid,

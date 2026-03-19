@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../utils/password_hash.dart';
 
 class AdminStore {
@@ -240,6 +241,18 @@ class AdminStore {
   Future<void> deleteUser(String username) async {
     username = username.trim().toLowerCase();
     if (username.isEmpty) throw Exception("username lipsa");
+
+    // Preferred path: backend function deletes both Firebase Auth account
+    // and Firestore user data.
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'adminDeleteUser',
+      );
+      await callable.call(<String, dynamic>{'username': username});
+      return;
+    } catch (_) {
+      // Fallback to local cleanup to avoid blocking admin workflows.
+    }
 
     final snap = await _db
         .collection('users')

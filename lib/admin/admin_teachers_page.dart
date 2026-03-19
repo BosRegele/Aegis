@@ -23,9 +23,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryGreen = Color.fromARGB(255, 94, 184, 78);
-    const Color lightGreen = Color(0xFFF0F4E8);
-    const Color darkGreen = Color.fromARGB(255, 94, 202, 54);
+    const Color primaryGreen = Color(0xFF7AAF5B);
 
     if (!AppSession.isAdmin) {
       return const Scaffold(
@@ -34,41 +32,102 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
     }
 
     return Scaffold(
-      backgroundColor: lightGreen,
+      backgroundColor: const Color(0xFFF8FFF5),
       appBar: AppBar(
-        backgroundColor: primaryGreen,
-        title: const Text(
-          "Admin · All Teachers",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF7AAF5B), Color(0xFF5A9641)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
         ),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .where('role', isEqualTo: 'teacher')
+              .snapshots(),
+          builder: (context, snapshot) {
+            final count = snapshot.data?.docs.length ?? 0;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Profesori",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
       body: Column(
         children: [
-
           /// SEARCH BAR
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
               controller: searchC,
               decoration: InputDecoration(
-                hintText: "Search by username, full name or class...",
-                prefixIcon: const Icon(Icons.search),
+                hintText: "Caută după utilizator, nume sau clasă...",
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF7AAF5B)),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: Colors.green.withValues(alpha: 0.30),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: Colors.green.withValues(alpha: 0.30),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF7AAF5B),
+                    width: 2,
+                  ),
                 ),
               ),
               onChanged: (v) => setState(() => q = v.trim().toLowerCase()),
             ),
           ),
 
-          const Divider(height: 1),
+          const Divider(height: 1, color: Color(0xFFCDE8B0)),
 
           /// TEACHERS LIST
           Expanded(
@@ -106,12 +165,11 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                   final data = d.data() as Map<String, dynamic>;
                   final uid = d.id;
                   final username = (data['username'] ?? uid).toString();
-                  final fullName = (data['fullName'] ?? username).toString();
-                  final classId = (data['classId'] ?? '').toString().toLowerCase();
+                  final fullName = (data['fullName'] ?? username)
+                      .toString()
+                      .toLowerCase();
 
-                  return username.contains(q) ||
-                      fullName.contains(q) ||
-                      classId.contains(q);
+                  return fullName.contains(q);
                 }).toList();
 
                 if (filtered.isEmpty) {
@@ -130,34 +188,39 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                     final classId = (data['classId'] ?? '').toString();
                     final status = (data['status'] ?? 'active').toString();
 
-                    return Column(
-                      children: [
-                        ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: primaryGreen.withOpacity(0.2),
-                            child: const Icon(Icons.person_outline),
+                    return Container(
+                      margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFCDE8B0)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
                           ),
-                          title: Text(
-                            fullName,
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          subtitle: Text(
-                            "user: $username | clasă: $classId | $status",
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => _openTeacherDialog(
-                            context,
-                            username: username,
-                            fullName: fullName,
-                            classId: classId,
-                            status: status,
-                          ),
+                        ],
+                      ),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: primaryGreen.withValues(alpha: 0.20),
+                          child: const Icon(Icons.person_outline),
                         ),
-                        Divider(
-                          height: 1,
-                          color: darkGreen.withOpacity(0.3),
+                        title: Text(
+                          fullName,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
-                      ],
+                        subtitle: Text("user: $username | clasă: $classId"),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => _openTeacherDialog(
+                          context,
+                          username: username,
+                          fullName: fullName,
+                          classId: classId,
+                          status: status,
+                        ),
+                      ),
                     );
                   },
                 );
@@ -216,8 +279,23 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
               );
 
               if (ok == true) {
-                await store.deleteUser(username);
-                if (mounted) Navigator.pop(context);
+                try {
+                  await store.deleteUser(username);
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Utilizator șters cu succes.'),
+                    ),
+                  );
+                } catch (_) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Utilizatorul nu a putut fi șters.'),
+                    ),
+                  );
+                }
               }
             },
             child: const Text("Delete"),
