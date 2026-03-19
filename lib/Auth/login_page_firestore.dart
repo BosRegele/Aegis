@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../StudentInterface/mainnavigation.dart';
 import '../session.dart';
 import '../gate_scan_page.dart';
-import '../admin/secretariat_raw_page.dart';
+import '../admin/secretariat_raw_page.dart' show SecretariatRawPage;
 import '../teacher/teacher_dashboard_page.dart';
 import '../parent/parent_home_page.dart';
 
@@ -21,14 +24,134 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
   final passC = TextEditingController();
   bool loading = false;
   bool passwordVisible = false; // control vizibilitate parola
+  DateTime? _blockedUntil;
+  String _blockedUsername = '';
+  Timer? _countdownTimer;
+
+  static const _kBlockedUntilMs = 'login_blocked_until_ms';
+  static const _kBlockedUsername = 'login_blocked_username';
+
+  bool get _isLocallyBlocked {
+    if (_blockedUntil == null) return false;
+    final entered = userC.text.trim().toLowerCase();
+    if (_blockedUsername.isNotEmpty && entered != _blockedUsername) {
+      return false;
+    }
+    return DateTime.now().isBefore(_blockedUntil!);
+  }
+
+  int get _remainingSeconds {
+    if (_blockedUntil == null) return 0;
+    final diff = _blockedUntil!.difference(DateTime.now()).inSeconds;
+    return diff > 0 ? diff : 0;
+  }
+
+  void _startCountdown() {
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final expired =
+          _blockedUntil != null && DateTime.now().isAfter(_blockedUntil!);
+      if (expired) {
+        _countdownTimer?.cancel();
+        _clearLocalBlockState();
+      }
+      setState(() {});
+    });
+  }
+
+  Future<void> _setBlockedForSeconds(int sec, String username) async {
+    if (sec <= 0) return;
+    _blockedUntil = DateTime.now().add(Duration(seconds: sec));
+    _blockedUsername = username.trim().toLowerCase();
+    _startCountdown();
+    await _saveLocalBlockState();
+    setState(() {});
+  }
+
+  Future<void> _saveLocalBlockState() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_blockedUntil != null) {
+      await prefs.setInt(
+        _kBlockedUntilMs,
+        _blockedUntil!.millisecondsSinceEpoch,
+      );
+      await prefs.setString(_kBlockedUsername, _blockedUsername);
+    }
+  }
+
+  Future<void> _clearLocalBlockState() async {
+    _blockedUntil = null;
+    _blockedUsername = '';
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kBlockedUntilMs);
+    await prefs.remove(_kBlockedUsername);
+  }
+
+  Future<void> _loadLocalBlockState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ms = prefs.getInt(_kBlockedUntilMs);
+    final uname = prefs.getString(_kBlockedUsername) ?? '';
+    if (ms == null) return;
+
+    final dt = DateTime.fromMillisecondsSinceEpoch(ms);
+    if (DateTime.now().isBefore(dt)) {
+      _blockedUntil = dt;
+      _blockedUsername = uname;
+      _startCountdown();
+      if (mounted) setState(() {});
+      return;
+    }
+
+    await _clearLocalBlockState();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    userC.addListener(() {
+      if (mounted) setState(() {});
+    });
+    unawaited(_loadLocalBlockState());
+  }
+
+  int _asInt(dynamic v, {int fallback = 0}) {
+    if (v is int) return v;
+    return int.tryParse(v?.toString() ?? '') ?? fallback;
+  }
 
   Future<void> _login() async {
+    if (_isLocallyBlocked) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Cont blocat temporar. Incearca din nou in ${_remainingSeconds}s.",
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => loading = true);
+    String attemptToken = '';
     try {
       final username = userC.text.trim().toLowerCase();
       final password = passC.text.trim();
       if (username.isEmpty || password.isEmpty) {
-        throw Exception("Completeaza username si parola");
+        throw Exception("Date invalide");
+      }
+
+      final precheck = await FirebaseFunctions.instance
+          .httpsCallable('authPrecheckLogin')
+          .call({'username': username});
+      final preData = Map<String, dynamic>.from(precheck.data as Map);
+      attemptToken = (preData['attemptToken'] ?? '').toString();
+      if (preData['blocked'] == true) {
+        final sec = _asInt(preData['remainingSeconds'], fallback: 120);
+        await _setBlockedForSeconds(sec, username);
+        throw Exception("Cont blocat temporar. Incearca din nou in ${sec}s.");
       }
 
       final email = "$username@school.local";
@@ -37,43 +160,29 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
         password: password,
       );
       final uid = cred.user!.uid;
-      final usersCol = FirebaseFirestore.instance.collection('users');
-      QuerySnapshot? qsnap;
-      DocumentSnapshot? doc;
-
-      qsnap = await usersCol
-          .where('username', isEqualTo: username)
-          .limit(1)
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
           .get();
-      if (qsnap.docs.isNotEmpty) doc = qsnap.docs.first;
-      if (doc == null) {
-        final d = await usersCol.doc(uid).get();
-        if (d.exists) doc = d;
-      }
-      if (doc == null) {
-        qsnap = await usersCol.where('uid', isEqualTo: uid).limit(1).get();
-        if (qsnap.docs.isNotEmpty) doc = qsnap.docs.first;
-      }
-      if (doc == null || !doc.exists) {
+
+      if (!doc.exists) {
         await FirebaseAuth.instance.signOut();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profilul utilizatorului nu exista in Firestore'),
-            ),
-          );
-        }
-        return;
+        throw Exception('Date invalide');
       }
 
       final data = doc.data() as Map<String, dynamic>;
       if ((data["status"] ?? "active") == "disabled") {
         await FirebaseAuth.instance.signOut();
-        throw Exception("Cont dezactivat");
+        throw Exception("Autentificare indisponibila");
       }
 
       final role = (data["role"] ?? "").toString();
       final usernameFromDb = (data["username"] ?? username).toString();
+
+      await FirebaseFunctions.instance
+          .httpsCallable('authRegisterLoginSuccess')
+          .call();
+
       AppSession.setUser(
         uidValue: uid,
         usernameValue: usernameFromDb,
@@ -109,28 +218,54 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
           MaterialPageRoute(builder: (_) => const ParentHomePage()),
         );
       } else {
-        throw Exception("Rol necunoscut");
+        throw Exception("Autentificare indisponibila");
       }
     } on FirebaseAuthException catch (e) {
-      String msg = "Eroare autentificare";
-      if (e.code == "user-not-found") msg = "Utilizator inexistent";
-      if (e.code == "wrong-password" || e.code == "invalid-credential") {
-        msg = "Parola gresita";
+      String msg = "Date de autentificare invalide.";
+      if (e.code == "wrong-password" ||
+          e.code == "invalid-credential" ||
+          e.code == "user-not-found" ||
+          e.code == "invalid-email" ||
+          e.code == "user-disabled") {
+        final username = userC.text.trim().toLowerCase();
+        try {
+          if (attemptToken.isNotEmpty) {
+            final failRes = await FirebaseFunctions.instance
+                .httpsCallable('authReportLoginFailure')
+                .call({'username': username, 'attemptToken': attemptToken});
+            final failData = Map<String, dynamic>.from(failRes.data as Map);
+            if (failData['blocked'] == true) {
+              final sec = _asInt(failData['remainingSeconds'], fallback: 120);
+              await _setBlockedForSeconds(sec, username);
+              msg =
+                  "Autentificare temporar indisponibila. Incearca din nou mai tarziu.";
+            }
+          }
+        } on FirebaseFunctionsException catch (fx) {
+          if (fx.code == 'resource-exhausted') {
+            msg =
+                "Autentificare temporar indisponibila. Incearca din nou mai tarziu.";
+          } else if (fx.code == 'failed-precondition') {
+            msg = "Date de autentificare invalide.";
+          }
+        }
       }
-      if (e.code == "invalid-email") msg = "Username invalid";
       if (e.code == "too-many-requests") {
-        msg = "Prea multe incercari. Incearca mai tarziu.";
+        msg =
+            "Autentificare temporar indisponibila. Incearca din nou mai tarziu.";
       }
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(msg)));
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Eroare: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Autentificare esuata. Incearca din nou."),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => loading = false);
@@ -139,6 +274,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     userC.dispose();
     passC.dispose();
     super.dispose();
@@ -298,7 +434,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: loading ? null : _login,
+                      onPressed: (loading || _isLocallyBlocked) ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color.fromRGBO(122, 175, 91, 1),
                         elevation: 8,
@@ -308,7 +444,11 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                         ),
                       ),
                       child: Text(
-                        loading ? "Se conecteaza..." : "Conectează-te",
+                        loading
+                            ? "Se conecteaza..."
+                            : _isLocallyBlocked
+                            ? "Blocat (${_remainingSeconds}s)"
+                            : "Conectează-te",
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

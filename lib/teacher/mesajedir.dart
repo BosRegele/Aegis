@@ -1,9 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../session.dart';
-import 'orardir.dart';
-import 'cereriasteptare.dart';
-import 'statuselevi.dart';
 
 class MesajeDirPage extends StatefulWidget {
   const MesajeDirPage({super.key});
@@ -148,7 +145,7 @@ class _InboxMessageTile extends StatelessWidget {
                           child: Text(
                             data.title,
                             style: const TextStyle(
-                              fontSize: 31,
+                              fontSize: 17,
                               height: 1.0,
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF2A2E33),
@@ -159,7 +156,7 @@ class _InboxMessageTile extends StatelessWidget {
                         Text(
                           data.time,
                           style: const TextStyle(
-                            fontSize: 27,
+                            fontSize: 13,
                             color: Color(0xFF5E6670),
                             height: 1.0,
                           ),
@@ -170,7 +167,7 @@ class _InboxMessageTile extends StatelessWidget {
                     Text(
                       data.subtitle,
                       style: const TextStyle(
-                        fontSize: 31,
+                        fontSize: 15,
                         color: Color(0xFF2F353B),
                         height: 1.06,
                         fontWeight: FontWeight.w500,
@@ -202,7 +199,8 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(122, 175, 91, 1),
-        title: const Text('Inbox'),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Mesaje', style: TextStyle(color: Colors.white)),
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: teacherDoc.get(),
@@ -270,44 +268,6 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
           );
         },
       ),
-    );
-  }
-
-  Widget _dashboardButton(
-    BuildContext context,
-    String label,
-    Color color,
-    VoidCallback onPressed,
-  ) {
-    return SizedBox(
-      width: 100,
-      height: 100,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-        ),
-        onPressed: onPressed,
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white),
-        ),
-      ),
-    );
-  }
-}
-
-class SimplePage extends StatelessWidget {
-  final String title;
-
-  const SimplePage({required this.title, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text(title, style: const TextStyle(fontSize: 24))),
     );
   }
 }

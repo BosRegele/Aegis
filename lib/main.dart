@@ -1,6 +1,6 @@
 import 'package:firster/Auth/login_page_firestore.dart';
 import 'package:firster/StudentInterface/mainnavigation.dart';
-import 'package:firster/admin/secretariat_raw_page.dart';
+import 'package:firster/admin/secretariat_raw_page.dart' show SecretariatRawPage;
 import 'package:firster/gate_scan_page.dart';
 import 'package:firster/teacher/teacher_dashboard_page.dart';
 import 'package:firster/parent/parent_home_page.dart';
