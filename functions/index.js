@@ -627,7 +627,8 @@ exports.redeemQrToken = onCall(async (request) => {
                 inSchool: true,
                 lastInAt: nowTs,
             });
-        } else if (inSchool && isAfterSchedule) {
+        } else if (inSchool && !isWithinSchedule) {
+            // Allow exit if outside schedule (before or after)
             eventType = "exit";
             tx.update(userRef, {
                 inSchool: false,
@@ -635,15 +636,75 @@ exports.redeemQrToken = onCall(async (request) => {
             });
             result.type = "exit";
         } else {
-            eventType = "deny";
-            result = {
-                ok: false,
-                reason: "ALREADY_IN_SCHOOL",
-                userId,
-                fullName,
-                classId,
-                type: "deny"
-            };
+            // Check for approved leave request for today and current time
+            let canLeave = false;
+            if (isWithinSchedule) {
+                // Query leaveRequests for this student, today, status 'accepted'
+                const leaveQuery = await db.collection('leaveRequests')
+                    .where('studentUid', '==', userId)
+                    .where('status', '==', 'accepted')
+                    .get();
+                const nowDate = now;
+                for (const doc of leaveQuery.docs) {
+                    const leave = doc.data();
+                    // Check if leave is for today
+                    let leaveDate = null;
+                    if (leave.requestedForDate && leave.requestedForDate.toDate) {
+                        leaveDate = leave.requestedForDate.toDate();
+                    } else if (leave.dateText) {
+                        // Parse DD.MM.YYYY
+                        const parts = String(leave.dateText).split('.');
+                        if (parts.length === 3) {
+                            leaveDate = new Date(
+                                parseInt(parts[2], 10),
+                                parseInt(parts[1], 10) - 1,
+                                parseInt(parts[0], 10)
+                            );
+                        }
+                    }
+                    if (leaveDate &&
+                        leaveDate.getFullYear() === nowDate.getFullYear() &&
+                        leaveDate.getMonth() === nowDate.getMonth() &&
+                        leaveDate.getDate() === nowDate.getDate()) {
+                        // Check timeText if present
+                        if (leave.timeText) {
+                            const leaveTimeParts = String(leave.timeText).split(':');
+                            if (leaveTimeParts.length === 2) {
+                                const leaveHour = parseInt(leaveTimeParts[0], 10);
+                                const leaveMinute = parseInt(leaveTimeParts[1], 10);
+                                const leaveMinutes = leaveHour * 60 + leaveMinute;
+                                // Allow leave if nowMinutes >= leaveMinutes
+                                if (nowMinutes >= leaveMinutes) {
+                                    canLeave = true;
+                                    break;
+                                }
+                            }
+                        } else {
+                            // No time restriction, allow leave
+                            canLeave = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (canLeave) {
+                eventType = "exit";
+                tx.update(userRef, {
+                    inSchool: false,
+                    lastOutAt: nowTs,
+                });
+                result.type = "exit";
+            } else {
+                eventType = "deny";
+                result = {
+                    ok: false,
+                    reason: "ALREADY_IN_SCHOOL",
+                    userId,
+                    fullName,
+                    classId,
+                    type: "deny"
+                };
+            }
         }
         // Log access event in backend
         const accessEvent = {
