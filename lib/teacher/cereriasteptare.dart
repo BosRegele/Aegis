@@ -159,7 +159,7 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: const Color(0xFFE6EBEE),
       appBar: AppBar(
         backgroundColor: const Color.fromRGBO(122, 175, 91, 1),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -187,13 +187,31 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                 }
                 final docs = snap.data!.docs;
                 if (docs.isEmpty) {
-                  return const Center(
-                    child: Text('Nu există cereri de învoire în așteptare.'),
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 64,
+                          color: const Color(0xFF7AAF5B).withOpacity(0.5),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Nicio cerere în așteptare',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF5F6771),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }
                 return ListView.separated(
-                  padding: const EdgeInsets.all(12),
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final doc = docs[index];
@@ -204,125 +222,139 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                     final timeText = (d['timeText'] ?? '').toString();
                     final message = (d['message'] ?? '').toString();
 
-                    return Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () => _showRequestDialog(context, requestId, d),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF2E3B4E).withOpacity(0.07),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF17B5A8,
-                                  ).withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(12),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(18),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(18),
+                          onTap: () =>
+                              _showRequestDialog(context, requestId, d),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                // Avatar
+                                Container(
+                                  width: 46,
+                                  height: 46,
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF4B78D2,
+                                    ).withOpacity(0.10),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.person_rounded,
+                                    color: Color(0xFF4B78D2),
+                                    size: 26,
+                                  ),
                                 ),
-                                child: const Icon(
-                                  Icons.person_rounded,
-                                  color: Color(0xFF17B5A8),
-                                  size: 26,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      studentName,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '$dateText $timeText',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Color(0xFF5F6771),
-                                      ),
-                                    ),
-                                    if (message.isNotEmpty)
+                                const SizedBox(width: 12),
+                                // Content
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
                                       Text(
-                                        message,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                        studentName,
                                         style: const TextStyle(
-                                          fontSize: 13,
-                                          color: Color(0xFF5F6771),
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 15,
+                                          color: Color(0xFF2E3B4E),
                                         ),
                                       ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: 80,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 6,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
+                                      const SizedBox(height: 5),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(
+                                                0xFF4B78D2,
+                                              ).withOpacity(0.10),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.calendar_today_rounded,
+                                                  size: 11,
+                                                  color: Color(0xFF4B78D2),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  '$dateText${timeText.isNotEmpty ? ' · $timeText' : ''}',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Color(0xFF4B78D2),
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (message.isNotEmpty) ...[
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          message,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: Color(0xFF5F6771),
                                           ),
                                         ),
-                                      ),
-                                      onPressed: () => _reviewRequest(
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // Action buttons
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _ActionBtn(
+                                      icon: Icons.check_rounded,
+                                      color: const Color(0xFF4CAF50),
+                                      onTap: () => _reviewRequest(
                                         requestId: requestId,
                                         status: 'approved',
                                       ),
-                                      child: const Text(
-                                        'Aprobă',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  SizedBox(
-                                    width: 80,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 6,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                      ),
-                                      onPressed: () => _reviewRequest(
+                                    const SizedBox(height: 6),
+                                    _ActionBtn(
+                                      icon: Icons.close_rounded,
+                                      color: const Color(0xFFE53935),
+                                      onTap: () => _reviewRequest(
                                         requestId: requestId,
                                         status: 'rejected',
                                       ),
-                                      child: const Text(
-                                        'Respinge',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -331,6 +363,35 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                 );
               },
             ),
+    );
+  }
+}
+
+class _ActionBtn extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionBtn({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          shape: BoxShape.circle,
+          border: Border.all(color: color.withOpacity(0.4), width: 1.2),
+        ),
+        child: Icon(icon, color: color, size: 20),
+      ),
     );
   }
 }

@@ -393,12 +393,6 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                                     ? Icons.logout_rounded
                                                     : Icons
                                                           .qr_code_scanner_rounded;
-                                                final scanLabel =
-                                                    type == 'entry'
-                                                    ? 'Intrare'
-                                                    : type == 'exit'
-                                                    ? 'Ieșire'
-                                                    : 'Scanare';
                                                 return Container(
                                                   padding:
                                                       const EdgeInsets.symmetric(
