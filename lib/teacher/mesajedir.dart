@@ -197,101 +197,85 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
         .doc(teacherUid);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE6EBEE),
+      backgroundColor: const Color(0xFF7AAF5B),
       appBar: AppBar(
         backgroundColor: const Color(0xFF7AAF5B),
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text('Mesaje', style: TextStyle(color: Colors.white)),
         elevation: 0,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-        ),
       ),
-      body: FutureBuilder<DocumentSnapshot>(
-        future: teacherDoc.get(),
-        builder: (context, snap) {
-          if (snap.hasError) {
-            return Center(child: Text("Eroare: ${snap.error}"));
-          }
-          if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snap.data!.exists) {
-            return const Center(child: Text("Teacher not found"));
-          }
+      body: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFE6EBEE),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: FutureBuilder<DocumentSnapshot>(
+          future: teacherDoc.get(),
+          builder: (context, snap) {
+            if (snap.hasError) {
+              return Center(child: Text("Eroare: ${snap.error}"));
+            }
+            if (!snap.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (!snap.data!.exists) {
+              return const Center(child: Text("Teacher not found"));
+            }
 
-          final data = snap.data!.data() as Map<String, dynamic>;
-          final classId = (data["classId"] ?? "").toString().trim();
-          if (classId.isEmpty) {
-            return Center(
-              child: Text(
-                "Nu ai clasa asignata.\nCere secretariatului sa-ti seteze classId.",
-              ),
-            );
-          }
-
-          final stream = FirebaseFirestore.instance
-              .collection('leaveRequests')
-              .where('classId', isEqualTo: classId)
-              .snapshots();
-
-          return StreamBuilder<QuerySnapshot>(
-            stream: stream,
-            builder: (context, reqSnap) {
-              if (reqSnap.hasError) {
-                return Center(child: Text('Eroare: ${reqSnap.error}'));
-              }
-              if (!reqSnap.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final docs = reqSnap.data!.docs;
-              if (docs.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.inbox_rounded,
-                        size: 64,
-                        color: const Color(0xFF7AAF5B).withOpacity(0.45),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Niciun mesaj',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF5F6771),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              final items =
-                  docs
-                      .map(
-                        (doc) => _fromLeaveRequest(
-                          doc.data() as Map<String, dynamic>,
-                        ),
-                      )
-                      .toList()
-                    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                itemBuilder: (context, index) {
-                  final message = items[index];
-                  return _InboxMessageTile(data: message, onTap: () {});
-                },
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemCount: items.length,
+            final data = snap.data!.data() as Map<String, dynamic>;
+            final classId = (data["classId"] ?? "").toString().trim();
+            if (classId.isEmpty) {
+              return Center(
+                child: Text(
+                  "Nu ai clasa asignata.\nCere secretariatului sa-ti seteze classId.",
+                ),
               );
-            },
-          );
-        },
+            }
+
+            final stream = FirebaseFirestore.instance
+                .collection('leaveRequests')
+                .where('classId', isEqualTo: classId)
+                .snapshots();
+
+            return StreamBuilder<QuerySnapshot>(
+              stream: stream,
+              builder: (context, reqSnap) {
+                if (reqSnap.hasError) {
+                  return Center(child: Text('Eroare: ${reqSnap.error}'));
+                }
+                if (!reqSnap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final docs = reqSnap.data!.docs;
+                if (docs.isEmpty) {
+                  return const Center(child: Text('Nu exista mesaje.'));
+                }
+
+                final items =
+                    docs
+                        .map(
+                          (doc) => _fromLeaveRequest(
+                            doc.data() as Map<String, dynamic>,
+                          ),
+                        )
+                        .toList()
+                      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                  itemBuilder: (context, index) {
+                    final message = items[index];
+                    return _InboxMessageTile(data: message, onTap: () {});
+                  },
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemCount: items.length,
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
