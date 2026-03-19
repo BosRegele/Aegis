@@ -40,7 +40,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
       _leaveActiveStream = FirebaseFirestore.instance
           .collection('leaveRequests')
           .where('studentUid', isEqualTo: currentUser.uid)
-          .where('status', whereIn: ['accepted', 'active'])
+          .where('status', whereIn: ['approved', 'active'])
           .snapshots();
     }
   }
@@ -52,7 +52,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
         : 'Elev';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF7AAF5B),
+      backgroundColor: const Color(0xFFE6EBEE),
       body: SafeArea(
         child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           stream: _userDocStream,
@@ -100,7 +100,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
                     clipBehavior: Clip.antiAlias,
                     padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
                     decoration: const BoxDecoration(
-                      color: Color(0xFFD8DDD8),
+                      color: Color(0xFFE6EBEE),
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(28),
                         topRight: Radius.circular(28),
@@ -267,41 +267,77 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                     ),
                                     const SizedBox(width: 8),
                                     if (userData['inSchool'] == true)
-                                      Text(
-                                        'în incinta școlii',
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          color: Color(0xFF4B78D2),
-                                          fontWeight: FontWeight.w500,
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(
+                                            0xFF4B78D2,
+                                          ).withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          border: Border.all(
+                                            color: const Color(0xFF4B78D2),
+                                            width: 1.2,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.school_rounded,
+                                              color: Color(0xFF4B78D2),
+                                              size: 15,
+                                            ),
+                                            const SizedBox(width: 5),
+                                            const Text(
+                                              'În incintă',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Color(0xFF4B78D2),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       )
                                     else ...[
                                       Container(
-                                        width: 12,
-                                        height: 12,
-                                        margin: const EdgeInsets.only(right: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.red.withOpacity(
-                                                0.2,
+                                          color: Colors.red.withOpacity(0.10),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.red,
+                                            width: 1.2,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.logout_rounded,
+                                              color: Colors.red,
+                                              size: 15,
+                                            ),
+                                            const SizedBox(width: 5),
+                                            const Text(
+                                              'În afara incintei',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.red,
+                                                fontWeight: FontWeight.w600,
                                               ),
-                                              blurRadius: 2,
-                                              spreadRadius: 1,
                                             ),
                                           ],
-                                        ),
-                                      ),
-                                      Text(
-                                        'În afara incintei',
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          color: Colors.red,
-                                          fontWeight: FontWeight.w500,
-                                          fontFamily: 'Roboto',
-                                          letterSpacing: 0.2,
                                         ),
                                       ),
                                     ],
@@ -337,8 +373,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                               if (docs.isNotEmpty) {
                                                 final doc = docs.first;
                                                 final type =
-                                                    ((doc.data()['type']) ??
-                                                            '')
+                                                    ((doc.data()['type']) ?? '')
                                                         .toString();
                                                 final ts =
                                                     (doc['timestamp']
@@ -346,50 +381,77 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                                 final dateStr = ts != null
                                                     ? '${ts.toDate().day.toString().padLeft(2, '0')}.${ts.toDate().month.toString().padLeft(2, '0')}.${ts.toDate().year} ${ts.toDate().hour.toString().padLeft(2, '0')}:${ts.toDate().minute.toString().padLeft(2, '0')}'
                                                     : '';
-                                                if (type == 'entry') {
-                                                  return Text(
-                                                    'Intrare - $dateStr',
-                                                    style: TextStyle(
-                                                      fontSize: 15,
-                                                      color: Color(0xFF17B5A8),
-                                                      fontWeight:
-                                                          FontWeight.w500,
+                                                final scanColor =
+                                                    type == 'entry'
+                                                    ? const Color(0xFF17B5A8)
+                                                    : type == 'exit'
+                                                    ? const Color(0xFFE47E2D)
+                                                    : const Color(0xFF4B78D2);
+                                                final scanIcon = type == 'entry'
+                                                    ? Icons.login_rounded
+                                                    : type == 'exit'
+                                                    ? Icons.logout_rounded
+                                                    : Icons
+                                                          .qr_code_scanner_rounded;
+                                                final scanLabel =
+                                                    type == 'entry'
+                                                    ? 'Intrare'
+                                                    : type == 'exit'
+                                                    ? 'Ieșire'
+                                                    : 'Scanare';
+                                                return Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 4,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: scanColor
+                                                        .withOpacity(0.10),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          20,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: scanColor,
+                                                      width: 1.2,
                                                     ),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  );
-                                                } else if (type == 'exit') {
-                                                  return Text(
-                                                    'Ieșire - $dateStr',
-                                                    style: TextStyle(
-                                                      fontSize: 15,
-                                                      color: Color(0xFFE47E2D),
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                    ),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  );
-                                                } else {
-                                                  return Text(
-                                                    'Scanare - $dateStr',
-                                                    style: TextStyle(
-                                                      fontSize: 15,
-                                                      color: Color(0xFF2E3B4E),
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                    ),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  );
-                                                }
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        scanIcon,
+                                                        color: scanColor,
+                                                        size: 15,
+                                                      ),
+                                                      const SizedBox(width: 5),
+                                                      Flexible(
+                                                        child: Text(
+                                                          dateStr,
+                                                          style: TextStyle(
+                                                            fontSize: 13,
+                                                            color: scanColor,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
                                               } else {
                                                 return Text(
-                                                  'Nu există scanări.',
+                                                  'Niciuna',
                                                   style: TextStyle(
                                                     fontSize: 15,
-                                                    color: Color(0xFF2E3B4E),
-                                                    fontWeight: FontWeight.w500,
+                                                    color: Color(
+                                                      0xFF2E3B4E,
+                                                    ).withOpacity(0.45),
+                                                    fontWeight: FontWeight.w400,
                                                   ),
                                                   overflow:
                                                       TextOverflow.ellipsis,
@@ -430,36 +492,122 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                               if (docs.any(
                                                 (doc) =>
                                                     doc.data()['status'] ==
-                                                    'accepted',
+                                                    'approved',
                                               )) {
-                                                return Text(
-                                                  'Există o cerere acceptată.',
-                                                  style: TextStyle(
-                                                    fontSize: 15,
-                                                    color: Color(0xFF4B78D2),
-                                                    fontWeight: FontWeight.w500,
+                                                return Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 4,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFF4CAF50,
+                                                    ).withOpacity(0.12),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          20,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: const Color(
+                                                        0xFF4CAF50,
+                                                      ),
+                                                      width: 1.2,
+                                                    ),
                                                   ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      const Icon(
+                                                        Icons
+                                                            .check_circle_rounded,
+                                                        color: Color(
+                                                          0xFF4CAF50,
+                                                        ),
+                                                        size: 15,
+                                                      ),
+                                                      const SizedBox(width: 5),
+                                                      const Flexible(
+                                                        child: Text(
+                                                          'Invoire activă',
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            color: Color(
+                                                              0xFF388E3C,
+                                                            ),
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 );
                                               } else if (docs.isNotEmpty) {
-                                                return Text(
-                                                  'Există cereri active.',
-                                                  style: TextStyle(
-                                                    fontSize: 15,
-                                                    color: Color(0xFF17B5A8),
-                                                    fontWeight: FontWeight.w500,
+                                                return Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 4,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFF17B5A8,
+                                                    ).withOpacity(0.12),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          20,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: const Color(
+                                                        0xFF17B5A8,
+                                                      ),
+                                                      width: 1.2,
+                                                    ),
                                                   ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      const Icon(
+                                                        Icons
+                                                            .hourglass_top_rounded,
+                                                        color: Color(
+                                                          0xFF17B5A8,
+                                                        ),
+                                                        size: 15,
+                                                      ),
+                                                      const SizedBox(width: 5),
+                                                      const Flexible(
+                                                        child: Text(
+                                                          'Cerere în așteptare',
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            color: Color(
+                                                              0xFF17B5A8,
+                                                            ),
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 );
                                               } else {
                                                 return Text(
-                                                  'Nu există nicio cerere activă.',
+                                                  'Niciuna',
                                                   style: TextStyle(
                                                     fontSize: 15,
-                                                    color: Color(0xFF2E3B4E),
-                                                    fontWeight: FontWeight.w500,
+                                                    color: Color(
+                                                      0xFF2E3B4E,
+                                                    ).withOpacity(0.45),
+                                                    fontWeight: FontWeight.w400,
                                                   ),
                                                   overflow:
                                                       TextOverflow.ellipsis,
