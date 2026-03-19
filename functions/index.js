@@ -2,338 +2,8 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
-const crypto = require("crypto");
 
 admin.initializeApp();
-
-const LOGIN_MAX_FAILURES = 5;
-const LOGIN_BLOCK_MS = 2 * 60 * 1000;
-const ATTEMPT_TOKEN_TTL_MS = 60 * 1000;
-
-function hashKey(value) {
-    return crypto.createHash("sha256").update(String(value || "")).digest("hex").slice(0, 40);
-}
-
-function usernameSecurityDocId(username) {
-    return `u_${hashKey(String(username || "").trim().toLowerCase())}`;
-}
-
-function getClientIp(request) {
-    const raw = request.rawRequest;
-    const xff = raw?.headers?.["x-forwarded-for"];
-    if (typeof xff === "string" && xff.trim()) {
-        return xff.split(",")[0].trim();
-    }
-    return String(raw?.ip || "unknown").trim();
-}
-
-async function consumeRateLimit({ scope, key, limit, windowMs }) {
-    const db = admin.firestore();
-    const now = Date.now();
-    const docId = `${scope}_${hashKey(key)}`;
-    const ref = db.collection("securityRateLimits").doc(docId);
-
-    return db.runTransaction(async (tx) => {
-        const snap = await tx.get(ref);
-        const data = snap.data() || {};
-        const windowStart = Number(data.windowStartMs || 0);
-        const count = Number(data.count || 0);
-
-        const sameWindow = windowStart > 0 && (now - windowStart) < windowMs;
-        const nextWindowStart = sameWindow ? windowStart : now;
-        const nextCount = sameWindow ? count + 1 : 1;
-        const limited = nextCount > limit;
-
-        tx.set(ref, {
-            scope,
-            keyHash: hashKey(key),
-            windowStartMs: nextWindowStart,
-            count: nextCount,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-
-        const elapsed = Math.max(0, now - nextWindowStart);
-        const retryAfterSec = Math.max(1, Math.ceil((windowMs - elapsed) / 1000));
-        return { limited, retryAfterSec };
-    });
-}
-
-async function findUserUidByUsername(username) {
-    const uname = String(username || "").trim().toLowerCase();
-    if (!uname) return null;
-
-    const snap = await admin.firestore()
-        .collection("users")
-        .where("username", "==", uname)
-        .limit(1)
-        .get();
-
-    if (!snap.empty) return snap.docs[0].id;
-
-    // Fallback: unii useri vechi pot lipsi din indexarea pe username in Firestore.
-    // In acest caz incercam rezolvarea direct din Firebase Auth pe email-ul local.
-    try {
-        const authUser = await admin.auth().getUserByEmail(`${uname}@school.local`);
-        return authUser.uid;
-    } catch (e) {
-        return null;
-    }
-}
-
-exports.authPrecheckLogin = onCall(async (request) => {
-    const username = String(request.data?.username || "").trim().toLowerCase();
-    if (!username) {
-        throw new HttpsError("invalid-argument", "username lipsa");
-    }
-
-    const clientIp = getClientIp(request);
-    const ipLimit = await consumeRateLimit({
-        scope: "login_precheck_ip",
-        key: clientIp,
-        limit: 60,
-        windowMs: 60 * 1000,
-    });
-    if (ipLimit.limited) {
-        throw new HttpsError("resource-exhausted", `Prea multe cereri. Reincearca in ${ipLimit.retryAfterSec}s.`);
-    }
-
-    const pairLimit = await consumeRateLimit({
-        scope: "login_precheck_pair",
-        key: `${clientIp}|${username}`,
-        limit: 20,
-        windowMs: 60 * 1000,
-    });
-    if (pairLimit.limited) {
-        throw new HttpsError("resource-exhausted", `Prea multe cereri. Reincearca in ${pairLimit.retryAfterSec}s.`);
-    }
-
-    const db = admin.firestore();
-    const attemptToken = crypto.randomUUID();
-    await db.collection("loginAttempts").doc(attemptToken).set({
-        username,
-        ipHash: hashKey(clientIp),
-        createdAtMs: Date.now(),
-        consumed: false,
-        consumedAt: null,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: false });
-
-    const uid = await findUserUidByUsername(username);
-    const secRef = db.collection("loginSecurity").doc(usernameSecurityDocId(username));
-    const secSnap = await secRef.get();
-    const secData = secSnap.data() || {};
-    const blockedUntil = secData.blockedUntil;
-    const blockedUntilMs = blockedUntil && typeof blockedUntil.toMillis === "function"
-        ? blockedUntil.toMillis()
-        : 0;
-    const nowMs = Date.now();
-
-    if (blockedUntilMs > nowMs) {
-        return {
-            blocked: true,
-            remainingSeconds: Math.ceil((blockedUntilMs - nowMs) / 1000),
-            attemptToken,
-        };
-    }
-
-    const shouldUnlockAuth = secData.tempLock === true;
-    if (shouldUnlockAuth && uid) {
-        try {
-            const authUser = await admin.auth().getUser(uid);
-            if (authUser.disabled) {
-                await admin.auth().updateUser(uid, { disabled: false });
-            }
-        } catch (e) {
-            // Ignore not-found and keep flow generic.
-        }
-        await secRef.set({
-            username,
-            uid: uid || null,
-            failedCount: 0,
-            blockedUntil: null,
-            tempLock: false,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-    }
-
-    return { blocked: false, remainingSeconds: 0, attemptToken };
-});
-
-exports.authReportLoginFailure = onCall(async (request) => {
-    const username = String(request.data?.username || "").trim().toLowerCase();
-    const attemptToken = String(request.data?.attemptToken || "").trim();
-    if (!username) {
-        throw new HttpsError("invalid-argument", "username lipsa");
-    }
-    if (!attemptToken) {
-        throw new HttpsError("invalid-argument", "attemptToken lipsa");
-    }
-
-    const clientIp = getClientIp(request);
-    const ipLimit = await consumeRateLimit({
-        scope: "login_failure_ip",
-        key: clientIp,
-        limit: 30,
-        windowMs: 60 * 1000,
-    });
-    if (ipLimit.limited) {
-        throw new HttpsError("resource-exhausted", `Prea multe incercari. Reincearca in ${ipLimit.retryAfterSec}s.`);
-    }
-
-    const pairLimit = await consumeRateLimit({
-        scope: "login_failure_pair",
-        key: `${clientIp}|${username}`,
-        limit: 12,
-        windowMs: 60 * 1000,
-    });
-    if (pairLimit.limited) {
-        throw new HttpsError("resource-exhausted", `Prea multe incercari. Reincearca in ${pairLimit.retryAfterSec}s.`);
-    }
-
-    const db = admin.firestore();
-    const attemptRef = db.collection("loginAttempts").doc(attemptToken);
-    const attemptSnap = await attemptRef.get();
-    const attemptData = attemptSnap.data() || {};
-    const tokenUsername = String(attemptData.username || "").trim().toLowerCase();
-    const tokenIpHash = String(attemptData.ipHash || "").trim();
-    const tokenCreatedAtMs = Number(attemptData.createdAtMs || 0);
-    const tokenConsumed = attemptData.consumed === true;
-
-    if (!attemptSnap.exists || !tokenUsername || tokenUsername !== username) {
-        throw new HttpsError("failed-precondition", "Sesiune login invalida. Reincearca.");
-    }
-    if (tokenConsumed) {
-        throw new HttpsError("failed-precondition", "Sesiune login expirata. Reincearca.");
-    }
-    if (tokenIpHash && tokenIpHash !== hashKey(clientIp)) {
-        throw new HttpsError("failed-precondition", "Sesiune login invalida. Reincearca.");
-    }
-    if (!tokenCreatedAtMs || (Date.now() - tokenCreatedAtMs) > ATTEMPT_TOKEN_TTL_MS) {
-        throw new HttpsError("failed-precondition", "Sesiune login expirata. Reincearca.");
-    }
-
-    await attemptRef.set({
-        consumed: true,
-        consumedAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-
-    const uid = await findUserUidByUsername(username);
-    const secRef = db.collection("loginSecurity").doc(usernameSecurityDocId(username));
-
-    const txResult = await db.runTransaction(async (tx) => {
-        const snap = await tx.get(secRef);
-        const data = snap.data() || {};
-        const nowMs = Date.now();
-        const prevBlockedUntil = data.blockedUntil;
-        const prevBlockedUntilMs = prevBlockedUntil && typeof prevBlockedUntil.toMillis === "function"
-            ? prevBlockedUntil.toMillis()
-            : 0;
-
-        if (prevBlockedUntilMs > nowMs) {
-            return {
-                blocked: true,
-                blockedUntilMs: prevBlockedUntilMs,
-                attemptsLeft: 0,
-            };
-        }
-
-        const prevFailed = Number(data.failedCount || 0);
-        const nextFailed = prevFailed + 1;
-        const shouldBlock = nextFailed >= LOGIN_MAX_FAILURES;
-        const nextBlockedUntilMs = shouldBlock ? (nowMs + LOGIN_BLOCK_MS) : 0;
-
-        tx.set(secRef, {
-            username,
-            uid: uid || null,
-            failedCount: nextFailed,
-            blockedUntil: shouldBlock
-                ? admin.firestore.Timestamp.fromMillis(nextBlockedUntilMs)
-                : null,
-            tempLock: shouldBlock,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        }, { merge: true });
-
-        return {
-            blocked: shouldBlock,
-            blockedUntilMs: nextBlockedUntilMs,
-            attemptsLeft: Math.max(0, LOGIN_MAX_FAILURES - nextFailed),
-        };
-    });
-
-    if (txResult.blocked && uid) {
-        try {
-            await admin.auth().updateUser(uid, { disabled: true });
-        } catch (e) {
-            // Ignore if account is already disabled/not found.
-        }
-    }
-
-    const nowMs = Date.now();
-    const remainingSeconds = txResult.blocked
-        ? Math.max(1, Math.ceil((txResult.blockedUntilMs - nowMs) / 1000))
-        : 0;
-
-    return {
-        blocked: txResult.blocked,
-        attemptsLeft: txResult.attemptsLeft,
-        remainingSeconds,
-    };
-});
-
-exports.authRegisterLoginSuccess = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Login required");
-    }
-
-    const uid = request.auth.uid;
-    const db = admin.firestore();
-    const userDoc = await db.collection("users").doc(uid).get();
-    let username = "";
-    if (userDoc.exists) {
-        username = String(userDoc.data()?.username || "").trim().toLowerCase();
-    }
-    if (!username) {
-        try {
-            const au = await admin.auth().getUser(uid);
-            const email = String(au.email || "").toLowerCase();
-            if (email.endsWith("@school.local")) {
-                username = email.replace("@school.local", "");
-            }
-        } catch (e) {
-            // Ignore and keep fallback username empty.
-        }
-    }
-    if (!username) {
-        return { ok: true };
-    }
-
-    const secRef = db.collection("loginSecurity").doc(usernameSecurityDocId(username));
-    const secSnap = await secRef.get();
-    const secData = secSnap.data() || {};
-
-    if (secData.tempLock === true) {
-        try {
-            const authUser = await admin.auth().getUser(uid);
-            if (authUser.disabled) {
-                await admin.auth().updateUser(uid, { disabled: false });
-            }
-        } catch (e) {
-            // Ignore if account missing.
-        }
-    }
-
-    await secRef.set({
-        username,
-        uid,
-        failedCount: 0,
-        blockedUntil: null,
-        tempLock: false,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-
-    return { ok: true };
-});
 
 exports.adminCreateUser = onCall(async (request) => {
     if (!request.auth) {
@@ -839,44 +509,34 @@ exports.redeemQrToken = onCall(async (request) => {
 
     const result = await db.runTransaction(async (tx) => {
         const snap = await tx.get(tokenRef);
-
         if (!snap.exists) {
             return { ok: false, reason: "NOT_FOUND", type: "deny" };
         }
-
         const data = snap.data() || {};
         const used = data.used === true;
         const userId = String(data.userId || "");
         const expiresAt = data.expiresAt;
-
         if (used) {
             return { ok: false, reason: "ALREADY_USED", userId, type: "deny" };
         }
-
         if (!expiresAt || typeof expiresAt.toDate !== "function") {
             return { ok: false, reason: "BAD_EXPIRES", userId };
         }
-
         const nowMs = Date.now();
         const expMs = expiresAt.toDate().getTime();
-
         if (expMs <= nowMs) {
             return { ok: false, reason: "EXPIRED", userId, type: "deny" };
         }
-
         const userRef = db.collection("users").doc(userId);
         const userSnap = await tx.get(userRef);
-
         if (!userSnap.exists) {
             return { ok: false, reason: "USER_NOT_FOUND", userId, type: "deny" };
         }
-
         const userData = userSnap.data() || {};
         const inSchool = userData.inSchool === true;
         const status = String(userData.status || "active");
         const fullName = String(userData.fullName || userData.username || userId);
         const classId = String(userData.classId || "");
-
         if (status === "disabled") {
             return {
                 ok: false,
@@ -887,8 +547,6 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
-
-        // --- Class timetable check added here ---
         if (!classId) {
             return {
                 ok: false,
@@ -899,14 +557,10 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
-
         const classRef = db.collection("classes").doc(classId);
         const classSnap = await tx.get(classRef);
         const classData = classSnap.exists ? classSnap.data() || {} : {};
         const schedule = classData.schedule || {};
-
-        // Use local school timezone (e.g. Europe/Bucharest) for timetable checks,
-        // because Cloud Functions uses UTC by default and can be 2-3h behind local time.
         const localNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
         const dayIdx = localNow.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
         if (dayIdx < 1 || dayIdx > 5) {
@@ -919,9 +573,7 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
-
         const now = localNow;
-
         const dayKey = String(dayIdx);
         const daySchedule = schedule[dayKey];
         if (!daySchedule || !daySchedule.start || !daySchedule.end) {
@@ -934,7 +586,6 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
-
         const parseTime = (s) => {
             const parts = String(s).split(":").map((x) => parseInt(x, 10));
             if (parts.length !== 2 || Number.isNaN(parts[0]) || Number.isNaN(parts[1])) {
@@ -942,10 +593,8 @@ exports.redeemQrToken = onCall(async (request) => {
             }
             return parts[0] * 60 + parts[1];
         };
-
         const startMinutes = parseTime(daySchedule.start);
         const endMinutes = parseTime(daySchedule.end);
-
         if (startMinutes == null || endMinutes == null || endMinutes < startMinutes) {
             return {
                 ok: false,
@@ -956,19 +605,15 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
-
         const nowMinutes = now.getHours() * 60 + now.getMinutes();
         const isWithinSchedule = nowMinutes >= startMinutes && nowMinutes <= endMinutes;
         const isAfterSchedule = nowMinutes > endMinutes;
-
         const nowTs = admin.firestore.FieldValue.serverTimestamp();
-
         tx.update(tokenRef, {
             used: true,
             usedAt: nowTs,
             redeemedBy: callerUid,
         });
-
         let eventType = "entry";
         let result = {
             ok: true,
@@ -977,48 +622,111 @@ exports.redeemQrToken = onCall(async (request) => {
             classId,
             type: "entry"
         };
-
         if (!inSchool) {
-            // student entering school (now allowed regardless of timetable)
             tx.update(userRef, {
                 inSchool: true,
                 lastInAt: nowTs,
-                // keep lastOutAt as is, do not clear it
             });
-        } else if (inSchool && isAfterSchedule) {
-            // student exiting after class hours
+        } else if (inSchool && !isWithinSchedule) {
+            // Allow exit if outside schedule (before or after)
             eventType = "exit";
             tx.update(userRef, {
                 inSchool: false,
-                // keep lastInAt as is, do not clear it
                 lastOutAt: nowTs,
             });
             result.type = "exit";
         } else {
-            // student already in school during or before end schedule
-            eventType = "deny";
-            result = {
-                ok: false,
-                reason: "ALREADY_IN_SCHOOL",
-                userId,
-                fullName,
-                classId,
-                type: "deny"
-            };
+            // Check for approved leave request for today and current time
+            let canLeave = false;
+            if (isWithinSchedule) {
+                // Query leaveRequests for this student, today, status in ['approved','accepted','active']
+                const leaveQuerySnap = await tx.get(db.collection('leaveRequests')
+                    .where('studentUid', '==', userId)
+                    .where('status', 'in', ['approved', 'accepted', 'active']));
+                console.log('redeemQrToken: leaveQuerySnap.size=', leaveQuerySnap.size, 'userId=', userId, 'nowMinutes=', nowMinutes);
+                const nowDate = now;
+                for (const doc of leaveQuerySnap.docs) {
+                    const leave = doc.data();
+                    console.log('redeemQrToken: checking leave doc=', doc.id, 'data=', JSON.stringify(leave));
+                    // Check if leave is for today
+                    let leaveDate = null;
+                    if (leave.requestedForDate && leave.requestedForDate.toDate) {
+                        leaveDate = leave.requestedForDate.toDate();
+                    } else if (leave.dateText) {
+                        // Parse DD.MM.YYYY
+                        const parts = String(leave.dateText).split('.');
+                        if (parts.length === 3) {
+                            leaveDate = new Date(
+                                parseInt(parts[2], 10),
+                                parseInt(parts[1], 10) - 1,
+                                parseInt(parts[0], 10)
+                            );
+                        }
+                    }
+                    if (leaveDate &&
+                        leaveDate.getFullYear() === nowDate.getFullYear() &&
+                        leaveDate.getMonth() === nowDate.getMonth() &&
+                        leaveDate.getDate() === nowDate.getDate()) {
+                        console.log('redeemQrToken: leaveDate matches today for doc=', doc.id, 'leaveDate=', leaveDate.toISOString());
+                        // Check timeText if present
+                        if (leave.timeText) {
+                            const leaveTimeParts = String(leave.timeText).split(':');
+                            if (leaveTimeParts.length === 2) {
+                                const leaveHour = parseInt(leaveTimeParts[0], 10);
+                                const leaveMinute = parseInt(leaveTimeParts[1], 10);
+                                const leaveMinutes = leaveHour * 60 + leaveMinute;
+                                console.log('redeemQrToken: nowMinutes=', nowMinutes, 'leaveMinutes=', leaveMinutes, 'timeText=', leave.timeText);
+                                // Allow leave if nowMinutes >= leaveMinutes
+                                if (nowMinutes >= leaveMinutes) {
+                                    console.log('redeemQrToken: allow leave by time match doc=', doc.id);
+                                    canLeave = true;
+                                    break;
+                                } else {
+                                    console.log('redeemQrToken: time not reached for doc=', doc.id);
+                                }
+                            }
+                        } else {
+                            // No time restriction, allow leave
+                            console.log('redeemQrToken: allow leave (no timeText) doc=', doc.id);
+                            canLeave = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (canLeave) {
+                eventType = "exit";
+                tx.update(userRef, {
+                    inSchool: false,
+                    lastOutAt: nowTs,
+                });
+                result.type = "exit";
+            } else {
+                eventType = "deny";
+                result = {
+                    ok: false,
+                    reason: "ALREADY_IN_SCHOOL",
+                    userId,
+                    fullName,
+                    classId,
+                    type: "deny"
+                };
+            }
         }
-
-        const eventRef = db.collection("accessEvents").doc();
-        tx.set(eventRef, {
-            tokenId,
-            userId,
-            fullName,
-            classId,
+        // Log access event in backend
+        const accessEvent = {
             gateUid: callerUid,
+            userId,
+            classId,
+            scanType: eventType,
+            result: result.ok ? 'allow' : 'deny',
+            reason: result.reason || '',
             timestamp: nowTs,
-            type: eventType,
-            reason: result.ok ? null : result.reason,
-        });
-
+            fullName,
+            tokenId,
+        };
+        const accessEventsRef = db.collection('accessEvents');
+        accessEventsRef.add(accessEvent);
         return result;
     });
 
@@ -1202,4 +910,4 @@ exports.onLeaveRequestStatusChanged = onDocumentUpdated("leaveRequests/{docId}",
     } catch (e) {
         console.error("onLeaveRequestStatusChanged: FCM send failed:", e.message);
     }
-});
+});acceptedapproved

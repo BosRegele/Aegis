@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firster/session.dart';
 
 class GateScanPage extends StatefulWidget {
   const GateScanPage({super.key});
@@ -23,27 +24,13 @@ class _GateScanPageState extends State<GateScanPage> {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
-  Future<void> _logAccessEvent({
-    required String tokenId,
-    required bool allowed,
-    required String reason,
-    required String scanType,
-    String? userId,
-  }) async {
-    await FirebaseFirestore.instance.collection('accessEvents').add({
-      'tokenId': tokenId,
-      'userId': userId,
-      'timestamp': Timestamp.now(),
-      'scanType': scanType,
-      'result': allowed ? 'allow' : 'deny',
-      'reason': reason,
-    });
-  }
+  // Logging is now handled in the backend (Cloud Function)
 
   Future<void> _handleToken(String tokenId) async {
     setState(() {
       _status = "Verificare...";
     });
+
 
     try {
       final res = await _redeemToken(tokenId);
@@ -55,13 +42,7 @@ class _GateScanPageState extends State<GateScanPage> {
       final reason = (res["reason"] ?? "").toString();
       final scanType = (res["type"] ?? (ok ? "entry" : "deny")).toString();
 
-      await _logAccessEvent(
-        tokenId: tokenId,
-        allowed: ok,
-        reason: reason,
-        scanType: scanType,
-        userId: userId == '-' ? null : userId,
-      );
+      // Logging is now handled in the backend (Cloud Function)
 
       String statusMessage;
       if (ok) {
@@ -113,13 +94,19 @@ class _GateScanPageState extends State<GateScanPage> {
             child: MobileScanner(
               onDetect: (capture) {
                 if (_lock) return;
+                _lock = true;
                 final barcodes = capture.barcodes;
-                if (barcodes.isEmpty) return;
+                if (barcodes.isEmpty) {
+                  _lock = false;
+                  return;
+                }
 
                 final raw = barcodes.first.rawValue;
-                if (raw == null || raw.isEmpty) return;
+                if (raw == null || raw.isEmpty) {
+                  _lock = false;
+                  return;
+                }
 
-                _lock = true;
                 _handleToken(raw);
               },
             ),
