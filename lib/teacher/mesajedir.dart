@@ -197,10 +197,16 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
         .doc(teacherUid);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFE6EBEE),
       appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(122, 175, 91, 1),
+        backgroundColor: const Color(0xFF7AAF5B),
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text('Mesaje', style: TextStyle(color: Colors.white)),
+        elevation: 0,
+      ),
+      bottomNavigationBar: Container(
+        height: 56,
+        color: const Color(0xFF7AAF5B),
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: teacherDoc.get(),
@@ -242,7 +248,27 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
 
               final docs = reqSnap.data!.docs;
               if (docs.isEmpty) {
-                return const Center(child: Text('Nu exista mesaje.'));
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.inbox_rounded,
+                        size: 64,
+                        color: const Color(0xFF7AAF5B).withOpacity(0.45),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Niciun mesaj',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF5F6771),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
               }
 
               final items =
