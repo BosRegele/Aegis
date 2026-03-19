@@ -6,7 +6,7 @@
       "request": "launch",
       "type": "dart",
       "flutterMode": "debug",
-      "args": ["-d", "chrome"]
+      "args": ["-d", "01ead21a"]
     }
   ]
 }

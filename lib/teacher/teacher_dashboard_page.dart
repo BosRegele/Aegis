@@ -245,7 +245,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                     clipBehavior: Clip.antiAlias,
                     padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
                     decoration: const BoxDecoration(
-                      color: Color(0xFFD8DDD8),
+                      color: Color(0xFFE6EBEE),
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(28),
                         topRight: Radius.circular(28),

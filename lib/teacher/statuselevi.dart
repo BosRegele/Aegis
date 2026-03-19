@@ -23,296 +23,315 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
         .doc(teacherUid);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE6EBEE),
+      backgroundColor: const Color(0xFF7AAF5B),
       appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(122, 175, 91, 1),
+        backgroundColor: const Color(0xFF7AAF5B),
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           'Elevii clasei',
           style: TextStyle(color: Colors.white),
         ),
+        elevation: 0,
       ),
-      bottomNavigationBar: Container(
-        height: 56,
-        color: const Color.fromRGBO(122, 175, 91, 1),
-      ),
-      body: FutureBuilder<DocumentSnapshot>(
-        future: teacherDoc.get(),
-        builder: (context, snap) {
-          if (snap.hasError) {
-            return Center(child: Text("Eroare: ${snap.error}"));
-          }
-          if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snap.data!.exists) {
-            return const Center(child: Text("Teacher not found"));
-          }
+      body: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFE6EBEE),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: FutureBuilder<DocumentSnapshot>(
+          future: teacherDoc.get(),
+          builder: (context, snap) {
+            if (snap.hasError) {
+              return Center(child: Text("Eroare: ${snap.error}"));
+            }
+            if (!snap.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (!snap.data!.exists) {
+              return const Center(child: Text("Teacher not found"));
+            }
 
-          final data = snap.data!.data() as Map<String, dynamic>;
-          final classId = (data["classId"] ?? "").toString().trim();
+            final data = snap.data!.data() as Map<String, dynamic>;
+            final classId = (data["classId"] ?? "").toString().trim();
 
-          if (classId.isEmpty) {
-            return Center(
-              child: Text(
-                "Nu ai clasa asignata.\nCere secretariatului sa-ti seteze classId.",
-              ),
-            );
-          }
+            if (classId.isEmpty) {
+              return Center(
+                child: Text(
+                  "Nu ai clasa asignata.\nCere secretariatului sa-ti seteze classId.",
+                ),
+              );
+            }
 
-          // stream of students in this class
-          final studentsStream = FirebaseFirestore.instance
-              .collection('users')
-              .where('classId', isEqualTo: classId)
-              .where('role', isEqualTo: 'student')
-              .orderBy('fullName')
-              .snapshots();
+            // stream of students in this class
+            final studentsStream = FirebaseFirestore.instance
+                .collection('users')
+                .where('classId', isEqualTo: classId)
+                .where('role', isEqualTo: 'student')
+                .orderBy('fullName')
+                .snapshots();
 
-          // stream of recent access events for class
-          final eventsStream = FirebaseFirestore.instance
-              .collection('accessEvents')
-              .where('classId', isEqualTo: classId)
-              .orderBy('timestamp', descending: true)
-              .snapshots();
+            // stream of recent access events for class
+            final eventsStream = FirebaseFirestore.instance
+                .collection('accessEvents')
+                .where('classId', isEqualTo: classId)
+                .orderBy('timestamp', descending: true)
+                .snapshots();
 
-          return StreamBuilder<QuerySnapshot>(
-            stream: studentsStream,
-            builder: (context, stuSnap) {
-              if (stuSnap.hasError) {
-                return Center(child: Text('Eroare elevi: ${stuSnap.error}'));
-              }
-              if (!stuSnap.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
+            return StreamBuilder<QuerySnapshot>(
+              stream: studentsStream,
+              builder: (context, stuSnap) {
+                if (stuSnap.hasError) {
+                  return Center(child: Text('Eroare elevi: ${stuSnap.error}'));
+                }
+                if (!stuSnap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-              final students = stuSnap.data!.docs;
-              if (students.isEmpty) {
-                return const Center(child: Text('Nu exista elevi in clasa.'));
-              }
+                final students = stuSnap.data!.docs;
+                if (students.isEmpty) {
+                  return const Center(child: Text('Nu exista elevi in clasa.'));
+                }
 
-              return StreamBuilder<QuerySnapshot>(
-                stream: eventsStream,
-                builder: (context, evSnap) {
-                  if (evSnap.hasError) {
-                    return Center(
-                      child: Text('Eroare evenimente: ${evSnap.error}'),
-                    );
-                  }
-                  if (!evSnap.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+                return StreamBuilder<QuerySnapshot>(
+                  stream: eventsStream,
+                  builder: (context, evSnap) {
+                    if (evSnap.hasError) {
+                      return Center(
+                        child: Text('Eroare evenimente: ${evSnap.error}'),
+                      );
+                    }
+                    if (!evSnap.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-                  // map latest event per studentUid
-                  final lastEvent = <String, Map<String, dynamic>>{};
-                  for (var doc in evSnap.data!.docs) {
-                    final d = doc.data() as Map<String, dynamic>;
-                    final uid = (d['userId'] ?? '').toString();
-                    if (uid.isEmpty) continue;
-                    if (lastEvent.containsKey(uid))
-                      continue; // keep first (latest)
-                    lastEvent[uid] = d;
-                  }
+                    // map latest event per studentUid
+                    final lastEvent = <String, Map<String, dynamic>>{};
+                    for (var doc in evSnap.data!.docs) {
+                      final d = doc.data() as Map<String, dynamic>;
+                      final uid = (d['userId'] ?? '').toString();
+                      if (uid.isEmpty) continue;
+                      if (lastEvent.containsKey(uid))
+                        continue; // keep first (latest)
+                      lastEvent[uid] = d;
+                    }
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-                    itemCount: students.length,
-                    itemBuilder: (context, index) {
-                      final stu = students[index];
-                      final ud = stu.data() as Map<String, dynamic>;
-                      final uid = stu.id;
-                      final name = (ud['fullName'] ?? ud['username'] ?? uid)
-                          .toString();
-                      String statusText = 'in afara incintei';
-                      bool inSchool = ud['inSchool'] == true;
-                      if (inSchool) statusText = 'in incinta';
-                      String lastScanDate = '';
-                      String lastScanTime = '';
-                      String lastScanLocation = '';
+                    final sortedStudents = [...students]
+                      ..sort((a, b) {
+                        final aIn =
+                            (a.data() as Map<String, dynamic>)['inSchool'] ==
+                                true
+                            ? 0
+                            : 1;
+                        final bIn =
+                            (b.data() as Map<String, dynamic>)['inSchool'] ==
+                                true
+                            ? 0
+                            : 1;
+                        return aIn.compareTo(bIn);
+                      });
 
-                      final ev = lastEvent[uid];
-                      if (ev != null) {
-                        final ts = ev['timestamp'] as Timestamp?;
-                        if (ts != null) {
-                          final dt = ts.toDate().toLocal();
-                          lastScanDate =
-                              '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
-                          lastScanTime =
-                              '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-                        }
-                        lastScanLocation = (ev['location'] ?? ev['gate'] ?? '')
+                    return ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+                      itemCount: sortedStudents.length,
+                      itemBuilder: (context, index) {
+                        final stu = sortedStudents[index];
+                        final ud = stu.data() as Map<String, dynamic>;
+                        final uid = stu.id;
+                        final name = (ud['fullName'] ?? ud['username'] ?? uid)
                             .toString();
-                      }
+                        String statusText = 'in afara incintei';
+                        bool inSchool = ud['inSchool'] == true;
+                        if (inSchool) statusText = 'in incinta';
+                        String lastScanDate = '';
+                        String lastScanTime = '';
+                        String lastScanLocation = '';
 
-                      // check active permission from leaveRequests
-                      return StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('leaveRequests')
-                            .where('studentUid', isEqualTo: uid)
-                            .where('classId', isEqualTo: classId)
-                            .where('status', isEqualTo: 'approved')
-                            .limit(1)
-                            .snapshots(),
-                        builder: (context, permSnap) {
-                          final hasPermission =
-                              (permSnap.data?.docs.isNotEmpty ?? false);
+                        final ev = lastEvent[uid];
+                        if (ev != null) {
+                          final ts = ev['timestamp'] as Timestamp?;
+                          if (ts != null) {
+                            final dt = ts.toDate().toLocal();
+                            lastScanDate =
+                                '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
+                            lastScanTime =
+                                '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+                          }
+                          lastScanLocation =
+                              (ev['location'] ?? ev['gate'] ?? '').toString();
+                        }
 
-                          final initials = name
-                              .trim()
-                              .split(' ')
-                              .where((w) => w.isNotEmpty)
-                              .take(2)
-                              .map((w) => w[0].toUpperCase())
-                              .join();
-                          final avatarBg = inSchool
-                              ? const Color(0xFFDCEED5)
-                              : const Color(0xFFFFE0E0);
-                          final avatarFg = inSchool
-                              ? const Color(0xFF4E8A3A)
-                              : const Color(0xFFD32F2F);
-                          final badgeColor = inSchool
-                              ? const Color(0xFF4CAF50)
-                              : Colors.red;
+                        // check active permission from leaveRequests
+                        return StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('leaveRequests')
+                              .where('studentUid', isEqualTo: uid)
+                              .where('classId', isEqualTo: classId)
+                              .where('status', isEqualTo: 'approved')
+                              .limit(1)
+                              .snapshots(),
+                          builder: (context, permSnap) {
+                            final hasPermission =
+                                (permSnap.data?.docs.isNotEmpty ?? false);
 
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.07),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
+                            final initials = name
+                                .trim()
+                                .split(' ')
+                                .where((w) => w.isNotEmpty)
+                                .take(2)
+                                .map((w) => w[0].toUpperCase())
+                                .join();
+                            final avatarBg = inSchool
+                                ? const Color(0xFFDCEED5)
+                                : const Color(0xFFFFE0E0);
+                            final avatarFg = inSchool
+                                ? const Color(0xFF4E8A3A)
+                                : const Color(0xFFD32F2F);
+                            final badgeColor = inSchool
+                                ? const Color(0xFF4CAF50)
+                                : Colors.red;
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
                                 borderRadius: BorderRadius.circular(18),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => _StudentDetailPage(
-                                        name: name,
-                                        status: statusText,
-                                        lastScanDate: lastScanDate,
-                                        lastScanTime: lastScanTime,
-                                        lastScanLocation: lastScanLocation,
-                                        hasPermission: hasPermission,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.07),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 4),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 22,
-                                        backgroundColor: avatarBg,
-                                        child: Text(
-                                          initials,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 15,
-                                            color: avatarFg,
-                                          ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(18),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => _StudentDetailPage(
+                                          name: name,
+                                          status: statusText,
+                                          lastScanDate: lastScanDate,
+                                          lastScanTime: lastScanTime,
+                                          lastScanLocation: lastScanLocation,
+                                          hasPermission: hasPermission,
                                         ),
                                       ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              name,
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w700,
-                                                color: Color(0xFF2E3B4E),
-                                              ),
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 22,
+                                          backgroundColor: avatarBg,
+                                          child: Text(
+                                            initials,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 15,
+                                              color: avatarFg,
                                             ),
-                                            if (lastScanDate.isNotEmpty) ...[
-                                              const SizedBox(height: 3),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
                                               Text(
-                                                '$lastScanDate${lastScanTime.isNotEmpty ? '  $lastScanTime' : ''}',
+                                                name,
                                                 style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF2E3B4E),
+                                                ),
+                                              ),
+                                              if (lastScanDate.isNotEmpty) ...[
+                                                const SizedBox(height: 3),
+                                                Text(
+                                                  '$lastScanDate${lastScanTime.isNotEmpty ? '  $lastScanTime' : ''}',
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Color(0xFF8A9BB0),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: badgeColor.withOpacity(0.11),
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                            border: Border.all(
+                                              color: badgeColor,
+                                              width: 1.2,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                inSchool
+                                                    ? Icons.school_rounded
+                                                    : Icons.logout_rounded,
+                                                size: 13,
+                                                color: badgeColor,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                inSchool
+                                                    ? 'în incintă'
+                                                    : 'în afară',
+                                                style: TextStyle(
                                                   fontSize: 12,
-                                                  color: Color(0xFF8A9BB0),
+                                                  fontWeight: FontWeight.w600,
+                                                  color: badgeColor,
                                                 ),
                                               ),
                                             ],
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 5,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: badgeColor.withOpacity(0.11),
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                          border: Border.all(
-                                            color: badgeColor,
-                                            width: 1.2,
                                           ),
                                         ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              inSchool
-                                                  ? Icons.school_rounded
-                                                  : Icons.logout_rounded,
-                                              size: 13,
-                                              color: badgeColor,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              inSchool
-                                                  ? 'în incintă'
-                                                  : 'în afară',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: badgeColor,
-                                              ),
-                                            ),
-                                          ],
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.chevron_right_rounded,
+                                          color: const Color(
+                                            0xFF2E3B4E,
+                                          ).withOpacity(0.30),
                                         ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Icon(
-                                        Icons.chevron_right_rounded,
-                                        color: const Color(
-                                          0xFF2E3B4E,
-                                        ).withOpacity(0.30),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              );
-            },
-          );
-        },
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -355,13 +374,13 @@ class _StudentDetailPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFE6EBEE),
       appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(122, 175, 91, 1),
+        backgroundColor: const Color(0xFF7AAF5B),
         title: Text(name, style: const TextStyle(color: Colors.white)),
         iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      bottomNavigationBar: Container(
-        height: 56,
-        color: const Color.fromRGBO(122, 175, 91, 1),
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

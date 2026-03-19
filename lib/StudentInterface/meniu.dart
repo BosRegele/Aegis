@@ -52,7 +52,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
         : 'Elev';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE6EBEE),
+      backgroundColor: const Color(0xFF7AAF5B),
       body: SafeArea(
         child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           stream: _userDocStream,
