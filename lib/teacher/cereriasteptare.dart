@@ -161,13 +161,13 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFE6EBEE),
       appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(122, 175, 91, 1),
+        backgroundColor: const Color(0xFF7AAF5B),
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text('Învoiri', style: TextStyle(color: Colors.white)),
-      ),
-      bottomNavigationBar: Container(
-        height: 56,
-        color: const Color.fromRGBO(122, 175, 91, 1),
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+        ),
       ),
       body: _classId.isEmpty
           ? const Center(child: CircularProgressIndicator())

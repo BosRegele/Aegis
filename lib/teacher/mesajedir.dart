@@ -203,10 +203,9 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text('Mesaje', style: TextStyle(color: Colors.white)),
         elevation: 0,
-      ),
-      bottomNavigationBar: Container(
-        height: 56,
-        color: const Color(0xFF7AAF5B),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+        ),
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: teacherDoc.get(),

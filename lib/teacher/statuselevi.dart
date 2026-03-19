@@ -25,16 +25,16 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFE6EBEE),
       appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(122, 175, 91, 1),
+        backgroundColor: const Color(0xFF7AAF5B),
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           'Elevii clasei',
           style: TextStyle(color: Colors.white),
         ),
-      ),
-      bottomNavigationBar: Container(
-        height: 56,
-        color: const Color.fromRGBO(122, 175, 91, 1),
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+        ),
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: teacherDoc.get(),
@@ -354,15 +354,7 @@ class _StudentDetailPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFE6EBEE),
-      appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(122, 175, 91, 1),
-        title: Text(name, style: const TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      bottomNavigationBar: Container(
-        height: 56,
-        color: const Color.fromRGBO(122, 175, 91, 1),
-      ),
+      appBar: AppBar(\n        backgroundColor: const Color(0xFF7AAF5B),\n        title: Text(name, style: const TextStyle(color: Colors.white)),\n        iconTheme: const IconThemeData(color: Colors.white),\n        elevation: 0,\n        shape: const RoundedRectangleBorder(\n          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),\n        ),\n      ),\n      bottomNavigationBar: null,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
