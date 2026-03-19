@@ -267,6 +267,8 @@ class _CereriScreenState extends State<CereriScreen> {
             _selectedDate!.year,
             _selectedDate!.month,
             _selectedDate!.day,
+            _selectedTime!.hour,
+            _selectedTime!.minute,
           ),
         ),
         'reviewedAt': null,
