@@ -704,7 +704,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                 ),
                                                 SizedBox(height: 10),
                                                 const Text(
-                                                  "Interfață verde, actualizată pentru un flux administrativ clar, elegant și mult mai bine organizat vizual.",
+                                                  "Cele trei valori pe care Colegiul Național de Informatică Tudor Vianu le Încurajează",
                                                   style: TextStyle(
                                                     color: Color(0xFFE5FFF0),
                                                     fontSize: 14,
@@ -737,7 +737,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                   CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-                                                  "Focus",
+                                                  "Misiune",
                                                   style: TextStyle(
                                                     color: Color(0xFFC7F1D8),
                                                     fontSize: 11,
@@ -747,7 +747,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                 ),
                                                 SizedBox(height: 6),
                                                 Text(
-                                                  "Operațiuni zilnice",
+                                                  "Tudor Vianu",
                                                   style: TextStyle(
                                                     color: Colors.white,
                                                     fontSize: 14,
@@ -765,18 +765,16 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                         runSpacing: 12,
                                         children: const [
                                           _HeaderBadge(
-                                            icon: Icons.eco_outlined,
-                                            label: "Paletă verde premium",
+                                            icon: Icons.groups_outlined,
+                                            label: "Spiritul de echipă",
                                           ),
                                           _HeaderBadge(
-                                            icon: Icons
-                                                .dashboard_customize_outlined,
-                                            label: "Structură mai clară",
+                                            icon: Icons.emoji_events_outlined,
+                                            label: "Performanță",
                                           ),
                                           _HeaderBadge(
-                                            icon: Icons
-                                                .workspace_premium_outlined,
-                                            label: "Aspect modern și profi",
+                                            icon: Icons.military_tech_outlined,
+                                            label: "Competiție",
                                           ),
                                         ],
                                       ),
@@ -1150,16 +1148,18 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                               );
                                                               return;
                                                             }
-                                                            if (role ==
-                                                                    'teacher' &&
+                                                            if ((role ==
+                                                                        'teacher' ||
+                                                                    role ==
+                                                                        'student') &&
                                                                 selectedCreateUserClassId
                                                                     .trim()
                                                                     .isEmpty) {
                                                               _logFailure(
-                                                                'Selectează o clasă pentru profesor.',
+                                                                'Selectează o clasă pentru elev/profesor.',
                                                               );
                                                               _showInfoMessage(
-                                                                'Selectează o clasă pentru profesor.',
+                                                                'Selectează o clasă pentru elev/profesor.',
                                                               );
                                                               return;
                                                             }
@@ -1245,8 +1245,8 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                             isExpanded: true,
                                                             items:
                                                                 List.generate(
-                                                                  13,
-                                                                  (i) => i,
+                                                                  12,
+                                                                  (i) => i + 1,
                                                                 ).map((num) {
                                                                   return DropdownMenuItem(
                                                                     value: num,
@@ -1559,7 +1559,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                               decoration:
                                                                   const InputDecoration(
                                                                     hintText:
-                                                                        'Type student name...',
+                                                                        'Numele studentului...',
                                                                   ),
                                                             );
                                                           },
@@ -1711,37 +1711,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                                 return;
                                                                               }
                                                                               try {
-                                                                                final stuRef = FirebaseFirestore.instance
-                                                                                    .collection(
-                                                                                      'users',
-                                                                                    )
-                                                                                    .doc(
-                                                                                      selectedAssignStudent!['id'],
-                                                                                    );
-                                                                                final parRef = FirebaseFirestore.instance
-                                                                                    .collection(
-                                                                                      'users',
-                                                                                    )
-                                                                                    .doc(
-                                                                                      puid,
-                                                                                    );
-                                                                                await stuRef.update(
-                                                                                  {
-                                                                                    'parents': FieldValue.arrayRemove(
-                                                                                      [
-                                                                                        puid,
-                                                                                      ],
-                                                                                    ),
-                                                                                  },
-                                                                                );
-                                                                                await parRef.update(
-                                                                                  {
-                                                                                    'children': FieldValue.arrayRemove(
-                                                                                      [
-                                                                                        selectedAssignStudent!['id'],
-                                                                                      ],
-                                                                                    ),
-                                                                                  },
+                                                                                await api.removeParentFromStudent(
+                                                                                  studentUid: selectedAssignStudent!['id']!,
+                                                                                  parentUid: puid,
                                                                                 );
                                                                                 _logSuccess(
                                                                                   'Părinte eliminat din elev cu succes.',
@@ -1870,7 +1842,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                 decoration:
                                                                     const InputDecoration(
                                                                       hintText:
-                                                                          'Type parent name...',
+                                                                          'Numele părintelui...',
                                                                     ),
                                                               );
                                                             },
@@ -1884,101 +1856,108 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                         child: ElevatedButton(
                                                           onPressed:
                                                               selectedAssignParent ==
-                                                                  null
+                                                                      null ||
+                                                                  _isActionBusy(
+                                                                    'assign-parent',
+                                                                  )
                                                               ? null
-                                                              : () async {
-                                                                  final sp =
-                                                                      selectedAssignStudent!['id'];
-                                                                  final pp =
-                                                                      selectedAssignParent!['id'];
-                                                                  try {
-                                                                    final stuRef = FirebaseFirestore
-                                                                        .instance
-                                                                        .collection(
-                                                                          'users',
-                                                                        )
-                                                                        .doc(
-                                                                          sp,
+                                                              : () {
+                                                                  _runGuarded(
+                                                                    'assign-parent',
+                                                                    () async {
+                                                                      final sp =
+                                                                          selectedAssignStudent!['id'];
+                                                                      final pp =
+                                                                          selectedAssignParent!['id'];
+                                                                      try {
+                                                                        final stuRef = FirebaseFirestore
+                                                                            .instance
+                                                                            .collection(
+                                                                              'users',
+                                                                            )
+                                                                            .doc(
+                                                                              sp,
+                                                                            );
+                                                                        final stuSnap =
+                                                                            await stuRef.get();
+                                                                        final stuData =
+                                                                            stuSnap.data() ??
+                                                                            {};
+                                                                        final parents =
+                                                                            List<
+                                                                              String
+                                                                            >.from(
+                                                                              stuData['parents'] ??
+                                                                                  [],
+                                                                            );
+                                                                        if (parents
+                                                                            .contains(
+                                                                              pp,
+                                                                            )) {
+                                                                          _logFailure(
+                                                                            'Părintele este deja atribuit acestui elev.',
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            'Părintele este deja atribuit acestui elev.',
+                                                                          );
+                                                                          return;
+                                                                        }
+                                                                        if (parents.length >=
+                                                                            2) {
+                                                                          _logFailure(
+                                                                            'Elevul are deja 2 părinți atribuiți.',
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            'Elevul are deja 2 părinți atribuiți.',
+                                                                          );
+                                                                          return;
+                                                                        }
+                                                                        await api.assignParentToStudent(
+                                                                          studentUid:
+                                                                              sp!,
+                                                                          parentUid:
+                                                                              pp!,
                                                                         );
-                                                                    final stuSnap =
-                                                                        await stuRef
-                                                                            .get();
-                                                                    final stuData =
-                                                                        stuSnap
-                                                                            .data() ??
-                                                                        {};
-                                                                    final parents =
-                                                                        List<
-                                                                          String
-                                                                        >.from(
-                                                                          stuData['parents'] ??
-                                                                              [],
+                                                                        _logSuccess(
+                                                                          'Părinte atribuit elevului cu succes.',
                                                                         );
-                                                                    if (parents
-                                                                        .contains(
-                                                                          pp,
-                                                                        )) {
-                                                                      _logFailure(
-                                                                        'Părintele este deja atribuit acestui elev.',
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        'Părintele este deja atribuit acestui elev.',
-                                                                      );
-                                                                      return;
-                                                                    }
-                                                                    if (parents
-                                                                            .length >=
-                                                                        2) {
-                                                                      _logFailure(
-                                                                        'Elevul are deja 2 părinți atribuiți.',
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        'Elevul are deja 2 părinți atribuiți.',
-                                                                      );
-                                                                      return;
-                                                                    }
-                                                                    final parRef = FirebaseFirestore
-                                                                        .instance
-                                                                        .collection(
-                                                                          'users',
-                                                                        )
-                                                                        .doc(
-                                                                          pp,
+                                                                        _showInfoMessage(
+                                                                          'Părintele a fost atribuit cu succes.',
                                                                         );
-                                                                    await stuRef.update({
-                                                                      'parents':
-                                                                          FieldValue.arrayUnion([
-                                                                            pp,
-                                                                          ]),
-                                                                    });
-                                                                    await parRef.update({
-                                                                      'children':
-                                                                          FieldValue.arrayUnion([
-                                                                            sp,
-                                                                          ]),
-                                                                    });
-                                                                    _logSuccess(
-                                                                      'Părinte atribuit elevului cu succes.',
-                                                                    );
-                                                                    _showInfoMessage(
-                                                                      'Părintele a fost atribuit cu succes.',
-                                                                    );
-                                                                  } catch (e) {
-                                                                    final message =
-                                                                        _friendlyError(
-                                                                          'assign-parent',
+                                                                      } catch (
+                                                                        e
+                                                                      ) {
+                                                                        final message =
+                                                                            _friendlyError(
+                                                                              'assign-parent',
+                                                                            );
+                                                                        _logFailure(
+                                                                          message,
                                                                         );
-                                                                    _logFailure(
-                                                                      message,
-                                                                    );
-                                                                    _showInfoMessage(
-                                                                      message,
-                                                                    );
-                                                                  }
+                                                                        _showInfoMessage(
+                                                                          message,
+                                                                        );
+                                                                      }
+                                                                    },
+                                                                  );
                                                                 },
-                                                          child: const Text(
-                                                            'Assign parent',
-                                                          ),
+                                                          child:
+                                                              _isActionBusy(
+                                                                'assign-parent',
+                                                              )
+                                                              ? const SizedBox(
+                                                                  width: 16,
+                                                                  height: 16,
+                                                                  child: CircularProgressIndicator(
+                                                                    strokeWidth:
+                                                                        2,
+                                                                    color: Colors
+                                                                        .white,
+                                                                  ),
+                                                                )
+                                                              : const Text(
+                                                                  'Assign parent',
+                                                                ),
                                                         ),
                                                       ),
                                                     ],
@@ -2058,6 +2037,14 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                             if (!shouldProceed) {
                                                               return;
                                                             }
+                                                            if (targetUserC.text
+                                                                .trim()
+                                                                .isEmpty) {
+                                                              _showInfoMessage(
+                                                                'Completează utilizatorul țintă.',
+                                                              );
+                                                              return;
+                                                            }
 
                                                             try {
                                                               final res = await api
@@ -2118,19 +2105,35 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     if (!shouldProceed) {
                                                                       return;
                                                                     }
+                                                                    if (targetUserC
+                                                                        .text
+                                                                        .trim()
+                                                                        .isEmpty) {
+                                                                      _showInfoMessage(
+                                                                        'Completează utilizatorul țintă.',
+                                                                      );
+                                                                      return;
+                                                                    }
 
                                                                     try {
-                                                                      await api.setDisabled(
+                                                                      final res = await api.setDisabled(
                                                                         username:
                                                                             targetUserC.text,
                                                                         disabled:
                                                                             true,
                                                                       );
+                                                                      final changed =
+                                                                          res['changed'] ==
+                                                                          true;
+                                                                      final message =
+                                                                          changed
+                                                                          ? 'Contul a fost dezactivat.'
+                                                                          : 'Contul era deja dezactivat.';
                                                                       _logSuccess(
-                                                                        'Contul a fost dezactivat.',
+                                                                        message,
                                                                       );
                                                                       _showInfoMessage(
-                                                                        'Contul a fost dezactivat.',
+                                                                        message,
                                                                       );
                                                                     } catch (
                                                                       e
@@ -2174,20 +2177,36 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                   if (!shouldProceed) {
                                                                     return;
                                                                   }
+                                                                  if (targetUserC
+                                                                      .text
+                                                                      .trim()
+                                                                      .isEmpty) {
+                                                                    _showInfoMessage(
+                                                                      'Completează utilizatorul țintă.',
+                                                                    );
+                                                                    return;
+                                                                  }
 
                                                                   try {
-                                                                    await api.setDisabled(
+                                                                    final res = await api.setDisabled(
                                                                       username:
                                                                           targetUserC
                                                                               .text,
                                                                       disabled:
                                                                           false,
                                                                     );
+                                                                    final changed =
+                                                                        res['changed'] ==
+                                                                        true;
+                                                                    final message =
+                                                                        changed
+                                                                        ? 'Contul a fost activat.'
+                                                                        : 'Contul era deja activ.';
                                                                     _logSuccess(
-                                                                      'Contul a fost activat.',
+                                                                      message,
                                                                     );
                                                                     _showInfoMessage(
-                                                                      'Contul a fost activat.',
+                                                                      message,
                                                                     );
                                                                   } catch (e) {
                                                                     final message =

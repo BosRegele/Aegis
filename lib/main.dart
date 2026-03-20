@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firster/Auth/login_page_firestore.dart';
 import 'package:firster/StudentInterface/mainnavigation.dart';
 import 'package:firster/admin/secretariat_raw_page.dart'
@@ -17,6 +19,8 @@ import 'firebase_options.dart';
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
+StreamSubscription<String>? _tokenRefreshSub;
+String? _tokenBoundUid;
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
@@ -63,6 +67,7 @@ Future<void> main() async {
 }
 
 Future<void> _saveFcmToken(String uid) async {
+  if (_tokenBoundUid == uid && _tokenRefreshSub != null) return;
   try {
     await FirebaseMessaging.instance.requestPermission();
     final token = await FirebaseMessaging.instance.getToken();
@@ -70,57 +75,27 @@ Future<void> _saveFcmToken(String uid) async {
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'fcmToken': token,
     }, SetOptions(merge: true));
-    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+    await _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = FirebaseMessaging.instance.onTokenRefresh.listen((
+      newToken,
+    ) {
       FirebaseFirestore.instance.collection('users').doc(uid).set({
         'fcmToken': newToken,
       }, SetOptions(merge: true));
     });
+    _tokenBoundUid = uid;
   } catch (_) {}
+}
+
+Future<void> _cleanupAuthState() async {
+  await _tokenRefreshSub?.cancel();
+  _tokenRefreshSub = null;
+  _tokenBoundUid = null;
+  AppSession.clear();
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  Future<Widget> _buildHome(User user) async {
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-
-    if (!doc.exists) {
-      await FirebaseAuth.instance.signOut();
-      return const LoginPageFirestore();
-    }
-
-    final data = doc.data()!;
-    final role = (data['role'] ?? '').toString();
-    final username = (data['username'] ?? '').toString();
-
-    AppSession.setUser(
-      uidValue: user.uid,
-      usernameValue: username,
-      roleValue: role,
-      fullNameValue: (data['fullName'] ?? '').toString(),
-      classIdValue: (data['classId'] ?? '').toString(),
-    );
-
-    _saveFcmToken(user.uid);
-
-    if (role == 'student') {
-      return const AppShell();
-    } else if (role == 'gate') {
-      return const GateScanPage();
-    } else if (role == 'admin') {
-      return const SecretariatRawPage();
-    } else if (role == 'teacher') {
-      return const TeacherDashboardPage();
-    } else if (role == 'parent') {
-      return const ParentHomePage();
-    } else {
-      await FirebaseAuth.instance.signOut();
-      return const LoginPageFirestore();
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -141,19 +116,65 @@ class MyApp extends StatelessWidget {
 
           final user = snapshot.data;
           if (user == null) {
+            unawaited(_cleanupAuthState());
             return const LoginPageFirestore();
           }
 
-          return FutureBuilder<Widget>(
-            future: _buildHome(user),
-            builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting) {
+          return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .snapshots(),
+            builder: (context, userDocSnap) {
+              if (userDocSnap.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 );
               }
 
-              return snap.data ?? const LoginPageFirestore();
+              final userDoc = userDocSnap.data;
+              if (userDoc == null || !userDoc.exists) {
+                unawaited(_cleanupAuthState());
+                unawaited(FirebaseAuth.instance.signOut());
+                return const LoginPageFirestore();
+              }
+
+              final data = userDoc.data() ?? <String, dynamic>{};
+              final status = (data['status'] ?? 'active').toString();
+              if (status == 'disabled') {
+                unawaited(_cleanupAuthState());
+                unawaited(FirebaseAuth.instance.signOut());
+                return const LoginPageFirestore();
+              }
+
+              final role = (data['role'] ?? '').toString();
+              final username = (data['username'] ?? '').toString();
+
+              AppSession.setUser(
+                uidValue: user.uid,
+                usernameValue: username,
+                roleValue: role,
+                fullNameValue: (data['fullName'] ?? '').toString(),
+                classIdValue: (data['classId'] ?? '').toString(),
+              );
+
+              unawaited(_saveFcmToken(user.uid));
+
+              if (role == 'student') {
+                return const AppShell();
+              } else if (role == 'gate') {
+                return const GateScanPage();
+              } else if (role == 'admin') {
+                return const SecretariatRawPage();
+              } else if (role == 'teacher') {
+                return const TeacherDashboardPage();
+              } else if (role == 'parent') {
+                return const ParentHomePage();
+              }
+
+              unawaited(_cleanupAuthState());
+              unawaited(FirebaseAuth.instance.signOut());
+              return const LoginPageFirestore();
             },
           );
         },
@@ -161,6 +182,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-//VEZI BA ASTEA SAU ESTI BULANGIU
-// O vad ba bulangiule

@@ -1,14 +1,295 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { randomBytes, createHash } = require("crypto");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
 
-exports.adminCreateUser = onCall(async (request) => {
+const USERNAME_RE = /^[a-z0-9._-]{3,30}$/;
+const CLASS_ID_RE = /^(?:[1-9]|1[0-2])[A-Z]$/;
+const LOGIN_MAX_FAILURES = 5;
+const LOGIN_BLOCK_SECONDS = 120;
+const ACTOR_MAX_FAILURES = 5;
+const ACTOR_BLOCK_SECONDS = 600;
+const ATTEMPT_TOKEN_TTL_SECONDS = 300;
+const ACTOR_KEY_RE = /^[a-f0-9]{32,128}$/;
+
+function resolveActorKey(request) {
+    const provided = String(request.data?.actorKey || "").trim().toLowerCase();
+    if (ACTOR_KEY_RE.test(provided)) {
+        return provided;
+    }
+
+    const forwardedFor = String(request.rawRequest?.headers?.["x-forwarded-for"] || "");
+    const ip = forwardedFor.split(",")[0].trim();
+    const ua = String(request.rawRequest?.headers?.["user-agent"] || "").trim();
+    const appId = String(request.app?.appId || "").trim();
+    const fingerprint = `${ip}|${ua}|${appId}`;
+    const hasSignal = ip || ua || appId;
+    if (!hasSignal) {
+        return "";
+    }
+
+    return createHash("sha256").update(fingerprint).digest("hex");
+}
+
+function toMinutes(hhmm) {
+    const [h, m] = String(hhmm || "").split(":").map((x) => parseInt(x, 10));
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    return h * 60 + m;
+}
+
+async function assertAdmin(request) {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "Login required");
     }
+
+    const callerUid = request.auth.uid;
+    const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
+    if (!callerDoc.exists || callerDoc.data()?.role !== "admin") {
+        throw new HttpsError("permission-denied", "Doar adminul poate executa aceasta actiune");
+    }
+
+    return { callerUid, callerData: callerDoc.data() || {} };
+}
+
+async function getActiveAdminCount() {
+    const snap = await admin.firestore().collection("users").where("role", "==", "admin").get();
+    return snap.docs.filter((d) => String(d.data()?.status || "active") !== "disabled").length;
+}
+
+async function removeStudentFromParentChildren(studentUid) {
+    const db = admin.firestore();
+    const parentsSnap = await db.collection("users").where("children", "array-contains", studentUid).get();
+    if (parentsSnap.empty) return;
+
+    const batch = db.batch();
+    for (const doc of parentsSnap.docs) {
+        batch.update(doc.ref, {
+            children: admin.firestore.FieldValue.arrayRemove(studentUid),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    }
+    await batch.commit();
+}
+
+async function removeParentFromStudentParents(parentUid) {
+    const db = admin.firestore();
+    const studentsSnap = await db.collection("users").where("parents", "array-contains", parentUid).get();
+    if (studentsSnap.empty) return;
+
+    const batch = db.batch();
+    for (const doc of studentsSnap.docs) {
+        batch.update(doc.ref, {
+            parents: admin.firestore.FieldValue.arrayRemove(parentUid),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    }
+    await batch.commit();
+}
+
+async function deleteByQueryInChunks(query, chunkSize = 400) {
+    let snap = await query.limit(chunkSize).get();
+    while (!snap.empty) {
+        const batch = admin.firestore().batch();
+        for (const d of snap.docs) {
+            batch.delete(d.ref);
+        }
+        await batch.commit();
+        if (snap.size < chunkSize) break;
+        snap = await query.limit(chunkSize).get();
+    }
+}
+
+exports.authPrecheckLogin = onCall(async (request) => {
+    const username = String(request.data?.username || "").trim().toLowerCase();
+    const actorKey = resolveActorKey(request);
+    if (!USERNAME_RE.test(username)) {
+        throw new HttpsError("invalid-argument", "Username invalid");
+    }
+
+    const db = admin.firestore();
+    const guardRef = db.collection("authLoginGuards").doc(username);
+    const actorGuardRef = actorKey
+        ? db.collection("authLoginActorGuards").doc(actorKey)
+        : null;
+    const guardSnap = await guardRef.get();
+    const actorGuardSnap = actorGuardRef ? await actorGuardRef.get() : null;
+
+    const nowMs = Date.now();
+    const blockedUntilTs = guardSnap.data()?.blockedUntil;
+    const blockedUntilMs = blockedUntilTs?.toMillis?.() || 0;
+    const actorBlockedUntilTs = actorGuardSnap?.data()?.blockedUntil;
+    const actorBlockedUntilMs = actorBlockedUntilTs?.toMillis?.() || 0;
+
+    if (blockedUntilMs > nowMs || actorBlockedUntilMs > nowMs) {
+        const remainingSeconds = Math.max(
+            blockedUntilMs > nowMs ? Math.ceil((blockedUntilMs - nowMs) / 1000) : 0,
+            actorBlockedUntilMs > nowMs ? Math.ceil((actorBlockedUntilMs - nowMs) / 1000) : 0,
+        );
+        return {
+            blocked: true,
+            remainingSeconds: Math.max(1, remainingSeconds),
+            attemptToken: "",
+        };
+    }
+
+    const attemptToken = randomBytes(24).toString("hex");
+    await db.collection("authLoginAttemptTokens").doc(attemptToken).set({
+        username,
+        actorKey,
+        used: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: admin.firestore.Timestamp.fromMillis(nowMs + ATTEMPT_TOKEN_TTL_SECONDS * 1000),
+    });
+
+    return { blocked: false, remainingSeconds: 0, attemptToken };
+});
+
+exports.authReportLoginFailure = onCall(async (request) => {
+    const username = String(request.data?.username || "").trim().toLowerCase();
+    const attemptToken = String(request.data?.attemptToken || "").trim();
+    const actorKey = resolveActorKey(request);
+
+    if (!USERNAME_RE.test(username) || !attemptToken) {
+        throw new HttpsError("failed-precondition", "Date invalide");
+    }
+
+    const db = admin.firestore();
+    const guardRef = db.collection("authLoginGuards").doc(username);
+    const actorGuardRef = actorKey
+        ? db.collection("authLoginActorGuards").doc(actorKey)
+        : null;
+    const tokenRef = db.collection("authLoginAttemptTokens").doc(attemptToken);
+
+    const result = await db.runTransaction(async (tx) => {
+        const tokenSnap = await tx.get(tokenRef);
+        if (!tokenSnap.exists) {
+            throw new HttpsError("failed-precondition", "Attempt token invalid");
+        }
+
+        const tokenData = tokenSnap.data() || {};
+        if (String(tokenData.username || "") !== username) {
+            throw new HttpsError("failed-precondition", "Attempt token invalid");
+        }
+        const tokenActorKey = String(tokenData.actorKey || "");
+        if (tokenActorKey && tokenActorKey !== actorKey) {
+            throw new HttpsError("failed-precondition", "Attempt token invalid");
+        }
+        if (tokenData.used === true) {
+            throw new HttpsError("failed-precondition", "Attempt token folosit");
+        }
+
+        const expMs = tokenData.expiresAt?.toMillis?.() || 0;
+        const nowMs = Date.now();
+        if (expMs <= nowMs) {
+            throw new HttpsError("failed-precondition", "Attempt token expirat");
+        }
+
+        const guardSnap = await tx.get(guardRef);
+        const actorGuardSnap = actorGuardRef ? await tx.get(actorGuardRef) : null;
+        const guardData = guardSnap.data() || {};
+        const actorGuardData = actorGuardSnap?.data() || {};
+        const blockedUntilMs = guardData.blockedUntil?.toMillis?.() || 0;
+        const actorBlockedUntilMs = actorGuardData.blockedUntil?.toMillis?.() || 0;
+
+        // Firestore transactions require all reads before writes.
+        tx.set(tokenRef, {
+            used: true,
+            usedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        if (blockedUntilMs > nowMs || actorBlockedUntilMs > nowMs) {
+            const remainingSeconds = Math.max(
+                blockedUntilMs > nowMs ? Math.ceil((blockedUntilMs - nowMs) / 1000) : 0,
+                actorBlockedUntilMs > nowMs ? Math.ceil((actorBlockedUntilMs - nowMs) / 1000) : 0,
+            );
+            return {
+                blocked: true,
+                remainingSeconds: Math.max(1, remainingSeconds),
+            };
+        }
+
+        const failures = Number(guardData.failures || 0) + 1;
+        const actorFailures = Number(actorGuardData.failures || 0) + 1;
+        let blocked = false;
+        let remainingSeconds = 0;
+
+        if (failures >= LOGIN_MAX_FAILURES) {
+            blocked = true;
+            remainingSeconds = LOGIN_BLOCK_SECONDS;
+            tx.set(guardRef, {
+                failures: 0,
+                blockedUntil: admin.firestore.Timestamp.fromMillis(nowMs + LOGIN_BLOCK_SECONDS * 1000),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        } else {
+            tx.set(guardRef, {
+                failures,
+                blockedUntil: null,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        }
+
+        if (actorGuardRef && actorFailures >= ACTOR_MAX_FAILURES) {
+            blocked = true;
+            remainingSeconds = Math.max(remainingSeconds, ACTOR_BLOCK_SECONDS);
+            tx.set(actorGuardRef, {
+                failures: 0,
+                blockedUntil: admin.firestore.Timestamp.fromMillis(nowMs + ACTOR_BLOCK_SECONDS * 1000),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        } else if (actorGuardRef) {
+            tx.set(actorGuardRef, {
+                failures: actorFailures,
+                blockedUntil: null,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        }
+
+        return { blocked, remainingSeconds };
+    });
+
+    return result;
+});
+
+exports.authRegisterLoginSuccess = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login required");
+    }
+
+    const uid = request.auth.uid;
+    const userSnap = await admin.firestore().collection("users").doc(uid).get();
+    if (!userSnap.exists) {
+        return { ok: true };
+    }
+
+    const username = String(userSnap.data()?.username || "").trim().toLowerCase();
+    if (!username) {
+        return { ok: true };
+    }
+
+    await admin.firestore().collection("authLoginGuards").doc(username).set({
+        failures: 0,
+        blockedUntil: null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    const actorKey = String(request.data?.actorKey || "").trim().toLowerCase();
+    if (ACTOR_KEY_RE.test(actorKey)) {
+        await admin.firestore().collection("authLoginActorGuards").doc(actorKey).set({
+            failures: 0,
+            blockedUntil: null,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }
+
+    return { ok: true };
+});
+
+exports.adminCreateUser = onCall(async (request) => {
+    const { callerUid } = await assertAdmin(request);
 
     const data = request.data;
     const username = String(data.username || "").trim().toLowerCase();
@@ -21,21 +302,27 @@ exports.adminCreateUser = onCall(async (request) => {
         throw new HttpsError("invalid-argument", "Lipsesc campuri obligatorii");
     }
 
-    const callerUid = request.auth.uid;
-
-    const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
-    if (!callerDoc.exists) {
-        throw new HttpsError("permission-denied", "Profil admin inexistent");
+    if (!USERNAME_RE.test(username)) {
+        throw new HttpsError("invalid-argument", "Username invalid. Foloseste 3-30 caractere: litere mici, cifre, . _ -");
+    }
+    if (password.length < 6) {
+        throw new HttpsError("invalid-argument", "Parola trebuie sa aiba minim 6 caractere");
+    }
+    if (fullName.length < 3) {
+        throw new HttpsError("invalid-argument", "Numele complet este prea scurt");
     }
 
-    const callerData = callerDoc.data();
-    if (callerData.role !== "admin") {
-        throw new HttpsError("permission-denied", "Doar adminul poate crea conturi");
+    const allowedRoles = new Set(["student", "teacher", "admin", "parent", "gate"]);
+    if (!allowedRoles.has(role)) {
+        throw new HttpsError("invalid-argument", "Rol invalid");
     }
 
-    if (role === "teacher") {
+    if (role === "student" || role === "teacher") {
         if (!classId) {
-            throw new HttpsError("invalid-argument", "Pentru profesor trebuie selectata o clasa");
+            throw new HttpsError("invalid-argument", `Pentru ${role} trebuie selectata o clasa`);
+        }
+        if (!CLASS_ID_RE.test(classId)) {
+            throw new HttpsError("invalid-argument", "Format clasa invalid (ex: 9A, 10B)");
         }
 
         const classSnap = await admin.firestore().collection("classes").doc(classId).get();
@@ -43,16 +330,29 @@ exports.adminCreateUser = onCall(async (request) => {
             throw new HttpsError("not-found", `Clasa ${classId} nu exista`);
         }
 
-        const existingTeacher = String(classSnap.data()?.teacherUsername || "")
-            .trim()
-            .toLowerCase();
-        if (existingTeacher) {
-            throw new HttpsError(
-                "failed-precondition",
-                `Clasa ${classId} are deja diriginte: ${existingTeacher}`
-            );
+        if (role === "teacher") {
+            const existingTeacher = String(classSnap.data()?.teacherUsername || "")
+                .trim()
+                .toLowerCase();
+            if (existingTeacher) {
+                throw new HttpsError(
+                    "failed-precondition",
+                    `Clasa ${classId} are deja diriginte: ${existingTeacher}`
+                );
+            }
         }
     }
+
+    if (role === "admin" && classId) {
+        throw new HttpsError("invalid-argument", "Administratorul nu poate avea classId");
+    }
+
+    // Don't allow creating duplicate username in Firestore legacy docs.
+    const duplicates = await admin.firestore().collection("users").where("username", "==", username).limit(1).get();
+    if (!duplicates.empty) {
+        throw new HttpsError("already-exists", `Username '${username}' exista deja`);
+    }
+
 
     const email = `${username}@school.local`;
 
@@ -67,11 +367,12 @@ exports.adminCreateUser = onCall(async (request) => {
             username,
             fullName,
             role,
-            classId,
+            classId: role === "student" || role === "teacher" ? classId : null,
             status: "active",
             inSchool: false,
             lastInAt: null,
             lastOutAt: null,
+            createdBy: callerUid,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
@@ -154,18 +455,15 @@ async function getUidByUsernameOrEmail(username) {
     }
 }
 exports.adminResetPassword = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Login required");
-    }
-
-    const callerUid = request.auth.uid;
-    const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
-    if (!callerDoc.exists || callerDoc.data().role !== "admin") {
-        throw new HttpsError("permission-denied", "Doar adminul poate reseta parole");
-    }
+    await assertAdmin(request);
 
     const username = String(request.data.username || "").trim().toLowerCase();
     const uid = await getUidByUsername(username);
+
+    const targetDoc = await admin.firestore().collection("users").doc(uid).get();
+    if (targetDoc.exists && String(targetDoc.data()?.status || "active") === "disabled") {
+        throw new HttpsError("failed-precondition", "Contul este dezactivat. Activeaza contul inainte de resetare.");
+    }
 
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
     const newPass = Array.from({ length: 10 }, () =>
@@ -183,19 +481,35 @@ exports.adminResetPassword = onCall(async (request) => {
 
 
 exports.adminSetDisabled = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Login required");
-    }
-
-    const callerUid = request.auth.uid;
-    const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
-    if (!callerDoc.exists || callerDoc.data().role !== "admin") {
-        throw new HttpsError("permission-denied", "Doar adminul poate dezactiva conturi");
-    }
+    const { callerUid } = await assertAdmin(request);
 
     const username = String(request.data.username || "").trim().toLowerCase();
     const disabled = request.data.disabled === true;
     const uid = await getUidByUsername(username);
+
+    if (uid === callerUid) {
+        throw new HttpsError("failed-precondition", "Nu iti poti modifica propriul status");
+    }
+
+    const targetDoc = await admin.firestore().collection("users").doc(uid).get();
+    if (!targetDoc.exists) {
+        throw new HttpsError("not-found", "Utilizator inexistent");
+    }
+
+    const targetData = targetDoc.data() || {};
+    const targetRole = String(targetData.role || "");
+    const currentStatus = String(targetData.status || "active");
+
+    if (targetRole === "admin" && disabled) {
+        const activeAdmins = await getActiveAdminCount();
+        if (currentStatus !== "disabled" && activeAdmins <= 1) {
+            throw new HttpsError("failed-precondition", "Nu poti dezactiva ultimul administrator activ");
+        }
+    }
+
+    if ((disabled && currentStatus === "disabled") || (!disabled && currentStatus === "active")) {
+        return { ok: true, uid, changed: false, status: currentStatus };
+    }
 
     await admin.auth().updateUser(uid, { disabled });
 
@@ -204,26 +518,21 @@ exports.adminSetDisabled = onCall(async (request) => {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    return { ok: true, uid };
+    return { ok: true, uid, changed: true, status: disabled ? "disabled" : "active" };
 });
 
 
 exports.adminMoveStudentClass = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Login required");
-    }
-
-    const callerUid = request.auth.uid;
-    const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
-    if (!callerDoc.exists || callerDoc.data().role !== "admin") {
-        throw new HttpsError("permission-denied", "Doar adminul poate muta elevi");
-    }
+    await assertAdmin(request);
 
     const username = String(request.data.username || "").trim().toLowerCase();
     const newClassId = String(request.data.newClassId || "").trim().toUpperCase();
 
     if (!newClassId) {
         throw new HttpsError("invalid-argument", "newClassId lipsa");
+    }
+    if (!CLASS_ID_RE.test(newClassId)) {
+        throw new HttpsError("invalid-argument", "Format clasa invalid");
     }
 
     const uid = await getUidByUsername(username);
@@ -246,11 +555,7 @@ exports.adminMoveStudentClass = onCall(async (request) => {
 
         const classSnap = await tx.get(classRef);
         if (!classSnap.exists) {
-            tx.set(classRef, {
-                name: newClassId,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            }, { merge: true });
+            throw new HttpsError("not-found", `Clasa ${newClassId} nu exista`);
         }
         const oldClassId = String(userData.classId || "").trim().toUpperCase();
 
@@ -297,15 +602,7 @@ exports.adminMoveStudentClass = onCall(async (request) => {
 
 // ---------- new function for deleting users ----------
 exports.adminDeleteUser = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Login required");
-    }
-
-    const callerUid = request.auth.uid;
-    const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
-    if (!callerDoc.exists || callerDoc.data().role !== "admin") {
-        throw new HttpsError("permission-denied", "Doar adminul poate sterge utilizatori");
-    }
+    const { callerUid } = await assertAdmin(request);
 
     const username = String(request.data.username || "").trim().toLowerCase();
     if (!username) {
@@ -336,6 +633,18 @@ exports.adminDeleteUser = onCall(async (request) => {
     const role = String(userData?.role || "").trim().toLowerCase();
     const classId = String(userData?.classId || "").trim().toUpperCase();
 
+    if (uid === callerUid) {
+        throw new HttpsError("failed-precondition", "Nu iti poti sterge propriul cont");
+    }
+
+    if (role === "admin") {
+        const status = String(userData?.status || "active");
+        const activeAdmins = await getActiveAdminCount();
+        if (status !== "disabled" && activeAdmins <= 1) {
+            throw new HttpsError("failed-precondition", "Nu poti sterge ultimul administrator activ");
+        }
+    }
+
     // If deleted user is homeroom teacher, clear class assignment.
     if (role === "teacher" && classId) {
         const classRef = db.collection("classes").doc(classId);
@@ -351,6 +660,16 @@ exports.adminDeleteUser = onCall(async (request) => {
                 }, { merge: true });
             }
         }
+    }
+
+    if (role === "student") {
+        await removeStudentFromParentChildren(uid);
+        await deleteByQueryInChunks(db.collection("leaveRequests").where("studentUid", "==", uid));
+        await deleteByQueryInChunks(db.collection("accessEvents").where("userId", "==", uid));
+    }
+
+    if (role === "parent") {
+        await removeParentFromStudentParents(uid);
     }
 
     // Delete Firestore user docs by uid and by username (for legacy inconsistencies).
@@ -379,59 +698,43 @@ exports.adminDeleteUser = onCall(async (request) => {
 
 
 exports.adminCreateClass = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Login required");
-    }
-
-    const callerUid = request.auth.uid;
-    const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
-    if (!callerDoc.exists || callerDoc.data().role !== "admin") {
-        throw new HttpsError("permission-denied", "Doar adminul poate crea clase");
-    }
+    await assertAdmin(request);
 
     const classId = String(request.data?.name || "").trim().toUpperCase();
     if (!classId) {
         throw new HttpsError("invalid-argument", "Numele clasei este obligatoriu");
     }
-
-    const classRef = admin.firestore().collection("classes").doc(classId);
-    const classSnap = await classRef.get();
-    if (classSnap.exists) {
-        throw new HttpsError("already-exists", `Clasa ${classId} exista deja`);
+    if (!CLASS_ID_RE.test(classId)) {
+        throw new HttpsError("invalid-argument", "Format clasa invalid (ex: 9A, 10B)");
     }
 
-    await classRef.set({
-        name: classId,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    const classRef = admin.firestore().collection("classes").doc(classId);
+    try {
+        await classRef.create({
+            name: classId,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    } catch (e) {
+        if (e && e.code === 6) {
+            throw new HttpsError("already-exists", `Clasa ${classId} exista deja`);
+        }
+        throw e;
+    }
 
     return { ok: true, classId };
 });
+
 exports.adminSetClassNoExitSchedule = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Login required");
-    }
-
-    const callerUid = request.auth.uid;
-    const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
-    if (!callerDoc.exists) {
-        throw new HttpsError("permission-denied", "Profil admin inexistent");
-    }
-
-    const callerData = callerDoc.data();
-    if (callerData.role !== "admin") {
-        throw new HttpsError("permission-denied", "Doar adminul poate seta orarul");
-    }
+    await assertAdmin(request);
 
     const classId = String(request.data.classId || "").trim().toUpperCase();
     const startHHmm = String(request.data.startHHmm || "").trim();
     const endHHmm = String(request.data.endHHmm || "").trim();
 
-    // Procesa zilele - asigura-te ca sunt numere intregi
     let days = [1, 2, 3, 4, 5];
     if (Array.isArray(request.data.days) && request.data.days.length > 0) {
-        days = request.data.days.map(d => parseInt(d, 10)).filter(d => !isNaN(d) && d >= 1 && d <= 5);
+        days = request.data.days.map((d) => parseInt(d, 10)).filter((d) => !isNaN(d) && d >= 1 && d <= 5);
         if (days.length === 0) {
             days = [1, 2, 3, 4, 5];
         }
@@ -440,10 +743,19 @@ exports.adminSetClassNoExitSchedule = onCall(async (request) => {
     if (!classId || !startHHmm || !endHHmm) {
         throw new HttpsError("invalid-argument", "Campuri lipsa");
     }
+    if (!CLASS_ID_RE.test(classId)) {
+        throw new HttpsError("invalid-argument", "Format clasa invalid");
+    }
 
     const hhmm = /^\d{2}:\d{2}$/;
     if (!hhmm.test(startHHmm) || !hhmm.test(endHHmm)) {
         throw new HttpsError("invalid-argument", "Format invalid. Foloseste HH:mm");
+    }
+
+    const startMinutes = toMinutes(startHHmm);
+    const endMinutes = toMinutes(endHHmm);
+    if (startMinutes == null || endMinutes == null || endMinutes <= startMinutes) {
+        throw new HttpsError("invalid-argument", "Interval orar invalid (ora finala trebuie sa fie dupa ora de inceput)");
     }
 
     const classRef = admin.firestore().collection("classes").doc(classId);
@@ -465,55 +777,42 @@ exports.adminSetClassNoExitSchedule = onCall(async (request) => {
 
 exports.adminSetClassSchedulePerDay = onCall(async (request) => {
     try {
-        if (!request.auth) {
-            throw new HttpsError("unauthenticated", "Login required");
-        }
-
-        const callerUid = request.auth.uid;
-        const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
-        if (!callerDoc.exists) {
-            throw new HttpsError("permission-denied", "Profil admin inexistent");
-        }
-
-        const callerData = callerDoc.data();
-        if (callerData.role !== "admin") {
-            throw new HttpsError("permission-denied", "Doar adminul poate seta orarul");
-        }
+        await assertAdmin(request);
 
         const classId = String(request.data.classId || "").trim().toUpperCase();
-        let scheduleData = request.data.schedule;
+        const scheduleData = request.data.schedule;
 
-        console.log("1. classId:", classId);
-        console.log("2. scheduleData type:", typeof scheduleData);
-        console.log("3. scheduleData content:", JSON.stringify(scheduleData));
-
-        if (!classId || !scheduleData || typeof scheduleData !== 'object' || Object.keys(scheduleData).length === 0) {
-            throw new HttpsError("invalid-argument", `Missing classId, schedule, or empty schedule. classId=${classId}, schedule keys=${Object.keys(scheduleData || {}).length}`);
+        if (!classId || !scheduleData || typeof scheduleData !== "object" || Object.keys(scheduleData).length === 0) {
+            throw new HttpsError("invalid-argument", "Missing classId, schedule, or empty schedule");
+        }
+        if (!CLASS_ID_RE.test(classId)) {
+            throw new HttpsError("invalid-argument", "Format clasa invalid");
         }
 
         const hhmm = /^\d{2}:\d{2}$/;
         const schedule = {};
 
         for (const [dayStr, timesObj] of Object.entries(scheduleData)) {
-            console.log(`Processing day: ${dayStr}, timesObj:`, JSON.stringify(timesObj));
-
             const dayNum = parseInt(dayStr, 10);
             if (isNaN(dayNum) || dayNum < 1 || dayNum > 5) {
                 throw new HttpsError("invalid-argument", `Invalid day number: ${dayStr}`);
             }
 
-            // Access times safely
             const startTime = timesObj?.start || timesObj?.["start"];
             const endTime = timesObj?.end || timesObj?.["end"];
 
-            console.log(`Day ${dayNum}: start=${startTime}, end=${endTime}`);
-
             if (!startTime || !endTime) {
-                throw new HttpsError("invalid-argument", `Missing start/end time for day ${dayNum}. Received: ${JSON.stringify(timesObj)}`);
+                throw new HttpsError("invalid-argument", `Missing start/end time for day ${dayNum}`);
             }
 
             if (!hhmm.test(String(startTime)) || !hhmm.test(String(endTime))) {
-                throw new HttpsError("invalid-argument", `Invalid time format for day ${dayNum}. Expected HH:mm, got start=${startTime}, end=${endTime}`);
+                throw new HttpsError("invalid-argument", `Invalid time format for day ${dayNum}`);
+            }
+
+            const startMinutes = toMinutes(startTime);
+            const endMinutes = toMinutes(endTime);
+            if (startMinutes == null || endMinutes == null || endMinutes <= startMinutes) {
+                throw new HttpsError("invalid-argument", `Interval invalid pentru ziua ${dayNum}`);
             }
 
             schedule[dayNum.toString()] = {
@@ -521,8 +820,6 @@ exports.adminSetClassSchedulePerDay = onCall(async (request) => {
                 end: String(endTime)
             };
         }
-
-        console.log("Final schedule to save:", JSON.stringify(schedule));
 
         const classRef = admin.firestore().collection("classes").doc(classId);
         const classSnap = await classRef.get();
@@ -536,10 +833,8 @@ exports.adminSetClassSchedulePerDay = onCall(async (request) => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
 
-        console.log("✓ Schedule saved successfully for class:", classId);
         return { ok: true, schedule: schedule };
     } catch (error) {
-        console.error("✗ Error in adminSetClassSchedulePerDay:", error.message, error.stack);
         if (error instanceof HttpsError) {
             throw error;
         }
@@ -548,24 +843,14 @@ exports.adminSetClassSchedulePerDay = onCall(async (request) => {
 });
 
 exports.adminDeleteClassCascade = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Login required");
-    }
-
-    const callerUid = request.auth.uid;
-    const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
-    if (!callerDoc.exists) {
-        throw new HttpsError("permission-denied", "Profil admin inexistent");
-    }
-
-    const callerData = callerDoc.data();
-    if (callerData.role !== "admin") {
-        throw new HttpsError("permission-denied", "Doar adminul poate sterge clase");
-    }
+    await assertAdmin(request);
 
     const classId = String(request.data.classId || "").trim().toUpperCase();
     if (!classId) {
         throw new HttpsError("invalid-argument", "classId lipsa");
+    }
+    if (!CLASS_ID_RE.test(classId)) {
+        throw new HttpsError("invalid-argument", "Format clasa invalid");
     }
 
     const db = admin.firestore();
@@ -576,40 +861,109 @@ exports.adminDeleteClassCascade = onCall(async (request) => {
         throw new HttpsError("not-found", `Clasa ${classId} nu exista`);
     }
 
-    const teacherUsername = String(classSnap.data()?.teacherUsername || "")
-        .trim()
-        .toLowerCase();
-
-    const studentsSnap = await db
-        .collection("users")
-        .where("role", "==", "student")
-        .where("classId", "==", classId)
-        .get();
-
-    const batch = db.batch();
-
-    for (const d of studentsSnap.docs) {
-        batch.delete(d.ref);
+    const linkedUsers = await db.collection("users").where("classId", "==", classId).limit(1).get();
+    const teacherUsername = String(classSnap.data()?.teacherUsername || "").trim();
+    if (!linkedUsers.empty || teacherUsername.isNotEmpty) {
+        throw new HttpsError(
+            "failed-precondition",
+            `Clasa ${classId} are utilizatori/diriginte asignati. Muta sau sterge utilizatorii inainte.`
+        );
     }
 
-    if (teacherUsername) {
-        const teacherSnap = await db
-            .collection("users")
-            .where("username", "==", teacherUsername)
-            .limit(1)
-            .get();
-
-        if (!teacherSnap.empty) {
-            batch.delete(teacherSnap.docs[0].ref);
-        }
-    }
-
-    batch.delete(classRef);
-
-    await batch.commit();
+    await classRef.delete();
 
     return { ok: true };
 });
+
+exports.adminAssignParentToStudent = onCall(async (request) => {
+    await assertAdmin(request);
+
+    const studentUid = String(request.data.studentUid || "").trim();
+    const parentUid = String(request.data.parentUid || "").trim();
+    if (!studentUid || !parentUid) {
+        throw new HttpsError("invalid-argument", "studentUid si parentUid sunt obligatorii");
+    }
+    if (studentUid === parentUid) {
+        throw new HttpsError("invalid-argument", "Un utilizator nu poate fi propriul parinte");
+    }
+
+    const db = admin.firestore();
+    const studentRef = db.collection("users").doc(studentUid);
+    const parentRef = db.collection("users").doc(parentUid);
+
+    return db.runTransaction(async (tx) => {
+        const [studentSnap, parentSnap] = await Promise.all([tx.get(studentRef), tx.get(parentRef)]);
+        if (!studentSnap.exists) {
+            throw new HttpsError("not-found", "Elev inexistent");
+        }
+        if (!parentSnap.exists) {
+            throw new HttpsError("not-found", "Parinte inexistent");
+        }
+
+        const studentData = studentSnap.data() || {};
+        const parentData = parentSnap.data() || {};
+        if (String(studentData.role || "") !== "student") {
+            throw new HttpsError("failed-precondition", "Target-ul elev nu are rol student");
+        }
+        if (String(parentData.role || "") !== "parent") {
+            throw new HttpsError("failed-precondition", "Target-ul parinte nu are rol parent");
+        }
+
+        const parents = Array.isArray(studentData.parents) ? studentData.parents.map(String) : [];
+        if (parents.includes(parentUid)) {
+            return { ok: true, changed: false };
+        }
+        if (parents.length >= 2) {
+            throw new HttpsError("failed-precondition", "Elevul are deja 2 parinti atribuiti");
+        }
+
+        tx.update(studentRef, {
+            parents: admin.firestore.FieldValue.arrayUnion(parentUid),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        tx.update(parentRef, {
+            children: admin.firestore.FieldValue.arrayUnion(studentUid),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return { ok: true, changed: true };
+    });
+});
+
+exports.adminRemoveParentFromStudent = onCall(async (request) => {
+    await assertAdmin(request);
+
+    const studentUid = String(request.data.studentUid || "").trim();
+    const parentUid = String(request.data.parentUid || "").trim();
+    if (!studentUid || !parentUid) {
+        throw new HttpsError("invalid-argument", "studentUid si parentUid sunt obligatorii");
+    }
+
+    const db = admin.firestore();
+    const studentRef = db.collection("users").doc(studentUid);
+    const parentRef = db.collection("users").doc(parentUid);
+
+    return db.runTransaction(async (tx) => {
+        const [studentSnap, parentSnap] = await Promise.all([tx.get(studentRef), tx.get(parentRef)]);
+        if (!studentSnap.exists) {
+            throw new HttpsError("not-found", "Elev inexistent");
+        }
+        if (!parentSnap.exists) {
+            throw new HttpsError("not-found", "Parinte inexistent");
+        }
+
+        tx.update(studentRef, {
+            parents: admin.firestore.FieldValue.arrayRemove(parentUid),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        tx.update(parentRef, {
+            children: admin.firestore.FieldValue.arrayRemove(studentUid),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return { ok: true, changed: true };
+    });
+});
+
 exports.generateQrToken = onCall(async (request) => {
 
     if (!request.auth) {
@@ -1061,4 +1415,4 @@ exports.onLeaveRequestStatusChanged = onDocumentUpdated("leaveRequests/{docId}",
     } catch (e) {
         console.error("onLeaveRequestStatusChanged: FCM send failed:", e.message);
     }
-});acceptedapproved
+});

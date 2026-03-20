@@ -238,65 +238,108 @@ class _AdminTurnstilesPageState extends State<AdminTurnstilesPage> {
   }) async {
     await showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(fullName),
-        content: SelectableText("username: $username\nrole: gate"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Close"),
+      builder: (_) {
+        bool busy = false;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: Text(fullName),
+            content: SelectableText(
+              "username: $username\nrole: gate\nstatus: ${status == 'disabled' ? 'disabled' : 'enabled'}",
+            ),
+            actions: [
+              TextButton(
+                onPressed: busy ? null : () => Navigator.pop(context),
+                child: const Text("Close"),
+              ),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        final disable = status != 'disabled';
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text("Confirmare"),
+                            content: Text(
+                              disable
+                                  ? "Dezactivezi contul de poartă: $username ?"
+                                  : "Activezi contul de poartă: $username ?",
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Cancel"),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Confirm"),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (ok != true) return;
+                        setDialogState(() => busy = true);
+                        await store.setDisabled(username, disable);
+                        if (mounted) Navigator.pop(context);
+                      },
+                child: Text(status == 'disabled' ? "Enable" : "Disable"),
+              ),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text("Delete user?"),
+                            content: Text("Ștergi turnichetul: $username ?"),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Cancel"),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Delete"),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (ok != true) return;
+                        setDialogState(() => busy = true);
+                        try {
+                          await store.deleteUser(username);
+                          if (!mounted) return;
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Utilizator șters cu succes.'),
+                            ),
+                          );
+                        } catch (_) {
+                          setDialogState(() => busy = false);
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Utilizatorul nu a putut fi șters.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                child: busy
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Delete"),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () async {
-              await store.setDisabled(username, status != 'disabled');
-              if (mounted) Navigator.pop(context);
-            },
-            child: Text(status == 'disabled' ? "Enable" : "Disable"),
-          ),
-          TextButton(
-            onPressed: () async {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text("Delete user?"),
-                  content: Text("Ștergi turnichetul: $username ?"),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text("Cancel"),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text("Delete"),
-                    ),
-                  ],
-                ),
-              );
-
-              if (ok == true) {
-                try {
-                  await store.deleteUser(username);
-                  if (!mounted) return;
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Utilizator șters cu succes.'),
-                    ),
-                  );
-                } catch (_) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Utilizatorul nu a putut fi șters.'),
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text("Delete"),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

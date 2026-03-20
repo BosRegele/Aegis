@@ -164,12 +164,19 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
 
                   final data = d.data() as Map<String, dynamic>;
                   final uid = d.id;
-                  final username = (data['username'] ?? uid).toString();
+                  final username = (data['username'] ?? uid)
+                      .toString()
+                      .toLowerCase();
                   final fullName = (data['fullName'] ?? username)
                       .toString()
                       .toLowerCase();
+                  final classId = (data['classId'] ?? '')
+                      .toString()
+                      .toLowerCase();
 
-                  return fullName.contains(q);
+                  return fullName.contains(q) ||
+                      username.contains(q) ||
+                      classId.contains(q);
                 }).toList();
 
                 if (filtered.isEmpty) {
@@ -187,6 +194,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                     final fullName = (data['fullName'] ?? username).toString();
                     final classId = (data['classId'] ?? '').toString();
                     final inSchool = data['inSchool'] as bool? ?? false;
+                    final status = (data['status'] ?? 'active').toString();
 
                     return Container(
                       margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
@@ -260,6 +268,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                           fullName: fullName,
                           classId: classId,
                           inSchool: inSchool,
+                          status: status,
                           parentIds: List<String>.from(data['parents'] ?? []),
                         ),
                       ),
@@ -280,122 +289,141 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     required String fullName,
     required String classId,
     required bool inSchool,
+    required String status,
     required List<String> parentIds,
   }) async {
     await showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(fullName),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SelectableText(
-                "username: $username\nclassId: $classId\nlocatie: ${inSchool ? 'in incinta scolii' : 'in afara scolii'}",
-              ),
-              if (parentIds.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                const Text(
-                  'Părinți:',
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 8),
-                FutureBuilder<List<DocumentSnapshot>>(
-                  future: Future.wait(
-                    parentIds.map(
-                      (id) => FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(id)
-                          .get(),
-                    ),
+      builder: (_) {
+        bool busy = false;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: Text(fullName),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SelectableText(
+                    "username: $username\nclassId: $classId\nstatus: ${status == 'disabled' ? 'disabled' : 'enabled'}\nlocatie: ${inSchool ? 'in incinta scolii' : 'in afara scolii'}",
                   ),
-                  builder: (context, psnap) {
-                    if (psnap.hasError) return const SizedBox.shrink();
-                    if (!psnap.hasData) {
-                      return const CircularProgressIndicator();
-                    }
-                    final docs = psnap.data!;
-                    if (docs.isEmpty) return const Text('Niciun părinte');
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ...docs.map((ds) {
-                          final md = ds.data() as Map<String, dynamic>? ?? {};
-                          final pname =
-                              (md['fullName'] ?? md['username'] ?? ds.id)
-                                  .toString();
-                          final pun = (md['username'] ?? ds.id).toString();
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Row(
-                              children: [
-                                Expanded(child: Text(pname)),
-                                Text(
-                                  'user: $pun',
-                                  style: const TextStyle(color: Colors.black54),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Close"),
-          ),
-          TextButton(
-            onPressed: () async {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text("Delete user?"),
-                  content: Text("Ștergi elevul: $username ?"),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text("Cancel"),
+                  if (parentIds.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Părinți:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
                     ),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text("Delete"),
+                    const SizedBox(height: 8),
+                    FutureBuilder<List<DocumentSnapshot>>(
+                      future: Future.wait(
+                        parentIds.map(
+                          (id) => FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(id)
+                              .get(),
+                        ),
+                      ),
+                      builder: (context, psnap) {
+                        if (psnap.hasError) return const SizedBox.shrink();
+                        if (!psnap.hasData) {
+                          return const CircularProgressIndicator();
+                        }
+                        final docs = psnap.data!;
+                        if (docs.isEmpty) return const Text('Niciun părinte');
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ...docs.map((ds) {
+                              final md =
+                                  ds.data() as Map<String, dynamic>? ?? {};
+                              final pname =
+                                  (md['fullName'] ?? md['username'] ?? ds.id)
+                                      .toString();
+                              final pun = (md['username'] ?? ds.id).toString();
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  children: [
+                                    Expanded(child: Text(pname)),
+                                    Text(
+                                      'user: $pun',
+                                      style: const TextStyle(
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        );
+                      },
                     ),
                   ],
-                ),
-              );
-
-              if (ok == true) {
-                try {
-                  await store.deleteUser(username);
-                  if (!mounted) return;
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Utilizator șters cu succes.'),
-                    ),
-                  );
-                } catch (_) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Utilizatorul nu a putut fi șters.'),
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text("Delete"),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: busy ? null : () => Navigator.pop(context),
+                child: const Text("Close"),
+              ),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text("Delete user?"),
+                            content: Text("Ștergi elevul: $username ?"),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Cancel"),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Delete"),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (ok != true) return;
+                        setDialogState(() => busy = true);
+                        try {
+                          await store.deleteUser(username);
+                          if (!mounted) return;
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Utilizator șters cu succes.'),
+                            ),
+                          );
+                        } catch (_) {
+                          setDialogState(() => busy = false);
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Utilizatorul nu a putut fi șters.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                child: busy
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Delete"),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
