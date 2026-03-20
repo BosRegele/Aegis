@@ -59,6 +59,39 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
     }
   }
 
+  // --- Funcție nouă pentru aprobare/respingere în masă ---
+  Future<void> _reviewAllRequests(List<QueryDocumentSnapshot> docs, String status) async {
+    final teacherUid = AppSession.uid;
+    if (teacherUid == null || teacherUid.isEmpty) return;
+
+    final batch = FirebaseFirestore.instance.batch();
+    final now = Timestamp.now();
+    final reviewerName = (AppSession.username ?? '').toString();
+
+    for (var doc in docs) {
+      batch.update(doc.reference, {
+        'status': status,
+        'reviewedAt': now,
+        'reviewedByUid': teacherUid,
+        'reviewedByName': reviewerName,
+      });
+    }
+
+    await batch.commit();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            status == 'approved' ? 'Toate cererile au fost aprobate' : 'Toate cererile au fost respinse',
+          ),
+          backgroundColor: status == 'approved' ? Colors.green : Colors.red,
+        ),
+      );
+    }
+  }
+  // ---------------------------------------------------------
+
   Future<void> _showRequestDialog(
     BuildContext context,
     String requestId,
@@ -392,215 +425,297 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                       ),
                     );
                   }
-                  return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemCount: docs.length,
-                    itemBuilder: (context, index) {
-                      final doc = docs[index];
-                      final d = doc.data() as Map<String, dynamic>;
-                      final requestId = doc.id;
-                      final studentName = (d['studentName'] ?? '').toString();
-                      final dateText = (d['dateText'] ?? '').toString();
-                      final timeText = (d['timeText'] ?? '').toString();
-                      final message = (d['message'] ?? '').toString();
+                  
+                  // Aici am adăugat Stack-ul cu lista și butonul bulk persistent
+                  return Stack(
+                    children: [
+                      ListView.separated(
+                        // Am adăugat padding la final (90) pentru ca ultimul element să nu fie ascuns sub butonul plutitor
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 90),
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final doc = docs[index];
+                          final d = doc.data() as Map<String, dynamic>;
+                          final requestId = doc.id;
+                          final studentName = (d['studentName'] ?? '').toString();
+                          final dateText = (d['dateText'] ?? '').toString();
+                          final timeText = (d['timeText'] ?? '').toString();
+                          final message = (d['message'] ?? '').toString();
 
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF2E3B4E).withOpacity(0.07),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF2E3B4E).withOpacity(0.07),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(18),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(18),
-                            onTap: () =>
-                                _showRequestDialog(context, requestId, d),
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                14,
-                                14,
-                                10,
-                                14,
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  // Avatar
-                                  Container(
-                                    width: 46,
-                                    height: 46,
-                                    decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFF4B78D2,
-                                      ).withOpacity(0.10),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.person_rounded,
-                                      color: Color(0xFF4B78D2),
-                                      size: 26,
-                                    ),
+                            child: Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(18),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(18),
+                                onTap: () =>
+                                    _showRequestDialog(context, requestId, d),
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    14,
+                                    14,
+                                    10,
+                                    14,
                                   ),
-                                  const SizedBox(width: 12),
-                                  // Content
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          studentName,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 15,
-                                            color: Color(0xFF2E3B4E),
-                                          ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      // Avatar
+                                      Container(
+                                        width: 46,
+                                        height: 46,
+                                        decoration: BoxDecoration(
+                                          color: const Color(
+                                            0xFF4B78D2,
+                                          ).withOpacity(0.10),
+                                          shape: BoxShape.circle,
                                         ),
-                                        const SizedBox(height: 5),
-                                        Row(
+                                        child: const Icon(
+                                          Icons.person_rounded,
+                                          color: Color(0xFF4B78D2),
+                                          size: 26,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Content
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 3,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: const Color(
-                                                  0xFF4B78D2,
-                                                ).withOpacity(0.10),
-                                                borderRadius:
-                                                    BorderRadius.circular(20),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const Icon(
-                                                    Icons
-                                                        .calendar_today_rounded,
-                                                    size: 11,
-                                                    color: Color(0xFF4B78D2),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    '$dateText${timeText.isNotEmpty ? ' · $timeText' : ''}',
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                      color: Color(0xFF4B78D2),
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ],
+                                            Text(
+                                              studentName,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 15,
+                                                color: Color(0xFF2E3B4E),
                                               ),
                                             ),
+                                            const SizedBox(height: 5),
+                                            Row(
+                                              children: [
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 3,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFF4B78D2,
+                                                    ).withOpacity(0.10),
+                                                    borderRadius:
+                                                        BorderRadius.circular(20),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      const Icon(
+                                                        Icons
+                                                            .calendar_today_rounded,
+                                                        size: 11,
+                                                        color: Color(0xFF4B78D2),
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        '$dateText${timeText.isNotEmpty ? ' · $timeText' : ''}',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color: Color(0xFF4B78D2),
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            if (message.isNotEmpty) ...[
+                                              const SizedBox(height: 5),
+                                              Text(
+                                                message,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  color: Color(0xFF5F6771),
+                                                ),
+                                              ),
+                                            ],
                                           ],
                                         ),
-                                        if (message.isNotEmpty) ...[
-                                          const SizedBox(height: 5),
-                                          Text(
-                                            message,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: Color(0xFF5F6771),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      // Action buttons
+                                      Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          SizedBox(
+                                            width: 90,
+                                            child: ElevatedButton.icon(
+                                              onPressed: () => _reviewRequest(
+                                                requestId: requestId,
+                                                status: 'approved',
+                                              ),
+                                              icon: const Icon(
+                                                Icons.check_rounded,
+                                                size: 16,
+                                              ),
+                                              label: const Text('Aprobă'),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: const Color(
+                                                  0xFF4CAF50,
+                                                ),
+                                                foregroundColor: Colors.white,
+                                                elevation: 0,
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 8,
+                                                ),
+                                                textStyle: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          SizedBox(
+                                            width: 90,
+                                            child: ElevatedButton.icon(
+                                              onPressed: () => _reviewRequest(
+                                                requestId: requestId,
+                                                status: 'rejected',
+                                              ),
+                                              icon: const Icon(
+                                                Icons.close_rounded,
+                                                size: 16,
+                                              ),
+                                              label: const Text('Respinge'),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: const Color(
+                                                  0xFFE53935,
+                                                ),
+                                                foregroundColor: Colors.white,
+                                                elevation: 0,
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 8,
+                                                ),
+                                                textStyle: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ],
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  // Action buttons
-                                  Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SizedBox(
-                                        width: 90,
-                                        child: ElevatedButton.icon(
-                                          onPressed: () => _reviewRequest(
-                                            requestId: requestId,
-                                            status: 'approved',
-                                          ),
-                                          icon: const Icon(
-                                            Icons.check_rounded,
-                                            size: 16,
-                                          ),
-                                          label: const Text('Aprobă'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(
-                                              0xFF4CAF50,
-                                            ),
-                                            foregroundColor: Colors.white,
-                                            elevation: 0,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 8,
-                                            ),
-                                            textStyle: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      SizedBox(
-                                        width: 90,
-                                        child: ElevatedButton.icon(
-                                          onPressed: () => _reviewRequest(
-                                            requestId: requestId,
-                                            status: 'rejected',
-                                          ),
-                                          icon: const Icon(
-                                            Icons.close_rounded,
-                                            size: 16,
-                                          ),
-                                          label: const Text('Respinge'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(
-                                              0xFFE53935,
-                                            ),
-                                            foregroundColor: Colors.white,
-                                            elevation: 0,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 8,
-                                            ),
-                                            textStyle: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                          ),
-                                        ),
                                       ),
                                     ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
+                          );
+                        },
+                      ),
+                      
+                      // Butonul oval persistente pentru aprobare/respingere în masă
+                      Positioned(
+                        bottom: 20,
+                        left: 20,
+                        right: 20,
+                        child: Container(
+                          height: 56,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 15,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Material(
+                                  color: const Color(0xFFE53935), // Roșu
+                                  child: InkWell(
+                                    onTap: () => _reviewAllRequests(docs, 'rejected'),
+                                    child: const Center(
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Respinge Toate',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Material(
+                                  color: const Color(0xFF4CAF50), // Verde
+                                  child: InkWell(
+                                    onTap: () => _reviewAllRequests(docs, 'approved'),
+                                    child: const Center(
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.check_rounded, color: Colors.white, size: 20),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Aprobă Toate',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      );
-                    },
+                      ),
+                    ],
                   );
                 },
               ),
