@@ -963,6 +963,29 @@ exports.adminRemoveParentFromStudent = onCall(async (request) => {
         return { ok: true, changed: true };
     });
 });
+exports.generateQrToken = onCall(async (request) => {
+
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login required");
+    }
+
+    const uid = request.auth.uid;
+
+    const rand = Math.random().toString().slice(2, 18);
+
+    const expiresAt = new Date(Date.now() + 20000); // 20 sec
+
+    await admin.firestore().collection("qrTokens").doc(rand).set({
+        userId: uid,
+        expiresAt: expiresAt,
+        used: false
+    });
+
+    return {
+        token: rand
+    };
+
+});
 
 exports.redeemQrToken = onCall(async (request) => {
     if (!request.auth) {
