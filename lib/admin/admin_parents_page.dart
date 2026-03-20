@@ -23,9 +23,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryGreen = Color.fromARGB(255, 94, 184, 78);
-    const Color lightGreen = Color(0xFFF0F4E8);
-    const Color darkGreen = Color.fromARGB(255, 94, 202, 54);
+    const Color primaryGreen = Color(0xFF7AAF5B);
 
     if (!AppSession.isAdmin) {
       return const Scaffold(
@@ -34,14 +32,64 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
     }
 
     return Scaffold(
-      backgroundColor: lightGreen,
+      backgroundColor: const Color(0xFFF8FFF5),
       appBar: AppBar(
-        backgroundColor: primaryGreen,
-        title: const Text(
-          "Admin · Parinti",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF7AAF5B), Color(0xFF5A9641)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
         ),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .where('role', isEqualTo: 'parent')
+              .snapshots(),
+          builder: (context, snapshot) {
+            final count = snapshot.data?.docs.length ?? 0;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Părinți",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
       body: Column(
         children: [
@@ -50,20 +98,35 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
             child: TextField(
               controller: searchC,
               decoration: InputDecoration(
-                hintText: "Search by username or full name...",
-                prefixIcon: const Icon(Icons.search),
+                hintText: "Caută după utilizator sau nume...",
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF7AAF5B)),
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: Colors.green.withValues(alpha: 0.30),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: Colors.green.withValues(alpha: 0.30),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF7AAF5B),
+                    width: 2,
+                  ),
                 ),
               ),
               onChanged: (v) => setState(() => q = v.trim().toLowerCase()),
             ),
           ),
 
-          const Divider(height: 1),
+          const Divider(height: 1, color: Color(0xFFCDE8B0)),
 
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -99,10 +162,14 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
 
                   final data = d.data() as Map<String, dynamic>;
                   final uid = d.id;
-                  final username = (data['username'] ?? uid).toString();
-                  final fullName = (data['fullName'] ?? username).toString();
+                  final username = (data['username'] ?? uid)
+                      .toString()
+                      .toLowerCase();
+                  final fullName = (data['fullName'] ?? username)
+                      .toString()
+                      .toLowerCase();
 
-                  return username.contains(q) || fullName.contains(q);
+                  return fullName.contains(q) || username.contains(q);
                 }).toList();
 
                 if (filtered.isEmpty) {
@@ -120,31 +187,41 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                     final fullName = (data['fullName'] ?? username).toString();
                     final status = (data['status'] ?? 'active').toString();
 
-                    return Column(
-                      children: [
-                        ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: primaryGreen.withOpacity(0.2),
-                            child: const Icon(Icons.person),
+                    return Container(
+                      margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFCDE8B0)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
                           ),
-                          title: Text(
-                            fullName,
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          subtitle: Text("user: $username | $status"),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => _openParentDialog(
-                            context,
-                            username: username,
-                            fullName: fullName,
-                            status: status,
-                            childrenIds: List<String>.from(
-                              data['children'] ?? [],
-                            ),
+                        ],
+                      ),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: primaryGreen.withValues(alpha: 0.20),
+                          child: const Icon(Icons.person),
+                        ),
+                        title: Text(
+                          fullName,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        subtitle: Text("user: $username"),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => _openParentDialog(
+                          context,
+                          username: username,
+                          fullName: fullName,
+                          status: status,
+                          childrenIds: List<String>.from(
+                            data['children'] ?? [],
                           ),
                         ),
-                        Divider(height: 1, color: darkGreen.withOpacity(0.3)),
-                      ],
+                      ),
                     );
                   },
                 );
@@ -165,108 +242,169 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
   }) async {
     await showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(fullName),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SelectableText("username: $username\nstatus: $status"),
-              if (childrenIds.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                const Text(
-                  'Copii:',
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 8),
-                FutureBuilder<List<DocumentSnapshot>>(
-                  future: Future.wait(
-                    childrenIds.map(
-                      (id) => FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(id)
-                          .get(),
-                    ),
+      builder: (_) {
+        bool busy = false;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: Text(fullName),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SelectableText(
+                    "username: $username\nstatus: ${status == 'disabled' ? 'disabled' : 'enabled'}",
                   ),
-                  builder: (context, csnap) {
-                    if (csnap.hasError) return const SizedBox.shrink();
-                    if (!csnap.hasData) {
-                      return const CircularProgressIndicator();
-                    }
-                    final docs = csnap.data!;
-                    if (docs.isEmpty) return const Text('Niciun copil');
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ...docs.map((ds) {
-                          final md = ds.data() as Map<String, dynamic>? ?? {};
-                          final cname =
-                              (md['fullName'] ?? md['username'] ?? ds.id)
-                                  .toString();
-                          final cun = (md['username'] ?? ds.id).toString();
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Row(
-                              children: [
-                                Expanded(child: Text(cname)),
-                                Text(
-                                  'user: $cun',
-                                  style: const TextStyle(color: Colors.black54),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Close"),
-          ),
-          TextButton(
-            onPressed: () async {
-              await store.setDisabled(username, status != 'disabled');
-              if (mounted) Navigator.pop(context);
-            },
-            child: Text(status == 'disabled' ? "Enable" : "Disable"),
-          ),
-          TextButton(
-            onPressed: () async {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text("Delete user?"),
-                  content: Text("Ștergi părintele: $username ?"),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text("Cancel"),
+                  if (childrenIds.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Copii:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
                     ),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text("Delete"),
+                    const SizedBox(height: 8),
+                    FutureBuilder<List<DocumentSnapshot>>(
+                      future: Future.wait(
+                        childrenIds.map(
+                          (id) => FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(id)
+                              .get(),
+                        ),
+                      ),
+                      builder: (context, csnap) {
+                        if (csnap.hasError) return const SizedBox.shrink();
+                        if (!csnap.hasData) {
+                          return const CircularProgressIndicator();
+                        }
+                        final docs = csnap.data!;
+                        if (docs.isEmpty) return const Text('Niciun copil');
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ...docs.map((ds) {
+                              final md =
+                                  ds.data() as Map<String, dynamic>? ?? {};
+                              final cname =
+                                  (md['fullName'] ?? md['username'] ?? ds.id)
+                                      .toString();
+                              final cun = (md['username'] ?? ds.id).toString();
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  children: [
+                                    Expanded(child: Text(cname)),
+                                    Text(
+                                      'user: $cun',
+                                      style: const TextStyle(
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        );
+                      },
                     ),
                   ],
-                ),
-              );
-
-              if (ok == true) {
-                await store.deleteUser(username);
-                if (mounted) Navigator.pop(context);
-              }
-            },
-            child: const Text("Delete"),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: busy ? null : () => Navigator.pop(context),
+                child: const Text("Close"),
+              ),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        final disable = status != 'disabled';
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text("Confirmare"),
+                            content: Text(
+                              disable
+                                  ? "Dezactivezi părintele: $username ?"
+                                  : "Activezi părintele: $username ?",
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Cancel"),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Confirm"),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (ok != true) return;
+                        setDialogState(() => busy = true);
+                        await store.setDisabled(username, disable);
+                        if (mounted) Navigator.pop(context);
+                      },
+                child: Text(status == 'disabled' ? "Enable" : "Disable"),
+              ),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text("Delete user?"),
+                            content: Text("Ștergi părintele: $username ?"),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Cancel"),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Delete"),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (ok != true) return;
+                        setDialogState(() => busy = true);
+                        try {
+                          await store.deleteUser(username);
+                          if (!mounted) return;
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Utilizator șters cu succes.'),
+                            ),
+                          );
+                        } catch (_) {
+                          setDialogState(() => busy = false);
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Utilizatorul nu a putut fi șters.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                child: busy
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Delete"),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

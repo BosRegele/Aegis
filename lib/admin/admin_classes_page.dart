@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../session.dart';
+import 'admin_api.dart';
 import 'admin_store.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
@@ -12,6 +13,7 @@ class AdminClassesPage extends StatefulWidget {
 }
 
 class _AdminClassesPageState extends State<AdminClassesPage> {
+  final api = AdminApi();
   final store = AdminStore();
 
   String? selectedClassId;
@@ -36,9 +38,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryGreen = Color.fromARGB(255, 94, 184, 78);
-    const Color lightGreen = Color(0xFFF0F4E8);
-    const Color darkGreen = Color.fromARGB(255, 94, 202, 54);
+    const Color primaryGreen = Color(0xFF7AAF5B);
 
     if (!AppSession.isAdmin) {
       return const Scaffold(
@@ -47,29 +47,38 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
     }
 
     return Scaffold(
-      backgroundColor: lightGreen,
+      backgroundColor: const Color(0xFFF8FFF5),
       appBar: AppBar(
-        backgroundColor: primaryGreen,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF7AAF5B), Color(0xFF5A9641)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          "Admin · Class&Students",
+          "Clase & Elevi",
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.w600,
           ),
         ),
-        elevation: 0,
       ),
       body: Row(
         children: [
           // LEFT: classes sidebar
           Container(
             width: 280,
-            color: darkGreen,
+            color: const Color(0xFF5C8B42),
             child: Column(
               children: [
                 // Search bar
@@ -81,14 +90,14 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                     decoration: InputDecoration(
                       hintText: "Caută clasă...",
                       hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.60),
                       ),
                       prefixIcon: Icon(
                         Icons.search,
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.60),
                       ),
                       filled: true,
-                      fillColor: Colors.white.withOpacity(0.1),
+                      fillColor: Colors.white.withValues(alpha: 0.10),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide.none,
@@ -152,56 +161,127 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                               .toLowerCase();
                           final isSelected = selectedClassId == d.id;
 
-                          return GestureDetector(
-                            onTap: () {
-                              if (selectedClassId == d.id) return;
-                              setState(() {
-                                selectedClassId = d.id;
-                                selectedClassData = data;
-                              });
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Colors.white
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    name,
-                                    style: TextStyle(
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  if (selectedClassId == d.id) return;
+                                  setState(() {
+                                    selectedClassId = d.id;
+                                    selectedClassData = data;
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(18),
+                                hoverColor: Colors.white.withValues(
+                                  alpha: 0.05,
+                                ),
+                                splashColor: Colors.white.withValues(
+                                  alpha: 0.04,
+                                ),
+                                highlightColor: Colors.white.withValues(
+                                  alpha: 0.03,
+                                ),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 160),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.white.withValues(alpha: 0.03),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
                                       color: isSelected
-                                          ? darkGreen
-                                          : Colors.white,
-                                      fontSize: 15,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w700
-                                          : FontWeight.w600,
+                                          ? const Color(0xFF9AC972)
+                                          : Colors.white.withValues(
+                                              alpha: 0.07,
+                                            ),
                                     ),
                                   ),
-                                  Text(
-                                    teacherU.isEmpty
-                                        ? 'Diriginte: (nepus)'
-                                        : 'Diriginte: $teacherU',
-                                    style: TextStyle(
-                                      color: isSelected
-                                          ? darkGreen.withOpacity(0.8)
-                                          : Colors.white.withOpacity(0.7),
-                                      fontSize: 11,
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? const Color(0xFF40632D)
+                                              : Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w700
+                                              : FontWeight.w600,
+                                        ),
+                                      ),
+                                      teacherU.isEmpty
+                                          ? Text(
+                                              'Diriginte: (nepus)',
+                                              style: TextStyle(
+                                                color: isSelected
+                                                    ? const Color(0xFF355126)
+                                                    : Colors.white.withValues(
+                                                        alpha: 0.70,
+                                                      ),
+                                                fontSize: 11,
+                                              ),
+                                            )
+                                          : StreamBuilder<QuerySnapshot>(
+                                              stream: FirebaseFirestore.instance
+                                                  .collection('users')
+                                                  .where(
+                                                    'username',
+                                                    isEqualTo: teacherU,
+                                                  )
+                                                  .limit(1)
+                                                  .snapshots(),
+                                              builder: (context, snap) {
+                                                String displayName = teacherU;
+                                                if (snap.hasData &&
+                                                    snap
+                                                        .data!
+                                                        .docs
+                                                        .isNotEmpty) {
+                                                  final u =
+                                                      snap.data!.docs.first
+                                                              .data()
+                                                          as Map<
+                                                            String,
+                                                            dynamic
+                                                          >;
+                                                  final fn =
+                                                      (u['fullName'] ?? '')
+                                                          .toString()
+                                                          .trim();
+                                                  if (fn.isNotEmpty)
+                                                    displayName = fn;
+                                                }
+                                                return Text(
+                                                  'Diriginte: $displayName',
+                                                  style: TextStyle(
+                                                    color: isSelected
+                                                        ? const Color(
+                                                            0xFF355126,
+                                                          )
+                                                        : Colors.white
+                                                              .withValues(
+                                                                alpha: 0.70,
+                                                              ),
+                                                    fontSize: 11,
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           );
@@ -227,13 +307,13 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                           width: 100,
                           height: 100,
                           decoration: BoxDecoration(
-                            color: primaryGreen.withOpacity(0.15),
+                            color: primaryGreen.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(50),
                           ),
                           child: Icon(
                             Icons.school,
                             size: 50,
-                            color: primaryGreen.withOpacity(0.5),
+                            color: primaryGreen.withValues(alpha: 0.50),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -326,10 +406,17 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
               try {
                 final newTeacher = teacherUserC.text.trim().toLowerCase();
 
-                await store.changeClassTeacher(
-                  classId: classId,
-                  teacherUsername: newTeacher,
-                );
+                if (newTeacher.isEmpty) {
+                  await store.changeClassTeacher(
+                    classId: classId,
+                    teacherUsername: newTeacher,
+                  );
+                } else {
+                  await api.moveStudentClass(
+                    username: newTeacher,
+                    newClassId: classId,
+                  );
+                }
 
                 if (mounted) {
                   setState(() {
@@ -408,18 +495,18 @@ class _TeacherHeader extends StatelessWidget {
       );
     }
 
-    return StreamBuilder<DocumentSnapshot>(
+    return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .doc(teacherUsername)
+          .where('username', isEqualTo: teacherUsername)
+          .limit(1)
           .snapshots(),
       builder: (context, snap) {
-        String teacherName = "(nepus)";
-        if (snap.hasData && snap.data!.exists) {
-          final u = snap.data!.data() as Map<String, dynamic>;
-          teacherName = (u['fullName'] ?? teacherUsername).toString();
-        } else {
-          teacherName = teacherUsername;
+        String teacherName = teacherUsername;
+        if (snap.hasData && snap.data!.docs.isNotEmpty) {
+          final u = snap.data!.docs.first.data() as Map<String, dynamic>;
+          final fn = (u['fullName'] ?? '').toString().trim();
+          if (fn.isNotEmpty) teacherName = fn;
         }
 
         return Padding(
@@ -431,7 +518,7 @@ class _TeacherHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Clasa: $classId  |  Diriginte: ${teacherName.trim().isEmpty ? '(nepus)' : teacherName}",
+                      "Clasa: $classId  |  Diriginte: ${teacherName.trim().isEmpty ? '(nepus)' : teacherName} | $teacherUsername",
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -457,8 +544,6 @@ class _StudentsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryGreen = Color.fromARGB(255, 94, 184, 78);
-
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
@@ -489,63 +574,109 @@ class _StudentsList extends StatelessWidget {
           itemBuilder: (_, i) {
             final d = docs[i];
             final data = d.data() as Map<String, dynamic>;
-            final uid = d.id;
             final username = (data['username'] ?? '').toString();
             final fullName = (data['fullName'] ?? username).toString();
-            final status = (data['status'] ?? 'active').toString();
+            final inSchool = data['inSchool'] as bool? ?? false;
 
-            return Column(
-              children: [
-                ListTile(
-                  title: Text(fullName),
-                  subtitle: Text(
-                    "username: $username | uid: $uid | status: $status",
+            return Container(
+              margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFCDE8B0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: "Delete user",
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          color: Color(0xFFE53935),
-                        ),
-                        onPressed: () async {
-                          final ok = await showDialog<bool>(
-                            context: context,
-                            builder: (_) => AlertDialog(
-                              title: const Text("Delete user?"),
-                              content: Text("Stergi user: $username ?"),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
-                                  child: const Text("Cancel"),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text("Delete"),
-                                ),
-                              ],
-                            ),
-                          );
-
-                          if (ok == true) {
-                            try {
-                              await store.deleteUser(username);
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("Eroare: $e")),
-                              );
-                            }
-                          }
-                        },
+                ],
+              ),
+              child: ListTile(
+                title: Text(fullName),
+                subtitle: Text("username: $username"),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
                       ),
-                    ],
-                  ),
+                      decoration: BoxDecoration(
+                        color: inSchool
+                            ? const Color(0xFFE8F5E9)
+                            : const Color(0xFFFFEBEE),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: inSchool
+                              ? const Color(0xFF4CAF50)
+                              : const Color(0xFFF44336),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            inSchool ? Icons.location_on : Icons.location_off,
+                            color: inSchool
+                                ? const Color(0xFF4CAF50)
+                                : const Color(0xFFF44336),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            inSchool ? 'In scoala' : 'Afara',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: inSchool
+                                  ? const Color(0xFF4CAF50)
+                                  : const Color(0xFFF44336),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: "Delete user",
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Color(0xFFE53935),
+                      ),
+                      onPressed: () async {
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text("Delete user?"),
+                            content: Text("Stergi user: $username ?"),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Cancel"),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Delete"),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (ok == true) {
+                          try {
+                            await store.deleteUser(username);
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Eroare: $e")),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ],
                 ),
-                Divider(height: 1, color: primaryGreen.withOpacity(0.3)),
-              ],
+              ),
             );
           },
         );

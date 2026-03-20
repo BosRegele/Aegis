@@ -111,6 +111,30 @@ class AdminApi {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
+  Future<Map<String, dynamic>> assignParentToStudent({
+    required String studentUid,
+    required String parentUid,
+  }) async {
+    final callable = _functions.httpsCallable('adminAssignParentToStudent');
+    final res = await callable.call(<String, dynamic>{
+      'studentUid': studentUid,
+      'parentUid': parentUid,
+    });
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> removeParentFromStudent({
+    required String studentUid,
+    required String parentUid,
+  }) async {
+    final callable = _functions.httpsCallable('adminRemoveParentFromStudent');
+    final res = await callable.call(<String, dynamic>{
+      'studentUid': studentUid,
+      'parentUid': parentUid,
+    });
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
   Future<Map<String, dynamic>> redeemQrToken({required String token}) async {
     final callable = _functions.httpsCallable('redeemQrToken');
     final res = await callable.call(<String, dynamic>{'token': token});
