@@ -161,7 +161,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
                   ),
                   Positioned(
                     top: 20,
-                    left: 20,
+                    right: 20,
                     child: _BouncingButton( // Buton Deconectare (Header)
                       onTap: _signOut,
                       borderRadius: BorderRadius.circular(30),
@@ -249,8 +249,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
                                         .where('status', isEqualTo: 'pending')
                                         .snapshots()
                                     : null,
-                                lastViewed: requestsLastOpened,
-                                timestampField: 'requestedAt',
+                                countPredicate: (data) => data['viewedByParent'] != true,
                                 onTap: () {
                                   // Marcam notificarile ca citite inainte de navigare
                                   if (AppSession.uid != null) {
@@ -326,6 +325,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
     DateTime? lastViewed,
     String? timestampField,
     List<String>? statusWhitelist,
+    bool Function(Map<String, dynamic>)? countPredicate,
   }) {
     // Folosim _BouncingButton in loc de InkWell pentru efectul cerut
     return _BouncingButton(
@@ -370,7 +370,9 @@ class _ParentHomePageState extends State<ParentHomePage> {
                         
                         // Calculam cate sunt necitite
                         int count = 0;
-                        if (lastViewed == null) {
+                        if (countPredicate != null) {
+                          count = snapshot.data!.docs.where((doc) => countPredicate(doc.data() as Map<String, dynamic>)).length;
+                        } else if (lastViewed == null) {
                           count = snapshot.data!.docs.length;
                         } else {
                           var docs = snapshot.data!.docs;

@@ -43,8 +43,14 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
     return '${diff.inDays} zile';
   }
 
+  String _formatFullDate(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}, ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
   Future<void> _handleRequest(String docId, bool approved) async {
-    final parentName = AppSession.username ?? "Parinte";
+    final parentName = (AppSession.fullName != null && AppSession.fullName!.isNotEmpty)
+        ? AppSession.fullName!
+        : (AppSession.username ?? "Parinte");
     try {
       await FirebaseFirestore.instance
           .collection('leaveRequests')
@@ -71,59 +77,160 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
     }
   }
 
-  void _showRequestDetails(Map<String, dynamic> data) {
+  void _showRequestDetails(String docId, Map<String, dynamic> data) {
+    // Mark as viewed so the badge decreases
+    FirebaseFirestore.instance
+        .collection('leaveRequests')
+        .doc(docId)
+        .update({'viewedByParent': true});
+
     final studentName = data['studentName'] ?? 'Elev necunoscut';
     final date = data['dateText'] ?? '-';
     final time = data['timeText'] ?? '-';
     final message = data['message'] ?? 'Fără motiv';
+    final requestedAtTimestamp = data['requestedAt'] as Timestamp?;
+    String requestedAtText = '-';
+    if (requestedAtTimestamp != null) {
+      requestedAtText = _formatFullDate(requestedAtTimestamp.toDate());
+    }
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          studentName,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: SingleChildScrollView(
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Data: $date", style: const TextStyle(fontSize: 16)),
-              Text("Ora: $time", style: const TextStyle(fontSize: 16)),
-              const SizedBox(height: 16),
-              const Text(
-                "Motiv:",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              // Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF7AAF5B),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.assignment_ind_rounded, size: 40, color: Colors.white),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      studentName,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 4),
-              Text(message, style: const TextStyle(fontSize: 16)),
+              
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    _buildDetailRow(Icons.send_rounded, 'Trimisă la:', requestedAtText),
+                    const SizedBox(height: 16),
+                    _buildDetailRow(Icons.calendar_today_rounded, 'Data:', date),
+                    const SizedBox(height: 16),
+                    _buildDetailRow(Icons.access_time_rounded, 'Ora:', time),
+                    const SizedBox(height: 16),
+                    const Divider(height: 24),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Motiv:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey)),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F7FA),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                      ),
+                      child: Text(
+                        message,
+                        style: const TextStyle(fontSize: 16, color: Color(0xFF2D3142), height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Actions
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                child: _BouncingButton(
+                  onTap: () => Navigator.of(ctx).pop(),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F7FA),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'Închide',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF7AAF5B)),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-        actions: [
-          _BouncingButton(
-            onTap: () => Navigator.of(ctx).pop(),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                "Închide",
-                style: TextStyle(
-                  color: Colors.green,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF7AAF5B).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 20, color: const Color(0xFF7AAF5B)),
+        ),
+        const SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+            Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2D3142))),
+          ],
+        ),
+      ],
     );
   }
 
@@ -178,22 +285,23 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
                           ),
                         )
                       : StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('leaveRequests')
-                              .where('studentUid', whereIn: _childrenUids)
-                              .where('status', isEqualTo: 'pending')
-                              .orderBy('requestedAt', descending: true)
-                              .snapshots(),
+                          stream: _childrenUids.isEmpty
+                              ? null
+                              : FirebaseFirestore.instance
+                                  .collection('leaveRequests')
+                                  .where('studentUid', whereIn: _childrenUids)
+                                  .where('status', isEqualTo: 'pending')
+                                  .orderBy('requestedAt', descending: true)
+                                  .snapshots(),
                           builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(child: CircularProgressIndicator());
+                            }
                             if (snapshot.hasError) {
-                              return Center(
-                                child: Text('Eroare: ${snapshot.error}'),
-                              );
+                              return Center(child: Text('Eroare reală: ${snapshot.error}'));
                             }
                             if (!snapshot.hasData) {
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
+                              return const SizedBox();
                             }
 
                             final docs = snapshot.data!.docs;
@@ -232,7 +340,7 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
                                   children: [
                                     // Cardul principal cu informații (click pentru detalii)
                                     _BouncingButton(
-                                      onTap: () => _showRequestDetails(data),
+                                      onTap: () => _showRequestDetails(doc.id, data),
                                       borderRadius: BorderRadius.circular(24),
                                       child: Container(
                                         padding: const EdgeInsets.all(20),
