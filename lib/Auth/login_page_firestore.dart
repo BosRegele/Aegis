@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:async';
+import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../StudentInterface/mainnavigation.dart';
@@ -25,18 +26,14 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
   bool loading = false;
   bool passwordVisible = false; // control vizibilitate parola
   DateTime? _blockedUntil;
-  String _blockedUsername = '';
   Timer? _countdownTimer;
+  String _actorKey = '';
 
   static const _kBlockedUntilMs = 'login_blocked_until_ms';
-  static const _kBlockedUsername = 'login_blocked_username';
+  static const _kLoginActorKey = 'login_actor_key';
 
   bool get _isLocallyBlocked {
     if (_blockedUntil == null) return false;
-    final entered = userC.text.trim().toLowerCase();
-    if (_blockedUsername.isNotEmpty && entered != _blockedUsername) {
-      return false;
-    }
     return DateTime.now().isBefore(_blockedUntil!);
   }
 
@@ -60,10 +57,9 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
     });
   }
 
-  Future<void> _setBlockedForSeconds(int sec, String username) async {
+  Future<void> _setBlockedForSeconds(int sec) async {
     if (sec <= 0) return;
     _blockedUntil = DateTime.now().add(Duration(seconds: sec));
-    _blockedUsername = username.trim().toLowerCase();
     _startCountdown();
     await _saveLocalBlockState();
     setState(() {});
@@ -76,34 +72,53 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
         _kBlockedUntilMs,
         _blockedUntil!.millisecondsSinceEpoch,
       );
-      await prefs.setString(_kBlockedUsername, _blockedUsername);
     }
   }
 
   Future<void> _clearLocalBlockState() async {
     _blockedUntil = null;
-    _blockedUsername = '';
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kBlockedUntilMs);
-    await prefs.remove(_kBlockedUsername);
   }
 
   Future<void> _loadLocalBlockState() async {
     final prefs = await SharedPreferences.getInstance();
     final ms = prefs.getInt(_kBlockedUntilMs);
-    final uname = prefs.getString(_kBlockedUsername) ?? '';
     if (ms == null) return;
 
     final dt = DateTime.fromMillisecondsSinceEpoch(ms);
     if (DateTime.now().isBefore(dt)) {
       _blockedUntil = dt;
-      _blockedUsername = uname;
       _startCountdown();
       if (mounted) setState(() {});
       return;
     }
 
     await _clearLocalBlockState();
+  }
+
+  String _randomHex(int length) {
+    final rnd = Random.secure();
+    final bytes = List<int>.generate(length ~/ 2, (_) => rnd.nextInt(256));
+    final sb = StringBuffer();
+    for (final b in bytes) {
+      sb.write(b.toRadixString(16).padLeft(2, '0'));
+    }
+    return sb.toString();
+  }
+
+  Future<void> _ensureActorKey() async {
+    if (_actorKey.isNotEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final existing = (prefs.getString(_kLoginActorKey) ?? '').trim();
+    if (RegExp(r'^[a-f0-9]{32,128}$').hasMatch(existing)) {
+      _actorKey = existing;
+      return;
+    }
+
+    final generated = _randomHex(32);
+    _actorKey = generated;
+    await prefs.setString(_kLoginActorKey, generated);
   }
 
   @override
@@ -113,6 +128,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       if (mounted) setState(() {});
     });
     unawaited(_loadLocalBlockState());
+    unawaited(_ensureActorKey());
   }
 
   int _asInt(dynamic v, {int fallback = 0}) {
@@ -121,6 +137,8 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
   }
 
   Future<void> _login() async {
+    if (loading) return;
+
     if (_isLocallyBlocked) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -142,23 +160,20 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       if (username.isEmpty || password.isEmpty) {
         throw Exception("Date invalide");
       }
+      await _ensureActorKey();
+      if (_actorKey.isEmpty) {
+        throw Exception("Autentificare temporar indisponibila");
+      }
 
-      // Login should continue even if security precheck is temporarily unavailable.
-      try {
-        final precheck = await FirebaseFunctions.instance
-            .httpsCallable('authPrecheckLogin')
-            .call({'username': username});
-        final preData = Map<String, dynamic>.from(precheck.data as Map);
-        attemptToken = (preData['attemptToken'] ?? '').toString();
-        if (preData['blocked'] == true) {
-          final sec = _asInt(preData['remainingSeconds'], fallback: 120);
-          await _setBlockedForSeconds(sec, username);
-          throw Exception("Cont blocat temporar. Incearca din nou in ${sec}s.");
-        }
-      } on FirebaseFunctionsException {
-        attemptToken = '';
-      } catch (_) {
-        attemptToken = '';
+      final precheck = await FirebaseFunctions.instance
+          .httpsCallable('authPrecheckLogin')
+          .call({'username': username, 'actorKey': _actorKey});
+      final preData = Map<String, dynamic>.from(precheck.data as Map);
+      attemptToken = (preData['attemptToken'] ?? '').toString();
+      if (preData['blocked'] == true) {
+        final sec = _asInt(preData['remainingSeconds'], fallback: 120);
+        await _setBlockedForSeconds(sec);
+        throw Exception("Cont blocat temporar. Incearca din nou in ${sec}s.");
       }
 
       final email = "$username@school.local";
@@ -189,7 +204,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       try {
         await FirebaseFunctions.instance
             .httpsCallable('authRegisterLoginSuccess')
-            .call();
+            .call({'actorKey': _actorKey});
       } on FirebaseFunctionsException {
         // Keep login successful even if this post-login hook fails.
       } catch (_) {
@@ -237,6 +252,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       String msg = "Date de autentificare invalide.";
       if (e.code == "wrong-password" ||
           e.code == "invalid-credential" ||
+          e.code == "invalid-login-credentials" ||
           e.code == "user-not-found" ||
           e.code == "invalid-email" ||
           e.code == "user-disabled") {
@@ -245,11 +261,15 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
           if (attemptToken.isNotEmpty) {
             final failRes = await FirebaseFunctions.instance
                 .httpsCallable('authReportLoginFailure')
-                .call({'username': username, 'attemptToken': attemptToken});
+                .call({
+                  'username': username,
+                  'attemptToken': attemptToken,
+                  'actorKey': _actorKey,
+                });
             final failData = Map<String, dynamic>.from(failRes.data as Map);
             if (failData['blocked'] == true) {
               final sec = _asInt(failData['remainingSeconds'], fallback: 120);
-              await _setBlockedForSeconds(sec, username);
+              await _setBlockedForSeconds(sec);
               msg =
                   "Autentificare temporar indisponibila. Incearca din nou mai tarziu.";
             }

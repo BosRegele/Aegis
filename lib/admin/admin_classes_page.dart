@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../session.dart';
+import 'admin_api.dart';
 import 'admin_store.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
@@ -12,6 +13,7 @@ class AdminClassesPage extends StatefulWidget {
 }
 
 class _AdminClassesPageState extends State<AdminClassesPage> {
+  final api = AdminApi();
   final store = AdminStore();
 
   String? selectedClassId;
@@ -404,10 +406,17 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
               try {
                 final newTeacher = teacherUserC.text.trim().toLowerCase();
 
-                await store.changeClassTeacher(
-                  classId: classId,
-                  teacherUsername: newTeacher,
-                );
+                if (newTeacher.isEmpty) {
+                  await store.changeClassTeacher(
+                    classId: classId,
+                    teacherUsername: newTeacher,
+                  );
+                } else {
+                  await api.moveStudentClass(
+                    username: newTeacher,
+                    newClassId: classId,
+                  );
+                }
 
                 if (mounted) {
                   setState(() {

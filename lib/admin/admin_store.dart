@@ -283,17 +283,12 @@ class AdminStore {
     username = username.trim().toLowerCase();
     if (username.isEmpty) throw Exception("username lipsa");
 
-    final snap = await _db
-        .collection('users')
-        .where('username', isEqualTo: username)
-        .limit(1)
-        .get();
-
-    if (snap.docs.isEmpty) throw Exception("User inexistent");
-
-    await snap.docs.first.reference.update({
-      "status": disabled ? "disabled" : "active",
-      "updatedAt": FieldValue.serverTimestamp(),
+    final callable = FirebaseFunctions.instance.httpsCallable(
+      'adminSetDisabled',
+    );
+    await callable.call(<String, dynamic>{
+      'username': username,
+      'disabled': disabled,
     });
   }
 
