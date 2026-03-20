@@ -21,6 +21,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
   Stream<DocumentSnapshot<Map<String, dynamic>>>? _userDocStream;
   Stream<QuerySnapshot<Map<String, dynamic>>>? _lastScanStream;
   Stream<QuerySnapshot<Map<String, dynamic>>>? _leaveActiveStream;
+  Stream<DocumentSnapshot<Map<String, dynamic>>>? _classDocStream;
 
   @override
   void initState() {
@@ -40,9 +41,39 @@ class _MeniuScreenState extends State<MeniuScreen> {
       _leaveActiveStream = FirebaseFirestore.instance
           .collection('leaveRequests')
           .where('studentUid', isEqualTo: currentUser.uid)
-          .where('status', whereIn: ['approved', 'active'])
+          .where('status', whereIn: ['approved', 'active', 'pending'])
           .snapshots();
+      final cid = AppSession.classId;
+      if (cid != null && cid.isNotEmpty) {
+        _classDocStream = FirebaseFirestore.instance
+            .collection('classes')
+            .doc(cid)
+            .snapshots();
+      }
     }
+  }
+
+  bool _isWithinSchedule(Map<String, dynamic> classData) {
+    final now = DateTime.now();
+    final dayIdx = now.weekday; // 1=Mon ... 7=Sun
+    if (dayIdx > 5) return false;
+    final schedule = (classData['schedule'] as Map?) ?? {};
+    final daySchedule = schedule[dayIdx.toString()] as Map?;
+    if (daySchedule == null) return false;
+    int parseTime(String s) {
+      final parts = s.split(':');
+      if (parts.length != 2) return -1;
+      final h = int.tryParse(parts[0]) ?? -1;
+      final m = int.tryParse(parts[1]) ?? -1;
+      if (h < 0 || m < 0) return -1;
+      return h * 60 + m;
+    }
+
+    final start = parseTime('${daySchedule['start'] ?? ''}');
+    final end = parseTime('${daySchedule['end'] ?? ''}');
+    if (start < 0 || end < 0) return false;
+    final nowMins = now.hour * 60 + now.minute;
+    return nowMins >= start && nowMins <= end;
   }
 
   @override
@@ -475,19 +506,28 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                     ),
                                     const SizedBox(width: 8),
                                     Flexible(
-                                      child:
-                                          StreamBuilder<
+                                      child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                                        stream: _classDocStream,
+                                        builder: (context, classSnap) {
+                                          final classData =
+                                              classSnap.data?.data() ??
+                                              const <String, dynamic>{};
+                                          final inSchedule = _isWithinSchedule(
+                                            classData,
+                                          );
+                                          return StreamBuilder<
                                             QuerySnapshot<Map<String, dynamic>>
                                           >(
                                             stream: _leaveActiveStream,
                                             builder: (context, snapshot) {
                                               final docs =
                                                   snapshot.data?.docs ?? [];
-                                              if (docs.any(
-                                                (doc) =>
-                                                    doc.data()['status'] ==
-                                                    'approved',
-                                              )) {
+                                              if (inSchedule &&
+                                                  docs.any(
+                                                    (doc) =>
+                                                        doc.data()['status'] ==
+                                                        'approved',
+                                                  )) {
                                                 return Container(
                                                   padding:
                                                       const EdgeInsets.symmetric(
@@ -540,7 +580,12 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                                     ],
                                                   ),
                                                 );
-                                              } else if (docs.isNotEmpty) {
+                                              } else if (docs.any(
+                                                (doc) => ['active', 'pending']
+                                                    .contains(
+                                                      doc.data()['status'],
+                                                    ),
+                                              )) {
                                                 return Container(
                                                   padding:
                                                       const EdgeInsets.symmetric(
@@ -608,7 +653,9 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                                 );
                                               }
                                             },
-                                          ),
+                                          );
+                                        },
+                                      ),
                                     ),
                                   ],
                                 ),

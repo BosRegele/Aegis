@@ -1012,36 +1012,7 @@ exports.redeemQrToken = onCall(async (request) => {
     const db = admin.firestore();
     const tokenRef = db.collection("qrTokens").doc(tokenId);
 
-    // Pre-read the token (non-transactionally) to get userId so we can
-    // query leaveRequests outside the transaction. The transaction will
-    // re-validate everything atomically; this is only used for the leave check.
-    let approvedLeaveExit = false;
-    {
-        const preSnap = await tokenRef.get();
-        const preUserId = preSnap.exists ? String(preSnap.data()?.userId || "") : "";
-        if (preUserId) {
-            const localNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
-            const dd = String(localNow.getDate()).padStart(2, "0");
-            const mm = String(localNow.getMonth() + 1).padStart(2, "0");
-            const yyyy = String(localNow.getFullYear());
-            const todayText = `${dd}.${mm}.${yyyy}`;
-            const nowUtcMs = Date.now();
-
-            // Only filter by studentUid + status to avoid needing a composite index.
-            // dateText and requestedForDate are checked in JS below.
-            const leaveSnap = await db.collection("leaveRequests")
-                .where("studentUid", "==", preUserId)
-                .where("status", "==", "approved")
-                .get();
-
-            for (const doc of leaveSnap.docs) {
-                const d = doc.data();
-                if (String(d.dateText || "") !== todayText) continue;
-                approvedLeaveExit = true;
-                break;
-            }
-        }
-    }
+    let accessEventToLog = null;
 
     const result = await db.runTransaction(async (tx) => {
         const snap = await tx.get(tokenRef);
@@ -1230,21 +1201,26 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
-
-        const eventRef = db.collection("accessEvents").doc();
-        tx.set(eventRef, {
-            tokenId,
+        // Capture access event data — will be logged after the transaction commits
+        accessEventToLog = {
+            gateUid: callerUid,
             userId,
             fullName,
             classId,
             gateUid: callerUid,
             timestamp: nowTs,
-            type: eventType,
-            reason: result.ok ? null : result.reason,
-        });
-
+            fullName,
+            tokenId,
+        };
         return result;
     });
+
+    // Log access event AFTER the transaction commits, properly awaited
+    // (doing it inside the callback is wrong: it's not part of the transaction,
+    //  it's not awaited, and it runs again on every retry)
+    if (accessEventToLog) {
+        await db.collection('accessEvents').add(accessEventToLog);
+    }
 
     return result;
 });
