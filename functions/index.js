@@ -507,6 +507,8 @@ exports.redeemQrToken = onCall(async (request) => {
     const db = admin.firestore();
     const tokenRef = db.collection("qrTokens").doc(tokenId);
 
+    let accessEventToLog = null;
+
     const result = await db.runTransaction(async (tx) => {
         const snap = await tx.get(tokenRef);
         if (!snap.exists) {
@@ -713,8 +715,8 @@ exports.redeemQrToken = onCall(async (request) => {
                 };
             }
         }
-        // Log access event in backend
-        const accessEvent = {
+        // Capture access event data — will be logged after the transaction commits
+        accessEventToLog = {
             gateUid: callerUid,
             userId,
             classId,
@@ -725,10 +727,15 @@ exports.redeemQrToken = onCall(async (request) => {
             fullName,
             tokenId,
         };
-        const accessEventsRef = db.collection('accessEvents');
-        accessEventsRef.add(accessEvent);
         return result;
     });
+
+    // Log access event AFTER the transaction commits, properly awaited
+    // (doing it inside the callback is wrong: it's not part of the transaction,
+    //  it's not awaited, and it runs again on every retry)
+    if (accessEventToLog) {
+        await db.collection('accessEvents').add(accessEventToLog);
+    }
 
     return result;
 });
@@ -910,4 +917,4 @@ exports.onLeaveRequestStatusChanged = onDocumentUpdated("leaveRequests/{docId}",
     } catch (e) {
         console.error("onLeaveRequestStatusChanged: FCM send failed:", e.message);
     }
-});acceptedapproved
+});
