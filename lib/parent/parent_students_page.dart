@@ -255,105 +255,129 @@ class _StudentSummaryButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ]),
-        child: Row(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: const Color(0xFFDCEED5), // Fundal actualizat (ca in pagina detalii)
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.person, size: 32, color: Color(0xFF6C7D62)), // Simbol actualizat (ca in pagina detalii)
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2E3B4E).withOpacity(0.09),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    displayName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1F252B),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Clasa: ${data.classId.isNotEmpty ? data.classId : 'N/A'}",
-                    style: const TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                ],
-              ),),
-            StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(data.uid)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox();
-                }
-
-                if (!snapshot.hasData || !snapshot.data!.exists) {
-                  return const Text("Status necunoscut");
-                }
-
-                final dataMap = snapshot.data!.data() as Map<String, dynamic>;
-                final inSchool = dataMap['inSchool'] ?? false;
-
-                final statusColor = inSchool
-                    ? const Color(0xFF4CAF50)
-                    : const Color(0xFFE53935);
-
-                final statusText = inSchool ? "În școală" : "Absent / Ieșit";
-
-                return Column(
-                  children: [
-                    Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: statusColor.withOpacity(0.4),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      statusText,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: statusColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    )
-                  ],
-                );
-              },
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
           ],
         ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header: Icon + Name + Class
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCEED5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.person, size: 32, color: Color(0xFF6C7D62)),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F252B),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Clasa: ${data.classId.isNotEmpty ? data.classId : 'N/A'}",
+                        style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+              ],
+            ),
 
+            Divider(
+              color: const Color(0xFF2E3B4E).withOpacity(0.18),
+              thickness: 2,
+              height: 32,
+            ),
 
+            // Statusul elevului
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  'Statusul elevului:',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF2E3B4E),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: StreamBuilder<DocumentSnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(data.uid)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        bool isInSchool = false;
+                        if (snapshot.hasData && snapshot.data!.exists) {
+                          final d = snapshot.data!.data() as Map<String, dynamic>;
+                          isInSchool = d['inSchool'] == true;
+                        }
+
+                        final color = isInSchool ? const Color(0xFF4B78D2) : Colors.red;
+                        final text = isInSchool ? 'În incintă' : 'În afara incintei';
+                        final icon = isInSchool ? Icons.school_rounded : Icons.logout_rounded;
+
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: color, width: 1.2),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(icon, color: color, size: 15),
+                              const SizedBox(width: 5),
+                              Text(
+                                text,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: color,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+          ],
+        ),
       ),
     );
   }
@@ -492,7 +516,7 @@ class _StudentProfileCard extends StatelessWidget {
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: const Color(0xFFF2F2F2),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
@@ -563,6 +587,267 @@ class _StudentProfileCard extends StatelessWidget {
                 ],
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 22),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: const Color(0xFF2E3B4E).withOpacity(0.22),
+              width: 2.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF2E3B4E).withOpacity(0.09),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Status elevului
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Statusul elevului:',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2E3B4E),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(data.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      final userData = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+                      final inSchool = userData['inSchool'] == true;
+                      
+                      final color = inSchool ? const Color(0xFF4B78D2) : Colors.red;
+                      final text = inSchool ? 'În incintă' : 'În afara incintei';
+                      final icon = inSchool ? Icons.school_rounded : Icons.logout_rounded;
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: color, width: 1.2),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(icon, color: color, size: 15),
+                            const SizedBox(width: 5),
+                            Text(
+                              text,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: color,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              Divider(
+                color: const Color(0xFF2E3B4E).withOpacity(0.18),
+                thickness: 2,
+                height: 16,
+              ),
+              // Ultima scanare
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Ultima scanare:',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2E3B4E),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('accessEvents')
+                          .where('userId', isEqualTo: data.uid)
+                          .orderBy('timestamp', descending: true)
+                          .limit(1)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        final docs = snapshot.data?.docs ?? [];
+                        if (docs.isEmpty) {
+                          return Text(
+                            'Niciuna',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: const Color(0xFF2E3B4E).withOpacity(0.45),
+                              fontWeight: FontWeight.w400,
+                            ),
+                          );
+                        }
+                        final doc = docs.first;
+                        final docData = doc.data() as Map<String, dynamic>;
+                        final type = (docData['type'] ?? '').toString();
+                        final ts = (docData['timestamp'] as Timestamp?);
+                        final dateStr = ts != null
+                            ? '${ts.toDate().day.toString().padLeft(2, '0')}.${ts.toDate().month.toString().padLeft(2, '0')}.${ts.toDate().year} ${ts.toDate().hour.toString().padLeft(2, '0')}:${ts.toDate().minute.toString().padLeft(2, '0')}'
+                            : '';
+                        final scanColor = type == 'entry'
+                            ? const Color(0xFF17B5A8)
+                            : type == 'exit'
+                                ? const Color(0xFFE47E2D)
+                                : const Color(0xFF4B78D2);
+                        final scanIcon = type == 'entry'
+                            ? Icons.login_rounded
+                            : type == 'exit'
+                                ? Icons.logout_rounded
+                                : Icons.qr_code_scanner_rounded;
+
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: scanColor.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: scanColor, width: 1.2),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(scanIcon, color: scanColor, size: 15),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  dateStr,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: scanColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              Divider(
+                color: const Color(0xFF2E3B4E).withOpacity(0.18),
+                thickness: 2,
+                height: 16,
+              ),
+              // Cereri de învoire
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Cereri de învoire:',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2E3B4E),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('leaveRequests')
+                          .where('studentUid', isEqualTo: data.uid)
+                          .where('status', whereIn: ['approved', 'pending'])
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        final docs = snapshot.data?.docs ?? [];
+                        if (docs.any((doc) => (doc.data() as Map<String, dynamic>)['status'] == 'approved')) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF4CAF50).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFF4CAF50), width: 1.2),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 15),
+                                const SizedBox(width: 5),
+                                const Flexible(
+                                  child: Text(
+                                    'Invoire activă',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF388E3C),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        } else if (docs.isNotEmpty) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF17B5A8).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFF17B5A8), width: 1.2),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.hourglass_top_rounded, color: Color(0xFF17B5A8), size: 15),
+                                const SizedBox(width: 5),
+                                const Flexible(
+                                  child: Text(
+                                    'Cerere în așteptare',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF17B5A8),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        } else {
+                          return Text(
+                            'Niciuna',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: const Color(0xFF2E3B4E).withOpacity(0.45),
+                              fontWeight: FontWeight.w400,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 22),

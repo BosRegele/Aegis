@@ -67,88 +67,167 @@ class _ParentInboxPageState extends State<ParentInboxPage> {
       reviewedAtText = _formatFullDate(reviewedAtTimestamp.toDate());
     }
 
+    final primaryColor = approved ? const Color(0xFF4CAF50) : const Color(0xFFE53935);
+    final icon = approved ? Icons.check_circle_outline_rounded : Icons.highlight_off_rounded;
+    final statusText = approved ? "Cerere acceptată" : "Cerere respinsă";
+    final resolvedByLabel = approved ? "Acceptat de:" : "Respins de:";
+    final resolvedAtLabel = approved ? "Acceptată la:" : "Respinsă la:";
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          approved ? "Cerere acceptată" : "Cerere respinsă",
-          style: TextStyle(
-            color: approved ? Colors.green : Colors.red,
-            fontWeight: FontWeight.bold,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-        ),
-        content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Elev: $studentName",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
+              // Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: primaryColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, size: 40, color: Colors.white),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      statusText,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                "Detalii cerere inițială:",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    _buildDetailRow(Icons.person_outline_rounded, 'Elev:', studentName, primaryColor),
+                    const SizedBox(height: 16),
+                    _buildDetailRow(Icons.send_rounded, 'Trimisă la:', requestedAtText, primaryColor),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: _buildDetailRow(Icons.calendar_today_rounded, 'Data:', targetDate, primaryColor)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildDetailRow(Icons.access_time_rounded, 'Ora:', targetTime, primaryColor)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    _buildDetailRow(Icons.admin_panel_settings_outlined, resolvedByLabel, reviewer, primaryColor),
+                    const SizedBox(height: 12),
+                    _buildDetailRow(Icons.done_all_rounded, resolvedAtLabel, reviewedAtText, primaryColor),
+                    const SizedBox(height: 16),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Motiv:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey)),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F7FA),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                      ),
+                      child: Text(
+                        message,
+                        style: const TextStyle(fontSize: 16, color: Color(0xFF2D3142), height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              Text(
-                "Trimisă la: $requestedAtText",
-                style: const TextStyle(fontSize: 16),
-              ),
-              Text(
-                "Pentru data: $targetDate, $targetTime",
-                style: const TextStyle(fontSize: 16, color: Colors.black87),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                "Motiv:",
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-              ),
-              Text(message, style: const TextStyle(fontSize: 16)),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 12),
-              const Text(
-                "Detalii rezolvare:",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              Text(
-                "Rezolvat de: $reviewer",
-                style: const TextStyle(fontSize: 16),
-              ),
-              Text(
-                "La data: $reviewedAtText",
-                style: const TextStyle(fontSize: 16),
+
+              // Actions
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                child: _BouncingButton(
+                  onTap: () => Navigator.of(ctx).pop(),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F7FA),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Închide',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
         ),
-        actions: [
-          _BouncingButton(
-            onTap: () => Navigator.of(ctx).pop(),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                "Închide",
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 20, color: color),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+              Text(
+                value,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF2D3142)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -157,6 +236,7 @@ class _ParentInboxPageState extends State<ParentInboxPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF7AAF5B),
       appBar: AppBar(
+        backgroundColor: const Color(0xFF7AAF5B),
         toolbarHeight: 68,
         elevation: 0,
         centerTitle: true,
@@ -237,15 +317,9 @@ class _ParentInboxPageState extends State<ParentInboxPage> {
                           final studentName =
                               data['studentName'] ?? 'Elev necunoscut';
                           final classId = data['classId'] ?? '-';
+                          final targetDate = data['dateText'] ?? '-';
+                          final targetTime = data['timeText'] ?? '-';
                           final status = data['status'] ?? 'pending';
-                          final requestedAt = data['requestedAt'] as Timestamp?;
-                          var sentAtString = '-';
-                          if (requestedAt != null) {
-                            sentAtString = _formatFullDate(
-                              requestedAt.toDate(),
-                            );
-                          }
-
                           final reviewedAt = (data['reviewedAt'] as Timestamp?)
                               ?.toDate();
                           final timeAgo = reviewedAt != null
@@ -331,7 +405,7 @@ class _ParentInboxPageState extends State<ParentInboxPage> {
                                           ),
                                         ),
                                         Text(
-                                          'Trimisă la: $sentAtString',
+                                          'Data: $targetDate, Ora: $targetTime',
                                           style: const TextStyle(
                                             fontSize: 16,
                                             color: Colors.grey,
