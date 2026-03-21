@@ -133,9 +133,7 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('classes')
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('classes').snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -146,18 +144,18 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
           }
 
           final allDocs = snapshot.data?.docs ?? [];
-          final classesWithSchedule = allDocs.where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            return data.containsKey('schedule') &&
-                (data['schedule'] as Map?)?.isNotEmpty == true;
-          }).toList()
-            ..sort((a, b) {
-              final aData = a.data() as Map<String, dynamic>;
-              final bData = b.data() as Map<String, dynamic>;
-              final aLabel = (aData['name'] ?? a.id).toString();
-              final bLabel = (bData['name'] ?? b.id).toString();
-              return _compareClassLabels(aLabel, bLabel);
-            });
+          final classesWithSchedule =
+              allDocs.where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return data.containsKey('schedule') &&
+                    (data['schedule'] as Map?)?.isNotEmpty == true;
+              }).toList()..sort((a, b) {
+                final aData = a.data() as Map<String, dynamic>;
+                final bData = b.data() as Map<String, dynamic>;
+                final aLabel = (aData['name'] ?? a.id).toString();
+                final bLabel = (bData['name'] ?? b.id).toString();
+                return _compareClassLabels(aLabel, bLabel);
+              });
 
           // Filter classes based on search query
           final filteredClasses = classesWithSchedule.where((doc) {

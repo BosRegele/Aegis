@@ -165,24 +165,24 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                       }
 
                       // Filter classes based on search query
-                      final filteredDocs = docs.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        final name = (data['name'] ?? doc.id)
-                            .toString()
-                            .toLowerCase();
-                        final teacherU = (data['teacherUsername'] ?? '')
-                            .toString()
-                            .toLowerCase();
-                        return name.contains(_classQuery) ||
-                            teacherU.contains(_classQuery);
-                      }).toList()
-                        ..sort((a, b) {
-                          final aData = a.data() as Map<String, dynamic>;
-                          final bData = b.data() as Map<String, dynamic>;
-                          final aName = (aData['name'] ?? a.id).toString();
-                          final bName = (bData['name'] ?? b.id).toString();
-                          return _compareClassLabels(aName, bName);
-                        });
+                      final filteredDocs =
+                          docs.where((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final name = (data['name'] ?? doc.id)
+                                .toString()
+                                .toLowerCase();
+                            final teacherU = (data['teacherUsername'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            return name.contains(_classQuery) ||
+                                teacherU.contains(_classQuery);
+                          }).toList()..sort((a, b) {
+                            final aData = a.data() as Map<String, dynamic>;
+                            final bData = b.data() as Map<String, dynamic>;
+                            final aName = (aData['name'] ?? a.id).toString();
+                            final bName = (bData['name'] ?? b.id).toString();
+                            return _compareClassLabels(aName, bName);
+                          });
 
                       return ListView.builder(
                         itemCount: filteredDocs.length,

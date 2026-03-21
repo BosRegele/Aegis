@@ -46,6 +46,8 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
 
   // actions
   final targetUserC = TextEditingController();
+  final targetUserFullNameC = TextEditingController();
+  final targetUserNewPasswordC = TextEditingController();
   String selectedMoveClassId = "";
 
   // assign parents
@@ -95,8 +97,12 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
         return 'Utilizatorul nu a putut fi mutat la clasa selectată.';
       case 'delete-user':
         return 'Utilizatorul nu a putut fi șters.';
+      case 'rename-user':
+        return 'Numele utilizatorului nu a putut fi actualizat.';
       case 'save-schedule':
         return 'Orarul nu a putut fi salvat.';
+      case 'delete-schedule':
+        return 'Orarul nu a putut fi șters.';
       case 'assign-parent':
         return 'Părintele nu a putut fi atribuit elevului.';
       case 'remove-parent':
@@ -356,6 +362,8 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
     usernameC.dispose();
     passwordC.dispose();
     targetUserC.dispose();
+    targetUserFullNameC.dispose();
+    targetUserNewPasswordC.dispose();
     super.dispose();
   }
 
@@ -836,56 +844,50 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                         ),
                                                   ),
                                                   child: DropdownButtonHideUnderline(
-                                                    child:
-                                                        DropdownButton<String>(
-                                                          value: role,
-                                                          isExpanded: true,
-                                                          items: const [
-                                                            DropdownMenuItem(
-                                                              value: "student",
-                                                              child: Text(
-                                                                "elev",
-                                                              ),
-                                                            ),
-                                                            DropdownMenuItem(
-                                                              value: "teacher",
-                                                              child: Text(
-                                                                "profesor",
-                                                              ),
-                                                            ),
-                                                            DropdownMenuItem(
-                                                              value: "admin",
-                                                              child: Text(
-                                                                "administrator",
-                                                              ),
-                                                            ),
-                                                            DropdownMenuItem(
-                                                              value: "parent",
-                                                              child: Text(
-                                                                "părinte",
-                                                              ),
-                                                            ),
-                                                            DropdownMenuItem(
-                                                              value: "gate",
-                                                              child: Text(
-                                                                "poartă",
-                                                              ),
-                                                            ),
-                                                          ],
-                                                          onChanged: (v) =>
-                                                              setState(() {
-                                                                role =
-                                                                    v ??
-                                                                    "student";
-                                                                if (role !=
-                                                                        'student' &&
-                                                                    role !=
-                                                                        'teacher') {
-                                                                  selectedCreateUserClassId =
-                                                                      '';
-                                                                }
-                                                              }),
+                                                    child: DropdownButton<String>(
+                                                      value: role,
+                                                      isExpanded: true,
+                                                      items: const [
+                                                        DropdownMenuItem(
+                                                          value: "student",
+                                                          child: Text("elev"),
                                                         ),
+                                                        DropdownMenuItem(
+                                                          value: "teacher",
+                                                          child: Text(
+                                                            "profesor",
+                                                          ),
+                                                        ),
+                                                        DropdownMenuItem(
+                                                          value: "admin",
+                                                          child: Text(
+                                                            "administrator",
+                                                          ),
+                                                        ),
+                                                        DropdownMenuItem(
+                                                          value: "parent",
+                                                          child: Text(
+                                                            "părinte",
+                                                          ),
+                                                        ),
+                                                        DropdownMenuItem(
+                                                          value: "gate",
+                                                          child: Text("poartă"),
+                                                        ),
+                                                      ],
+                                                      onChanged: (v) => setState(
+                                                        () {
+                                                          role = v ?? "student";
+                                                          if (role !=
+                                                                  'student' &&
+                                                              role !=
+                                                                  'teacher') {
+                                                            selectedCreateUserClassId =
+                                                                '';
+                                                          }
+                                                        },
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 6),
@@ -922,23 +924,23 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
 
                                                       final docs =
                                                           snap.data!.docs;
-                                                      final classOptions = docs
-                                                          .map((doc) {
-                                                            final data =
-                                                                doc.data()
-                                                                    as Map<
-                                                                      String,
-                                                                      dynamic
-                                                                    >;
-                                                            return {
-                                                              'id': doc.id,
-                                                              'name':
-                                                                  (data['name'] ??
-                                                                          doc.id)
-                                                                      .toString(),
-                                                            };
-                                                          })
-                                                          .toList();
+                                                      final classOptions = docs.map(
+                                                        (doc) {
+                                                          final data =
+                                                              doc.data()
+                                                                  as Map<
+                                                                    String,
+                                                                    dynamic
+                                                                  >;
+                                                          return {
+                                                            'id': doc.id,
+                                                            'name':
+                                                                (data['name'] ??
+                                                                        doc.id)
+                                                                    .toString(),
+                                                          };
+                                                        },
+                                                      ).toList();
 
                                                       final hasSelectedClass =
                                                           classOptions.any(
@@ -951,7 +953,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                           selectedCreateUserClassId
                                                               .isNotEmpty) {
                                                         WidgetsBinding.instance
-                                                            .addPostFrameCallback((_) {
+                                                            .addPostFrameCallback((
+                                                              _,
+                                                            ) {
                                                               if (!mounted) {
                                                                 return;
                                                               }
@@ -1273,8 +1277,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                   children: [
                                                     Expanded(
                                                       child: _buildButton(
-                                                        label:
-                                                            "Creeaza/Actualizeaza",
+                                                        label: "Creeaza",
                                                         primaryGreen:
                                                             primaryGreen,
                                                         onPressed:
@@ -1963,8 +1966,118 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                               children: [
                                                 _buildTextField(
                                                   controller: targetUserC,
+                                                  label: "Utilizator țintă",
+                                                ),
+                                                const SizedBox(height: 12),
+                                                _buildTextField(
+                                                  controller:
+                                                      targetUserFullNameC,
                                                   label:
-                                                      "Nume utilizator țintă",
+                                                      "Nume complet nou - obligatoriu",
+                                                ),
+                                                const SizedBox(height: 12),
+                                                _buildButton(
+                                                  label: "Schimba nume",
+                                                  primaryGreen: primaryGreen,
+                                                  onPressed:
+                                                      _isActionBusy(
+                                                        'rename-user',
+                                                      )
+                                                      ? null
+                                                      : () {
+                                                          _runGuarded('rename-user', () async {
+                                                            final shouldProceed =
+                                                                await _confirmMajorAction(
+                                                                  title:
+                                                                      'Confirmare',
+                                                                  message:
+                                                                      'Esti sigur ca vrei sa schimbi numele utilizatorului?',
+                                                                );
+                                                            if (!shouldProceed) {
+                                                              return;
+                                                            }
+
+                                                            final username =
+                                                                targetUserC.text
+                                                                    .trim();
+                                                            final newFullName =
+                                                                targetUserFullNameC
+                                                                    .text
+                                                                    .trim();
+
+                                                            if (username
+                                                                .isEmpty) {
+                                                              _logFailure(
+                                                                'Completează utilizatorul țintă.',
+                                                              );
+                                                              _showInfoMessage(
+                                                                'Completează utilizatorul țintă.',
+                                                              );
+                                                              return;
+                                                            }
+
+                                                            if (newFullName
+                                                                    .length <
+                                                                3) {
+                                                              _logFailure(
+                                                                'Numele complet nou trebuie să aibă cel puțin 3 caractere.',
+                                                              );
+                                                              _showInfoMessage(
+                                                                'Numele complet nou trebuie să aibă cel puțin 3 caractere.',
+                                                              );
+                                                              return;
+                                                            }
+
+                                                            try {
+                                                              final res = await api
+                                                                  .updateUserFullName(
+                                                                    username:
+                                                                        username,
+                                                                    fullName:
+                                                                        newFullName,
+                                                                  );
+
+                                                              final changed =
+                                                                  res['changed'] ==
+                                                                  true;
+                                                              final message =
+                                                                  changed
+                                                                  ? 'Numele utilizatorului a fost actualizat.'
+                                                                  : 'Numele este deja setat la această valoare.';
+
+                                                              _logSuccess(
+                                                                message,
+                                                              );
+                                                              _showInfoMessage(
+                                                                message,
+                                                              );
+
+                                                              if (changed) {
+                                                                targetUserFullNameC
+                                                                    .clear();
+                                                              }
+                                                            } catch (e) {
+                                                              final message =
+                                                                  _friendlyError(
+                                                                    'rename-user',
+                                                                  );
+                                                              _logFailure(
+                                                                message,
+                                                              );
+                                                              _showInfoMessage(
+                                                                message,
+                                                              );
+                                                            }
+                                                          });
+                                                        },
+                                                  fullWidth: true,
+                                                ),
+                                                const SizedBox(height: 12),
+                                                _buildTextField(
+                                                  controller:
+                                                      targetUserNewPasswordC,
+                                                  label:
+                                                      "Parolă nouă - obligatoriu",
                                                 ),
                                                 const SizedBox(height: 16),
                                                 _buildButton(
@@ -1990,29 +2103,48 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                             if (targetUserC.text
                                                                 .trim()
                                                                 .isEmpty) {
+                                                              _logFailure(
+                                                                'Completează utilizatorul țintă.',
+                                                              );
                                                               _showInfoMessage(
                                                                 'Completează utilizatorul țintă.',
                                                               );
                                                               return;
                                                             }
 
+                                                            final newPassword =
+                                                                targetUserNewPasswordC
+                                                                    .text;
+                                                            if (newPassword
+                                                                    .length <
+                                                                6) {
+                                                              _logFailure(
+                                                                'Completează parola nouă (minim 6 caractere).',
+                                                              );
+                                                              _showInfoMessage(
+                                                                'Completează parola nouă (minim 6 caractere).',
+                                                              );
+                                                              return;
+                                                            }
+
                                                             try {
-                                                              final res = await api
-                                                                  .resetPassword(
-                                                                    username:
-                                                                        targetUserC
-                                                                            .text,
-                                                                  );
-                                                              final newPass =
-                                                                  res['password'];
+                                                              await api.resetPassword(
+                                                                username:
+                                                                    targetUserC
+                                                                        .text,
+                                                                newPassword:
+                                                                    newPassword,
+                                                              );
                                                               _logSuccess(
                                                                 'Parola a fost resetată cu succes.',
                                                               );
                                                               if (!mounted)
                                                                 return;
                                                               _showInfoMessage(
-                                                                "Parola nouă: $newPass",
+                                                                'Parola a fost actualizată.',
                                                               );
+                                                              targetUserNewPasswordC
+                                                                  .clear();
                                                             } catch (e) {
                                                               final message =
                                                                   _friendlyError(
@@ -2036,7 +2168,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                       child: _buildButton(
                                                         label: "Dezactiveaza",
                                                         primaryGreen:
-                                                            primaryGreen,
+                                                            Colors.red[600]!,
                                                         onPressed:
                                                             _isActionBusy(
                                                               'disable-user',
@@ -2543,139 +2675,81 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                         })
                                                         .toList();
 
-                                                    return Autocomplete<
-                                                      Map<String, String>
-                                                    >(
-                                                      initialValue: TextEditingValue(
-                                                        text: classOptions
-                                                            .where(
-                                                              (option) =>
-                                                                  option['id'] ==
-                                                                  selectedScheduleClassId,
-                                                            )
-                                                            .map(
-                                                              (option) =>
-                                                                  option['name']!,
-                                                            )
-                                                            .firstWhere(
-                                                              (_) => false,
-                                                              orElse: () => '',
-                                                            ),
-                                                      ),
-                                                      optionsBuilder:
-                                                          (
-                                                            TextEditingValue
-                                                            textEditingValue,
-                                                          ) {
-                                                            if (textEditingValue
-                                                                .text
-                                                                .isEmpty) {
-                                                              return classOptions;
-                                                            }
-                                                            return classOptions
-                                                                .where(
-                                                                  (
-                                                                    option,
-                                                                  ) => option['name']!
-                                                                      .toLowerCase()
-                                                                      .contains(
-                                                                        textEditingValue
-                                                                            .text
-                                                                            .toLowerCase(),
-                                                                      ),
-                                                                )
-                                                                .toList();
-                                                          },
-                                                      displayStringForOption:
+                                                    if (classOptions.isEmpty) {
+                                                      return Text(
+                                                        'Nu există clase create.',
+                                                        style: TextStyle(
+                                                          color:
+                                                              Colors.grey[700],
+                                                        ),
+                                                      );
+                                                    }
+
+                                                    final hasSelectedClass =
+                                                        classOptions.any(
                                                           (option) =>
-                                                              option['name']!,
-                                                      fieldViewBuilder:
-                                                          (
-                                                            context,
-                                                            textEditingController,
-                                                            focusNode,
-                                                            onFieldSubmitted,
+                                                              option['id'] ==
+                                                              selectedScheduleClassId,
+                                                        );
+
+                                                    if (!hasSelectedClass &&
+                                                        selectedScheduleClassId
+                                                            .isNotEmpty) {
+                                                      WidgetsBinding.instance
+                                                          .addPostFrameCallback((
+                                                            _,
                                                           ) {
-                                                            return TextFormField(
-                                                              controller:
-                                                                  textEditingController,
-                                                              focusNode:
-                                                                  focusNode,
-                                                              decoration: InputDecoration(
-                                                                labelText:
-                                                                    "Selecteaza clasa",
-                                                                hintText:
-                                                                    "Scrie pentru a cauta clase...",
-                                                                border: OutlineInputBorder(
-                                                                  borderRadius:
-                                                                      BorderRadius.circular(
-                                                                        6,
-                                                                      ),
-                                                                ),
-                                                                filled: true,
-                                                                fillColor: Colors
-                                                                    .grey[50],
+                                                            if (!mounted) {
+                                                              return;
+                                                            }
+                                                            setState(() {
+                                                              selectedScheduleClassId =
+                                                                  '';
+                                                            });
+                                                          });
+                                                    }
+
+                                                    return DropdownButtonFormField<
+                                                      String
+                                                    >(
+                                                      value: hasSelectedClass
+                                                          ? selectedScheduleClassId
+                                                          : null,
+                                                      isExpanded: true,
+                                                      decoration: InputDecoration(
+                                                        labelText:
+                                                            'Selectează clasa',
+                                                        border: OutlineInputBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                6,
                                                               ),
-                                                            );
-                                                          },
-                                                      optionsViewBuilder:
-                                                          (
-                                                            context,
-                                                            onSelected,
-                                                            options,
-                                                          ) {
-                                                            return Align(
-                                                              alignment:
-                                                                  Alignment
-                                                                      .topLeft,
-                                                              child: Material(
-                                                                elevation: 4.0,
-                                                                child: Container(
-                                                                  width:
-                                                                      MediaQuery.of(
-                                                                        context,
-                                                                      ).size.width *
-                                                                      0.3,
-                                                                  constraints:
-                                                                      const BoxConstraints(
-                                                                        maxHeight:
-                                                                            200,
-                                                                      ),
-                                                                  child: ListView.builder(
-                                                                    padding:
-                                                                        EdgeInsets
-                                                                            .zero,
-                                                                    shrinkWrap:
-                                                                        true,
-                                                                    itemCount:
-                                                                        options
-                                                                            .length,
-                                                                    itemBuilder:
-                                                                        (
-                                                                          context,
-                                                                          index,
-                                                                        ) {
-                                                                          final option = options.elementAt(
-                                                                            index,
-                                                                          );
-                                                                          return ListTile(
-                                                                            title: Text(
-                                                                              option['name']!,
-                                                                            ),
-                                                                            onTap: () => onSelected(
-                                                                              option,
-                                                                            ),
-                                                                          );
-                                                                        },
+                                                        ),
+                                                        filled: true,
+                                                        fillColor:
+                                                            Colors.grey[50],
+                                                      ),
+                                                      hint: const Text(
+                                                        'Alege clasa',
+                                                      ),
+                                                      items: classOptions
+                                                          .map(
+                                                            (option) =>
+                                                                DropdownMenuItem<
+                                                                  String
+                                                                >(
+                                                                  value:
+                                                                      option['id'],
+                                                                  child: Text(
+                                                                    option['name']!,
                                                                   ),
                                                                 ),
-                                                              ),
-                                                            );
-                                                          },
-                                                      onSelected: (option) {
+                                                          )
+                                                          .toList(),
+                                                      onChanged: (value) {
                                                         setState(() {
                                                           selectedScheduleClassId =
-                                                              option['id']!;
+                                                              value ?? '';
                                                         });
                                                       },
                                                     );
@@ -2915,120 +2989,235 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                   );
                                                 }),
                                                 const SizedBox(height: 16),
-                                                _buildButton(
-                                                  label: "Save schedule",
-                                                  primaryGreen: primaryGreen,
-                                                  onPressed:
-                                                      _isActionBusy(
-                                                        'save-schedule',
-                                                      )
-                                                      ? null
-                                                      : () {
-                                                          _runGuarded('save-schedule', () async {
-                                                            final shouldProceed =
-                                                                await _confirmMajorAction(
-                                                                  title:
-                                                                      'Confirmare',
-                                                                  message:
-                                                                      'Esti sigur ca vrei sa salvezi acest orar?',
-                                                                );
-                                                            if (!shouldProceed) {
-                                                              return;
-                                                            }
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: _buildButton(
+                                                        label: "Salvează orar",
+                                                        primaryGreen:
+                                                            primaryGreen,
+                                                        onPressed:
+                                                            _isActionBusy(
+                                                              'save-schedule',
+                                                            )
+                                                            ? null
+                                                            : () {
+                                                                _runGuarded(
+                                                                  'save-schedule',
+                                                                  () async {
+                                                                    final shouldProceed = await _confirmMajorAction(
+                                                                      title:
+                                                                          'Confirmare',
+                                                                      message:
+                                                                          'Esti sigur ca vrei sa salvezi acest orar?',
+                                                                    );
+                                                                    if (!shouldProceed) {
+                                                                      return;
+                                                                    }
 
-                                                            if (selectedScheduleClassId
-                                                                .isEmpty) {
-                                                              _logFailure(
-                                                                'Selectează mai întâi o clasă pentru orar.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Selectează mai întâi o clasă pentru orar.',
-                                                              );
-                                                              return;
-                                                            }
-                                                            final selectedDaysList =
-                                                                selectedDays
-                                                                    .entries
-                                                                    .where(
-                                                                      (e) => e
-                                                                          .value,
-                                                                    )
-                                                                    .map(
-                                                                      (e) =>
-                                                                          e.key,
-                                                                    )
-                                                                    .toList();
-                                                            if (selectedDaysList
-                                                                .isEmpty) {
-                                                              _logFailure(
-                                                                'Selectează cel puțin o zi pentru orar.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Selectează cel puțin o zi pentru orar.',
-                                                              );
-                                                              return;
-                                                            }
-                                                            // Converteste zilele din Romanian la numere
-                                                            final dayMapping = {
-                                                              'Luni': 1,
-                                                              'Marți': 2,
-                                                              'Miercuri': 3,
-                                                              'Joi': 4,
-                                                              'Vineri': 5,
-                                                            };
-                                                            // Build schedule map: {day_number: {start: "HH:mm", end: "HH:mm"}}
-                                                            final schedulePerDay =
-                                                                <
-                                                                  int,
-                                                                  Map<
-                                                                    String,
-                                                                    String
-                                                                  >
-                                                                >{};
-                                                            for (final day
-                                                                in selectedDaysList) {
-                                                              final dayNum =
-                                                                  dayMapping[day]!;
-                                                              final times =
-                                                                  dayTimes[day]!;
-                                                              schedulePerDay[dayNum] = {
-                                                                'start':
-                                                                    _formatTimeOfDay(
-                                                                      times['start']!,
-                                                                    ),
-                                                                'end': _formatTimeOfDay(
-                                                                  times['end']!,
-                                                                ),
-                                                              };
-                                                            }
-                                                            try {
-                                                              await api.setClassSchedulePerDay(
-                                                                classId:
-                                                                    selectedScheduleClassId,
-                                                                schedulePerDay:
-                                                                    schedulePerDay,
-                                                              );
-                                                              _logSuccess(
-                                                                'Orar salvat pentru clasa $selectedScheduleClassId.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Orarul a fost salvat.',
-                                                              );
-                                                            } catch (e) {
-                                                              final message =
-                                                                  _friendlyError(
-                                                                    'save-schedule',
-                                                                  );
-                                                              _logFailure(
-                                                                message,
-                                                              );
-                                                              _showInfoMessage(
-                                                                message,
-                                                              );
-                                                            }
-                                                          });
-                                                        },
-                                                  fullWidth: true,
+                                                                    if (selectedScheduleClassId
+                                                                        .isEmpty) {
+                                                                      _logFailure(
+                                                                        'Selectează mai întâi o clasă pentru orar.',
+                                                                      );
+                                                                      _showInfoMessage(
+                                                                        'Selectează mai întâi o clasă pentru orar.',
+                                                                      );
+                                                                      return;
+                                                                    }
+                                                                    final selectedDaysList = selectedDays
+                                                                        .entries
+                                                                        .where(
+                                                                          (
+                                                                            e,
+                                                                          ) => e
+                                                                              .value,
+                                                                        )
+                                                                        .map(
+                                                                          (
+                                                                            e,
+                                                                          ) => e
+                                                                              .key,
+                                                                        )
+                                                                        .toList();
+                                                                    if (selectedDaysList
+                                                                        .isEmpty) {
+                                                                      _logFailure(
+                                                                        'Selectează cel puțin o zi pentru orar.',
+                                                                      );
+                                                                      _showInfoMessage(
+                                                                        'Selectează cel puțin o zi pentru orar.',
+                                                                      );
+                                                                      return;
+                                                                    }
+                                                                    final dayMapping = {
+                                                                      'Luni': 1,
+                                                                      'Marți':
+                                                                          2,
+                                                                      'Miercuri':
+                                                                          3,
+                                                                      'Joi': 4,
+                                                                      'Vineri':
+                                                                          5,
+                                                                    };
+                                                                    final schedulePerDay =
+                                                                        <
+                                                                          int,
+                                                                          Map<
+                                                                            String,
+                                                                            String
+                                                                          >
+                                                                        >{};
+                                                                    for (final day
+                                                                        in selectedDaysList) {
+                                                                      final dayNum =
+                                                                          dayMapping[day]!;
+                                                                      final times =
+                                                                          dayTimes[day]!;
+                                                                      schedulePerDay[dayNum] = {
+                                                                        'start':
+                                                                            _formatTimeOfDay(
+                                                                              times['start']!,
+                                                                            ),
+                                                                        'end': _formatTimeOfDay(
+                                                                          times['end']!,
+                                                                        ),
+                                                                      };
+                                                                    }
+                                                                    try {
+                                                                      await api.setClassSchedulePerDay(
+                                                                        classId:
+                                                                            selectedScheduleClassId,
+                                                                        schedulePerDay:
+                                                                            schedulePerDay,
+                                                                      );
+                                                                      _logSuccess(
+                                                                        'Orar salvat pentru clasa $selectedScheduleClassId.',
+                                                                      );
+                                                                      _showInfoMessage(
+                                                                        'Orarul a fost salvat.',
+                                                                      );
+                                                                    } catch (
+                                                                      e
+                                                                    ) {
+                                                                      final message =
+                                                                          _friendlyError(
+                                                                            'save-schedule',
+                                                                          );
+                                                                      _logFailure(
+                                                                        message,
+                                                                      );
+                                                                      _showInfoMessage(
+                                                                        message,
+                                                                      );
+                                                                    }
+                                                                  },
+                                                                );
+                                                              },
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 12),
+                                                    Expanded(
+                                                      child: _buildButton(
+                                                        label: "Șterge orar",
+                                                        primaryGreen:
+                                                            Colors.red[600]!,
+                                                        onPressed:
+                                                            _isActionBusy(
+                                                              'delete-schedule',
+                                                            )
+                                                            ? null
+                                                            : () {
+                                                                _runGuarded(
+                                                                  'delete-schedule',
+                                                                  () async {
+                                                                    if (selectedScheduleClassId
+                                                                        .isEmpty) {
+                                                                      _logFailure(
+                                                                        'Selectează mai întâi o clasă pentru a șterge orarul.',
+                                                                      );
+                                                                      _showInfoMessage(
+                                                                        'Selectează mai întâi o clasă pentru a șterge orarul.',
+                                                                      );
+                                                                      return;
+                                                                    }
+
+                                                                    final shouldProceed = await _confirmMajorAction(
+                                                                      title:
+                                                                          'Confirmare',
+                                                                      message:
+                                                                          'Esti sigur ca vrei sa stergi orarul pentru clasa $selectedScheduleClassId?',
+                                                                    );
+                                                                    if (!shouldProceed) {
+                                                                      return;
+                                                                    }
+
+                                                                    try {
+                                                                      final classRef = FirebaseFirestore
+                                                                          .instance
+                                                                          .collection(
+                                                                            'classes',
+                                                                          )
+                                                                          .doc(
+                                                                            selectedScheduleClassId,
+                                                                          );
+                                                                      final classSnap =
+                                                                          await classRef
+                                                                              .get();
+                                                                      final classData =
+                                                                          classSnap
+                                                                              .data();
+                                                                      final hasSchedule =
+                                                                          classData !=
+                                                                              null &&
+                                                                          classData.containsKey(
+                                                                            'schedule',
+                                                                          ) &&
+                                                                          (classData['schedule']
+                                                                                      as Map?)
+                                                                                  ?.isNotEmpty ==
+                                                                              true;
+
+                                                                      if (!hasSchedule) {
+                                                                        _logFailure(
+                                                                          'Clasa selectată nu are orar salvat.',
+                                                                        );
+                                                                        _showInfoMessage(
+                                                                          'Clasa selectată nu are orar salvat.',
+                                                                        );
+                                                                        return;
+                                                                      }
+
+                                                                      await classRef.update({
+                                                                        'schedule':
+                                                                            FieldValue.delete(),
+                                                                      });
+                                                                      _logSuccess(
+                                                                        'Orar șters pentru clasa $selectedScheduleClassId.',
+                                                                      );
+                                                                      _showInfoMessage(
+                                                                        'Orarul a fost șters.',
+                                                                      );
+                                                                    } catch (
+                                                                      e
+                                                                    ) {
+                                                                      final message =
+                                                                          _friendlyError(
+                                                                            'delete-schedule',
+                                                                          );
+                                                                      _logFailure(
+                                                                        message,
+                                                                      );
+                                                                      _showInfoMessage(
+                                                                        message,
+                                                                      );
+                                                                    }
+                                                                  },
+                                                                );
+                                                              },
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ],
                                             ),

@@ -458,6 +458,11 @@ exports.adminResetPassword = onCall(async (request) => {
     await assertAdmin(request);
 
     const username = String(request.data.username || "").trim().toLowerCase();
+    const newPass = String(request.data.newPassword || "");
+    if (!newPass || newPass.length < 6) {
+        throw new HttpsError("invalid-argument", "Parola noua trebuie sa aiba minim 6 caractere");
+    }
+
     const uid = await getUidByUsername(username);
 
     const targetDoc = await admin.firestore().collection("users").doc(uid).get();
@@ -465,18 +470,48 @@ exports.adminResetPassword = onCall(async (request) => {
         throw new HttpsError("failed-precondition", "Contul este dezactivat. Activeaza contul inainte de resetare.");
     }
 
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-    const newPass = Array.from({ length: 10 }, () =>
-        chars[Math.floor(Math.random() * chars.length)]
-    ).join("");
-
     await admin.auth().updateUser(uid, { password: newPass });
 
     await admin.firestore().collection("users").doc(uid).set({
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    return { password: newPass, uid };
+    return { ok: true, uid };
+});
+
+exports.adminUpdateUserFullName = onCall(async (request) => {
+    await assertAdmin(request);
+
+    const username = String(request.data?.username || "").trim().toLowerCase();
+    const fullName = String(request.data?.fullName || "").trim();
+
+    if (!username) {
+        throw new HttpsError("invalid-argument", "username lipsa");
+    }
+    if (!fullName || fullName.length < 3) {
+        throw new HttpsError("invalid-argument", "Numele complet trebuie sa aiba minim 3 caractere");
+    }
+
+    const uid = await getUidByUsername(username);
+    const userRef = admin.firestore().collection("users").doc(uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+        throw new HttpsError("not-found", "Utilizator inexistent");
+    }
+
+    const currentFullName = String(userSnap.data()?.fullName || "").trim();
+    if (currentFullName === fullName) {
+        return { ok: true, uid, changed: false, fullName };
+    }
+
+    await admin.auth().updateUser(uid, { displayName: fullName });
+
+    await userRef.set({
+        fullName,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    return { ok: true, uid, changed: true, fullName };
 });
 
 

@@ -26,10 +26,14 @@ class AdminApi {
     return Map<String, dynamic>.from(res.data);
   }
 
-  Future<Map<String, dynamic>> resetPassword({required String username}) async {
+  Future<Map<String, dynamic>> resetPassword({
+    required String username,
+    required String newPassword,
+  }) async {
     final callable = _functions.httpsCallable('adminResetPassword');
     final res = await callable.call(<String, dynamic>{
       'username': username.trim().toLowerCase(),
+      'newPassword': newPassword,
     });
     return Map<String, dynamic>.from(res.data as Map);
   }
@@ -175,6 +179,18 @@ class AdminApi {
     final callable = _functions.httpsCallable('adminDeleteUser');
     final res = await callable.call(<String, dynamic>{
       'username': username.trim().toLowerCase(),
+    });
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> updateUserFullName({
+    required String username,
+    required String fullName,
+  }) async {
+    final callable = _functions.httpsCallable('adminUpdateUserFullName');
+    final res = await callable.call(<String, dynamic>{
+      'username': username.trim().toLowerCase(),
+      'fullName': fullName.trim(),
     });
     return Map<String, dynamic>.from(res.data as Map);
   }
