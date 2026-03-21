@@ -28,6 +28,35 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
   final _classSearchC = TextEditingController();
   String _classQuery = "";
 
+  int _compareClassLabels(String a, String b) {
+    final aTrim = a.trim();
+    final bTrim = b.trim();
+
+    final aNumMatch = RegExp(r'^\d+').firstMatch(aTrim);
+    final bNumMatch = RegExp(r'^\d+').firstMatch(bTrim);
+
+    final aNum = aNumMatch != null ? int.tryParse(aNumMatch.group(0)!) : null;
+    final bNum = bNumMatch != null ? int.tryParse(bNumMatch.group(0)!) : null;
+
+    if (aNum != null && bNum != null && aNum != bNum) {
+      return aNum.compareTo(bNum);
+    }
+    if (aNum != null && bNum == null) return -1;
+    if (aNum == null && bNum != null) return 1;
+
+    final aSuffix = aNumMatch != null
+        ? aTrim.substring(aNumMatch.end).trim().toUpperCase()
+        : aTrim.toUpperCase();
+    final bSuffix = bNumMatch != null
+        ? bTrim.substring(bNumMatch.end).trim().toUpperCase()
+        : bTrim.toUpperCase();
+
+    final suffixCmp = aSuffix.compareTo(bSuffix);
+    if (suffixCmp != 0) return suffixCmp;
+
+    return aTrim.toLowerCase().compareTo(bTrim.toLowerCase());
+  }
+
   @override
   void dispose() {
     teacherUserC.dispose();
@@ -119,7 +148,6 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('classes')
-                        .orderBy('name')
                         .snapshots(),
                     builder: (context, snap) {
                       if (snap.hasError) {
@@ -147,7 +175,14 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                             .toLowerCase();
                         return name.contains(_classQuery) ||
                             teacherU.contains(_classQuery);
-                      }).toList();
+                      }).toList()
+                        ..sort((a, b) {
+                          final aData = a.data() as Map<String, dynamic>;
+                          final bData = b.data() as Map<String, dynamic>;
+                          final aName = (aData['name'] ?? a.id).toString();
+                          final bName = (bData['name'] ?? b.id).toString();
+                          return _compareClassLabels(aName, bName);
+                        });
 
                       return ListView.builder(
                         itemCount: filteredDocs.length,
@@ -262,6 +297,8 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                                           .trim();
                                                   if (fn.isNotEmpty)
                                                     displayName = fn;
+                                                } else if (snap.hasData) {
+                                                  displayName = 'Nu exista';
                                                 }
                                                 return Text(
                                                   'Diriginte: $displayName',
@@ -507,6 +544,8 @@ class _TeacherHeader extends StatelessWidget {
           final u = snap.data!.docs.first.data() as Map<String, dynamic>;
           final fn = (u['fullName'] ?? '').toString().trim();
           if (fn.isNotEmpty) teacherName = fn;
+        } else if (snap.hasData) {
+          teacherName = 'Nu exista';
         }
 
         return Padding(

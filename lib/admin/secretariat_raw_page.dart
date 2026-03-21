@@ -229,6 +229,11 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
 
   void _generateCreds() {
     final full = fullNameC.text.trim();
+    if (full.isEmpty) {
+      _logFailure('Completează Numele Complet înainte de generare.');
+      _showInfoMessage('Completează Numele Complet înainte de generare.');
+      return;
+    }
     final base = _baseFromFullName(full);
     final uname = "$base${_randDigits(3)}";
     final pass = _randPassword(10);
@@ -799,17 +804,19 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                               children: [
                                                 _buildTextField(
                                                   controller: fullNameC,
-                                                  label: "Nume complet",
+                                                  label:
+                                                      "Nume complet - obligatoriu",
                                                 ),
                                                 const SizedBox(height: 12),
                                                 _buildTextField(
                                                   controller: usernameC,
-                                                  label: "Utilizator",
+                                                  label:
+                                                      "Utilizator - obligatoriu",
                                                 ),
                                                 const SizedBox(height: 12),
                                                 _buildTextField(
                                                   controller: passwordC,
-                                                  label: "Parolă",
+                                                  label: "Parolă - obligatoriu",
                                                 ),
                                                 const SizedBox(height: 12),
                                                 Container(
@@ -866,12 +873,27 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                             ),
                                                           ],
                                                           onChanged: (v) =>
-                                                              setState(
-                                                                () => role =
+                                                              setState(() {
+                                                                role =
                                                                     v ??
-                                                                    "student",
-                                                              ),
+                                                                    "student";
+                                                                if (role !=
+                                                                        'student' &&
+                                                                    role !=
+                                                                        'teacher') {
+                                                                  selectedCreateUserClassId =
+                                                                      '';
+                                                                }
+                                                              }),
                                                         ),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 6),
+                                                const Text(
+                                                  'Rol - obligatoriu',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.black54,
                                                   ),
                                                 ),
                                                 if (role == "student" ||
@@ -900,159 +922,87 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
 
                                                       final docs =
                                                           snap.data!.docs;
-                                                      final classOptions = docs.map(
-                                                        (doc) {
-                                                          final data =
-                                                              doc.data()
-                                                                  as Map<
-                                                                    String,
-                                                                    dynamic
-                                                                  >;
-                                                          return {
-                                                            'id': doc.id,
-                                                            'name':
-                                                                (data['name'] ??
-                                                                        doc.id)
-                                                                    .toString(),
-                                                          };
-                                                        },
-                                                      ).toList();
+                                                      final classOptions = docs
+                                                          .map((doc) {
+                                                            final data =
+                                                                doc.data()
+                                                                    as Map<
+                                                                      String,
+                                                                      dynamic
+                                                                    >;
+                                                            return {
+                                                              'id': doc.id,
+                                                              'name':
+                                                                  (data['name'] ??
+                                                                          doc.id)
+                                                                      .toString(),
+                                                            };
+                                                          })
+                                                          .toList();
 
-                                                      return Autocomplete<
-                                                        Map<String, String>
-                                                      >(
-                                                        initialValue: TextEditingValue(
-                                                          text: classOptions
-                                                              .where(
-                                                                (option) =>
-                                                                    option['id'] ==
-                                                                    selectedCreateUserClassId,
-                                                              )
-                                                              .map(
-                                                                (option) =>
-                                                                    option['name']!,
-                                                              )
-                                                              .firstWhere(
-                                                                (_) => false,
-                                                                orElse: () =>
-                                                                    '',
-                                                              ),
-                                                        ),
-                                                        optionsBuilder:
-                                                            (
-                                                              TextEditingValue
-                                                              textEditingValue,
-                                                            ) {
-                                                              if (textEditingValue
-                                                                  .text
-                                                                  .isEmpty) {
-                                                                return classOptions;
-                                                              }
-                                                              return classOptions
-                                                                  .where(
-                                                                    (
-                                                                      option,
-                                                                    ) => option['name']!
-                                                                        .toLowerCase()
-                                                                        .contains(
-                                                                          textEditingValue
-                                                                              .text
-                                                                              .toLowerCase(),
-                                                                        ),
-                                                                  )
-                                                                  .toList();
-                                                            },
-                                                        displayStringForOption:
+                                                      final hasSelectedClass =
+                                                          classOptions.any(
                                                             (option) =>
-                                                                option['name']!,
-                                                        fieldViewBuilder:
-                                                            (
-                                                              context,
-                                                              textEditingController,
-                                                              focusNode,
-                                                              onFieldSubmitted,
-                                                            ) {
-                                                              return TextFormField(
-                                                                controller:
-                                                                    textEditingController,
-                                                                focusNode:
-                                                                    focusNode,
-                                                                decoration: InputDecoration(
-                                                                  labelText:
-                                                                      "Selecteaza clasa",
-                                                                  hintText:
-                                                                      "Scrie pentru a cauta clase...",
-                                                                  border: OutlineInputBorder(
-                                                                    borderRadius:
-                                                                        BorderRadius.circular(
-                                                                          6,
-                                                                        ),
-                                                                  ),
-                                                                  filled: true,
-                                                                  fillColor: Colors
-                                                                      .grey[50],
+                                                                option['id'] ==
+                                                                selectedCreateUserClassId,
+                                                          );
+
+                                                      if (!hasSelectedClass &&
+                                                          selectedCreateUserClassId
+                                                              .isNotEmpty) {
+                                                        WidgetsBinding.instance
+                                                            .addPostFrameCallback((_) {
+                                                              if (!mounted) {
+                                                                return;
+                                                              }
+                                                              setState(() {
+                                                                selectedCreateUserClassId =
+                                                                    '';
+                                                              });
+                                                            });
+                                                      }
+
+                                                      return DropdownButtonFormField<
+                                                        String
+                                                      >(
+                                                        value: hasSelectedClass
+                                                            ? selectedCreateUserClassId
+                                                            : null,
+                                                        isExpanded: true,
+                                                        decoration: InputDecoration(
+                                                          labelText:
+                                                              'Clasa - obligatoriu',
+                                                          border: OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  6,
                                                                 ),
-                                                              );
-                                                            },
-                                                        optionsViewBuilder:
-                                                            (
-                                                              context,
-                                                              onSelected,
-                                                              options,
-                                                            ) {
-                                                              return Align(
-                                                                alignment:
-                                                                    Alignment
-                                                                        .topLeft,
-                                                                child: Material(
-                                                                  elevation:
-                                                                      4.0,
-                                                                  child: Container(
-                                                                    width:
-                                                                        MediaQuery.of(
-                                                                          context,
-                                                                        ).size.width *
-                                                                        0.3,
-                                                                    constraints:
-                                                                        const BoxConstraints(
-                                                                          maxHeight:
-                                                                              200,
-                                                                        ),
-                                                                    child: ListView.builder(
-                                                                      padding:
-                                                                          EdgeInsets
-                                                                              .zero,
-                                                                      shrinkWrap:
-                                                                          true,
-                                                                      itemCount:
-                                                                          options
-                                                                              .length,
-                                                                      itemBuilder:
-                                                                          (
-                                                                            context,
-                                                                            index,
-                                                                          ) {
-                                                                            final option = options.elementAt(
-                                                                              index,
-                                                                            );
-                                                                            return ListTile(
-                                                                              title: Text(
-                                                                                option['name']!,
-                                                                              ),
-                                                                              onTap: () => onSelected(
-                                                                                option,
-                                                                              ),
-                                                                            );
-                                                                          },
+                                                          ),
+                                                          filled: true,
+                                                          fillColor:
+                                                              Colors.grey[50],
+                                                        ),
+                                                        hint: const Text(
+                                                          'Selectează clasa',
+                                                        ),
+                                                        items: classOptions
+                                                            .map(
+                                                              (option) =>
+                                                                  DropdownMenuItem<
+                                                                    String
+                                                                  >(
+                                                                    value:
+                                                                        option['id'],
+                                                                    child: Text(
+                                                                      option['name']!,
                                                                     ),
                                                                   ),
-                                                                ),
-                                                              );
-                                                            },
-                                                        onSelected: (option) {
+                                                            )
+                                                            .toList(),
+                                                        onChanged: (value) {
                                                           setState(() {
                                                             selectedCreateUserClassId =
-                                                                option['id']!;
+                                                                value ?? '';
                                                           });
                                                         },
                                                       );

@@ -17,6 +17,35 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
   final _classSearchC = TextEditingController();
   String _classQuery = "";
 
+  int _compareClassLabels(String a, String b) {
+    final aTrim = a.trim();
+    final bTrim = b.trim();
+
+    final aNumMatch = RegExp(r'^\d+').firstMatch(aTrim);
+    final bNumMatch = RegExp(r'^\d+').firstMatch(bTrim);
+
+    final aNum = aNumMatch != null ? int.tryParse(aNumMatch.group(0)!) : null;
+    final bNum = bNumMatch != null ? int.tryParse(bNumMatch.group(0)!) : null;
+
+    if (aNum != null && bNum != null && aNum != bNum) {
+      return aNum.compareTo(bNum);
+    }
+    if (aNum != null && bNum == null) return -1;
+    if (aNum == null && bNum != null) return 1;
+
+    final aSuffix = aNumMatch != null
+        ? aTrim.substring(aNumMatch.end).trim().toUpperCase()
+        : aTrim.toUpperCase();
+    final bSuffix = bNumMatch != null
+        ? bTrim.substring(bNumMatch.end).trim().toUpperCase()
+        : bTrim.toUpperCase();
+
+    final suffixCmp = aSuffix.compareTo(bSuffix);
+    if (suffixCmp != 0) return suffixCmp;
+
+    return aTrim.toLowerCase().compareTo(bTrim.toLowerCase());
+  }
+
   @override
   void dispose() {
     _classSearchC.dispose();
@@ -106,7 +135,6 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('classes')
-            .orderBy('name')
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -122,7 +150,14 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
             final data = doc.data() as Map<String, dynamic>;
             return data.containsKey('schedule') &&
                 (data['schedule'] as Map?)?.isNotEmpty == true;
-          }).toList();
+          }).toList()
+            ..sort((a, b) {
+              final aData = a.data() as Map<String, dynamic>;
+              final bData = b.data() as Map<String, dynamic>;
+              final aLabel = (aData['name'] ?? a.id).toString();
+              final bLabel = (bData['name'] ?? b.id).toString();
+              return _compareClassLabels(aLabel, bLabel);
+            });
 
           // Filter classes based on search query
           final filteredClasses = classesWithSchedule.where((doc) {

@@ -242,6 +242,23 @@ class AdminStore {
     username = username.trim().toLowerCase();
     if (username.isEmpty) throw Exception("username lipsa");
 
+    Future<void> clearTeacherFromClasses() async {
+      final classesSnap = await _db
+          .collection('classes')
+          .where('teacherUsername', isEqualTo: username)
+          .get();
+      if (classesSnap.docs.isEmpty) return;
+
+      final batch = _db.batch();
+      for (final classDoc in classesSnap.docs) {
+        batch.set(classDoc.reference, {
+          "teacherUsername": FieldValue.delete(),
+          "updatedAt": FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+      await batch.commit();
+    }
+
     // Preferred path: backend function deletes both Firebase Auth account
     // and Firestore user data.
     try {
@@ -249,6 +266,8 @@ class AdminStore {
         'adminDeleteUser',
       );
       await callable.call(<String, dynamic>{'username': username});
+      // Defensive cleanup for legacy/inconsistent records.
+      await clearTeacherFromClasses();
       return;
     } catch (_) {
       // Fallback to local cleanup to avoid blocking admin workflows.
@@ -269,11 +288,14 @@ class AdminStore {
     final role = (data['role'] ?? '').toString();
     final classId = (data['classId'] ?? '').toString().toUpperCase();
 
-    if (role == "teacher" && classId.isNotEmpty) {
-      await _db.collection('classes').doc(classId).set({
-        "teacherUsername": null,
-        "updatedAt": FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+    if (role == "teacher") {
+      await clearTeacherFromClasses();
+      if (classId.isNotEmpty) {
+        await _db.collection('classes').doc(classId).set({
+          "teacherUsername": FieldValue.delete(),
+          "updatedAt": FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
     }
 
     await userRef.delete();

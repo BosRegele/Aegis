@@ -645,19 +645,38 @@ exports.adminDeleteUser = onCall(async (request) => {
         }
     }
 
-    // If deleted user is homeroom teacher, clear class assignment.
-    if (role === "teacher" && classId) {
-        const classRef = db.collection("classes").doc(classId);
-        const classSnap = await classRef.get();
-        if (classSnap.exists) {
-            const currentTeacher = String(classSnap.data()?.teacherUsername || "")
-                .trim()
-                .toLowerCase();
-            if (currentTeacher === username) {
-                await classRef.set({
+    // If deleted user is a homeroom teacher, clear all class references.
+    if (role === "teacher") {
+        const linkedClassesSnap = await db
+            .collection("classes")
+            .where("teacherUsername", "==", username)
+            .get();
+
+        if (!linkedClassesSnap.empty) {
+            const batch = db.batch();
+            for (const classDoc of linkedClassesSnap.docs) {
+                batch.set(classDoc.ref, {
                     teacherUsername: admin.firestore.FieldValue.delete(),
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 }, { merge: true });
+            }
+            await batch.commit();
+        }
+
+        // Legacy safeguard when classId exists but teacherUsername was not indexed/queryable.
+        if (classId) {
+            const classRef = db.collection("classes").doc(classId);
+            const classSnap = await classRef.get();
+            if (classSnap.exists) {
+                const currentTeacher = String(classSnap.data()?.teacherUsername || "")
+                    .trim()
+                    .toLowerCase();
+                if (currentTeacher === username) {
+                    await classRef.set({
+                        teacherUsername: admin.firestore.FieldValue.delete(),
+                        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+                }
             }
         }
     }
