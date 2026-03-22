@@ -69,10 +69,7 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(999),
@@ -105,22 +102,15 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Colors.green.withValues(alpha: 0.30),
-                  ),
+                  borderSide: BorderSide(color: Colors.green.withValues(alpha: 0.30)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Colors.green.withValues(alpha: 0.30),
-                  ),
+                  borderSide: BorderSide(color: Colors.green.withValues(alpha: 0.30)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(
-                    color: Color(0xFF7AAF5B),
-                    width: 2,
-                  ),
+                  borderSide: const BorderSide(color: Color(0xFF7AAF5B), width: 2),
                 ),
               ),
               onChanged: (v) => setState(() => q = v.trim().toLowerCase()),
@@ -137,53 +127,31 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                   .where('role', isEqualTo: 'admin')
                   .snapshots(),
               builder: (context, snap) {
-                if (snap.hasError) {
-                  return Center(
-                    child: SelectableText("Eroare:\n${snap.error}"),
-                  );
-                }
-
-                if (!snap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+                if (snap.hasError) return Center(child: SelectableText("Eroare:\n${snap.error}"));
+                if (!snap.hasData) return const Center(child: CircularProgressIndicator());
 
                 final docs = [...snap.data!.docs];
-
                 docs.sort((a, b) {
-                  final an = ((a.data() as Map)['fullName'] ?? '')
-                      .toString()
-                      .toLowerCase();
-                  final bn = ((b.data() as Map)['fullName'] ?? '')
-                      .toString()
-                      .toLowerCase();
+                  final an = ((a.data() as Map)['fullName'] ?? '').toString().toLowerCase();
+                  final bn = ((b.data() as Map)['fullName'] ?? '').toString().toLowerCase();
                   return an.compareTo(bn);
                 });
 
                 final filtered = docs.where((d) {
                   if (q.isEmpty) return true;
-
                   final data = d.data() as Map<String, dynamic>;
-                  final uid = d.id;
-                  final username = (data['username'] ?? uid)
-                      .toString()
-                      .toLowerCase();
-                  final fullName = (data['fullName'] ?? '')
-                      .toString()
-                      .toLowerCase();
-
+                  final username = (data['username'] ?? d.id).toString().toLowerCase();
+                  final fullName = (data['fullName'] ?? '').toString().toLowerCase();
                   return fullName.contains(q) || username.contains(q);
                 }).toList();
 
-                if (filtered.isEmpty) {
-                  return const Center(child: Text("Nu există rezultate"));
-                }
+                if (filtered.isEmpty) return const Center(child: Text("Nu există rezultate"));
 
                 return ListView.builder(
                   itemCount: filtered.length,
                   itemBuilder: (_, i) {
                     final d = filtered[i];
                     final data = d.data() as Map<String, dynamic>;
-
                     final uid = d.id;
                     final username = (data['username'] ?? '').toString();
                     final fullName = (data['fullName'] ?? username).toString();
@@ -206,14 +174,11 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: primaryGreen.withValues(alpha: 0.20),
-                          child: const Icon(Icons.admin_panel_settings),
+                          child: const Icon(Icons.admin_panel_settings, color: primaryGreen),
                         ),
-                        title: Text(
-                          fullName,
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
+                        title: Text(fullName, style: const TextStyle(fontWeight: FontWeight.w500)),
                         subtitle: Text("username: $username"),
-                        trailing: const Icon(Icons.chevron_right),
+                        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
                         onTap: () => _openAdminDialog(
                           context,
                           uid: uid,
@@ -233,6 +198,20 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
     );
   }
 
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF5F6771), fontSize: 13)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2E3B4E), fontSize: 15)),
+        ],
+      ),
+    );
+  }
+
   Future<void> _openAdminDialog(
     BuildContext context, {
     required String uid,
@@ -245,104 +224,132 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
       builder: (_) {
         bool busy = false;
         return StatefulBuilder(
-          builder: (ctx, setDialogState) => AlertDialog(
-            title: Text(fullName),
-            content: SelectableText(
-              "username: $username\nrole: admin\nstatus: ${status == 'disabled' ? 'disabled' : 'enabled'}",
+          builder: (ctx, setDialogState) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 400),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // --- HEADER ---
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF7AAF5B), Color(0xFF5A9641)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    ),
+                    child: Text(fullName, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+                  ),
+
+                  // --- CONTENT ---
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailRow("Username Administrator", username),
+                        _buildDetailRow("Rol Sistem", "Administrator General"),
+                        _buildDetailRow("Status Cont", status == 'disabled' ? 'Dezactivat' : 'Activ (Enabled)'),
+                      ],
+                    ),
+                  ),
+
+                  // --- ACTIONS ---
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            // Buton Enable/Disable
+                            Expanded(
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: status == 'disabled' ? const Color(0xFF4CAF50) : Colors.orangeAccent,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                ),
+                                onPressed: busy ? null : () async {
+                                  final disable = status != 'disabled';
+                                  setDialogState(() => busy = true);
+                                  await store.setDisabled(username, disable);
+                                  if (mounted) Navigator.pop(context);
+                                },
+                                child: Text(status == 'disabled' ? "Activează" : "Dezactivează", style: const TextStyle(fontWeight: FontWeight.w700)),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Buton Delete
+                            Expanded(
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFE53935),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                ),
+                                onPressed: busy ? null : () async {
+                                  final ok = await showDialog<bool>(
+                                    context: context,
+                                    builder: (_) => AlertDialog(
+                                      title: const Text("Confirmare Ștergere"),
+                                      content: Text("Sigur vrei să ștergi administratorul $username? Această acțiune este ireversibilă."),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Anulează")),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                                          onPressed: () => Navigator.pop(context, true),
+                                          child: const Text("Șterge definitiv"),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                  if (ok != true) return;
+                                  setDialogState(() => busy = true);
+                                  try {
+                                    await store.deleteUser(username);
+                                    if (mounted) Navigator.pop(context);
+                                  } catch (_) {
+                                    setDialogState(() => busy = false);
+                                  }
+                                },
+                                child: busy 
+                                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : const Text("Șterge", style: TextStyle(fontWeight: FontWeight.w700)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton(
+                            style: TextButton.styleFrom(
+                              backgroundColor: Colors.grey.withValues(alpha: 0.1),
+                              foregroundColor: const Color(0xFF2E3B4E),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text("Închide", style: TextStyle(fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            actions: [
-              TextButton(
-                onPressed: busy ? null : () => Navigator.pop(context),
-                child: const Text("Close"),
-              ),
-              TextButton(
-                onPressed: busy
-                    ? null
-                    : () async {
-                        final disable = status != 'disabled';
-                        final ok = await showDialog<bool>(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: const Text("Confirmare"),
-                            content: Text(
-                              disable
-                                  ? "Dezactivezi administratorul: $username ?"
-                                  : "Activezi administratorul: $username ?",
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text("Cancel"),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text("Confirm"),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (ok != true) return;
-                        setDialogState(() => busy = true);
-                        await store.setDisabled(username, disable);
-                        if (mounted) Navigator.pop(context);
-                      },
-                child: Text(status == 'disabled' ? "Enable" : "Disable"),
-              ),
-              TextButton(
-                onPressed: busy
-                    ? null
-                    : () async {
-                        final ok = await showDialog<bool>(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: const Text("Delete user?"),
-                            content: Text(
-                              "Ștergi administratorul: $username ?",
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text("Cancel"),
-                              ),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text("Delete"),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (ok != true) return;
-                        setDialogState(() => busy = true);
-                        try {
-                          await store.deleteUser(username);
-                          if (!mounted) return;
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Utilizator șters cu succes.'),
-                            ),
-                          );
-                        } catch (_) {
-                          setDialogState(() => busy = false);
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Utilizatorul nu a putut fi șters.',
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                child: busy
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text("Delete"),
-              ),
-            ],
           ),
         );
       },
