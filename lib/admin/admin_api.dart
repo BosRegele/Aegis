@@ -194,4 +194,42 @@ class AdminApi {
     });
     return Map<String, dynamic>.from(res.data as Map);
   }
+
+  Future<void> sendVerificationEmail({
+    required String uid,
+    required String email,
+  }) async {
+    final callable = _functions.httpsCallable('sendVerificationEmail');
+    await callable.call(<String, dynamic>{'uid': uid, 'email': email});
+  }
+
+  Future<Map<String, dynamic>> verifyEmailCode({
+    required String uid,
+    required String code,
+  }) async {
+    final callable = _functions.httpsCallable('verifyEmailCode');
+    final res = await callable.call(<String, dynamic>{
+      'uid': uid,
+      'code': code,
+    });
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> markPasswordChanged({
+    required String uid,
+  }) async {
+    final callable = _functions.httpsCallable('markPasswordChanged');
+    final res = await callable.call(<String, dynamic>{'uid': uid});
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> removePersonalEmail({
+    required String username,
+  }) async {
+    final callable = _functions.httpsCallable('adminRemovePersonalEmail');
+    final res = await callable.call(<String, dynamic>{
+      'username': username.trim().toLowerCase(),
+    });
+    return Map<String, dynamic>.from(res.data as Map);
+  }
 }

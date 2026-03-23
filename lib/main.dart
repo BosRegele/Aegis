@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:firster/Auth/login_page_firestore.dart';
+import 'package:firster/Auth/two_factor_verify_page.dart';
 import 'package:firster/StudentInterface/mainnavigation.dart';
 import 'package:firster/admin/secretariat_raw_page.dart'
     show SecretariatRawPage;
@@ -8,6 +9,7 @@ import 'package:firster/gate_scan_page.dart';
 import 'package:firster/teacher/teacher_dashboard_page.dart';
 import 'package:firster/parent/parent_home_page.dart';
 import 'package:firster/session.dart';
+import 'package:firster/onboarding_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -147,34 +149,96 @@ class MyApp extends StatelessWidget {
                 return const LoginPageFirestore();
               }
 
+              final personalEmail = (data['personalEmail'] ?? '').toString();
+              final hasPersonalEmail = personalEmail.trim().isNotEmpty;
+              final passwordChanged = data['passwordChanged'] == true;
+              final emailVerified = data['emailVerified'] == true;
+              final onboardingComplete = data['onboardingComplete'] == true;
               final role = (data['role'] ?? '').toString();
-              final username = (data['username'] ?? '').toString();
 
-              AppSession.setUser(
-                uidValue: user.uid,
-                usernameValue: username,
-                roleValue: role,
-                fullNameValue: (data['fullName'] ?? '').toString(),
-                classIdValue: (data['classId'] ?? '').toString(),
-              );
-
-              unawaited(_saveFcmToken(user.uid));
-
-              if (role == 'student') {
-                return const AppShell();
-              } else if (role == 'gate') {
-                return const GateScanPage();
-              } else if (role == 'admin') {
-                return const SecretariatRawPage();
-              } else if (role == 'teacher') {
-                return const TeacherDashboardPage();
-              } else if (role == 'parent') {
-                return const ParentHomePage();
+              // Backward compatibility: for old documents that already satisfy
+              // onboarding conditions, persist onboardingComplete once.
+              final effectivelyOnboarded =
+                  onboardingComplete ||
+                  (hasPersonalEmail && passwordChanged && emailVerified);
+              if (effectivelyOnboarded && !onboardingComplete) {
+                unawaited(
+                  FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .set({
+                        'onboardingComplete': true,
+                        'updatedAt': FieldValue.serverTimestamp(),
+                      }, SetOptions(merge: true)),
+                );
               }
 
-              unawaited(_cleanupAuthState());
-              unawaited(FirebaseAuth.instance.signOut());
-              return const LoginPageFirestore();
+              // Keep auth email mirrored in Firestore user profile.
+              if ((data['authEmail'] ?? '').toString().trim().isEmpty &&
+                  (user.email ?? '').trim().isNotEmpty) {
+                unawaited(
+                  FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(user.uid)
+                      .set({
+                        'authEmail': user.email,
+                        'updatedAt': FieldValue.serverTimestamp(),
+                      }, SetOptions(merge: true)),
+                );
+              }
+
+              if (role != 'gate' && !effectivelyOnboarded) {
+                return OnboardingPage(user: user, userData: data);
+              }
+
+              // 2FA gate — uses ValueListenableBuilder so it rebuilds reactively
+              // when AppSession.twoFactorVerified is set to true, without any
+              // Navigator.push that would remove this StreamBuilder from the tree.
+              return ValueListenableBuilder<bool>(
+                valueListenable: AppSession.twoFactorNotifier,
+                builder: (context, twoFaVerified, _) {
+                  if (role != 'gate' &&
+                      effectivelyOnboarded &&
+                      !twoFaVerified) {
+                    final username = (data['username'] ?? '').toString();
+                    return TwoFactorVerifyPage(
+                      uid: user.uid,
+                      role: role,
+                      username: username,
+                      fullName: (data['fullName'] ?? '').toString(),
+                      classId: (data['classId'] ?? '').toString(),
+                    );
+                  }
+
+                  final username = (data['username'] ?? '').toString();
+
+                  AppSession.setUser(
+                    uidValue: user.uid,
+                    usernameValue: username,
+                    roleValue: role,
+                    fullNameValue: (data['fullName'] ?? '').toString(),
+                    classIdValue: (data['classId'] ?? '').toString(),
+                  );
+
+                  unawaited(_saveFcmToken(user.uid));
+
+                  if (role == 'student') {
+                    return const AppShell();
+                  } else if (role == 'gate') {
+                    return const GateScanPage();
+                  } else if (role == 'admin') {
+                    return const SecretariatRawPage();
+                  } else if (role == 'teacher') {
+                    return const TeacherDashboardPage();
+                  } else if (role == 'parent') {
+                    return const ParentHomePage();
+                  }
+
+                  unawaited(_cleanupAuthState());
+                  unawaited(FirebaseAuth.instance.signOut());
+                  return const LoginPageFirestore();
+                },
+              );
             },
           );
         },

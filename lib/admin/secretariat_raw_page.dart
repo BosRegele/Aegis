@@ -1,8 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'admin_api.dart';
 import 'admin_store.dart';
 import 'admin_classes_page.dart';
@@ -209,6 +213,97 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("Copiat in clipboard ✅")));
+  }
+
+  Future<Directory> _getCredentialsExportDirectory() async {
+    if (kIsWeb) {
+      throw UnsupportedError('Exportul CSV nu este disponibil pe web.');
+    }
+
+    Directory? baseDir;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      baseDir = await getExternalStorageDirectory();
+    }
+    baseDir ??= await getApplicationDocumentsDirectory();
+
+    final exportDir = Directory(
+      '${baseDir.path}${Platform.pathSeparator}exports',
+    );
+    if (!await exportDir.exists()) {
+      await exportDir.create(recursive: true);
+    }
+    return exportDir;
+  }
+
+  Future<File> _getCredentialsCsvFile() async {
+    final exportDir = await _getCredentialsExportDirectory();
+    return File(
+      '${exportDir.path}${Platform.pathSeparator}credentiale_utilizatori.csv',
+    );
+  }
+
+  String _csvCell(String value) {
+    final escaped = value.replaceAll('"', '""');
+    if (escaped.contains(RegExp(r'[",\n\r]'))) {
+      return '"$escaped"';
+    }
+    return escaped;
+  }
+
+  Future<String> _appendCreatedUserToCsv({
+    required String username,
+    required String password,
+    required String fullName,
+    required String role,
+    String? classId,
+  }) async {
+    final file = await _getCredentialsCsvFile();
+    final exists = await file.exists();
+    final isEmpty = !exists || await file.length() == 0;
+
+    final row = [
+      DateTime.now().toIso8601String(),
+      username,
+      password,
+      fullName,
+      role,
+      classId ?? '',
+    ].map(_csvCell).join(',');
+
+    final sink = file.openWrite(mode: FileMode.append);
+    if (isEmpty) {
+      sink.writeln('created_at,username,password,full_name,role,class_id');
+    }
+    sink.writeln(row);
+    await sink.flush();
+    await sink.close();
+
+    return file.path;
+  }
+
+  Future<void> _shareCredentialsCsv() async {
+    try {
+      final file = await _getCredentialsCsvFile();
+      if (!await file.exists() || await file.length() == 0) {
+        _logFailure('CSV-ul cu credentiale este gol sau nu există încă.');
+        _showInfoMessage('Nu există încă un CSV cu utilizatori generați.');
+        return;
+      }
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'CSV cu utilizatori și parole generate din secretariat.',
+          subject: 'Credentiale utilizatori',
+        ),
+      );
+
+      _logSuccess('CSV exportat: ${file.path}');
+      _showInfoMessage('CSV pregătit pentru trimitere.');
+    } catch (error) {
+      _logFailure('CSV-ul nu a putut fi exportat: $error');
+      _showInfoMessage('CSV-ul nu a putut fi exportat.');
+    }
   }
 
   String _formatTimeOfDay(TimeOfDay time) {
@@ -1135,6 +1230,35 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     : null,
                                                               );
 
+                                                              String? csvPath;
+                                                              try {
+                                                                csvPath = await _appendCreatedUserToCsv(
+                                                                  username: uname
+                                                                      .toLowerCase(),
+                                                                  password:
+                                                                      pass,
+                                                                  fullName:
+                                                                      full,
+                                                                  role: role,
+                                                                  classId:
+                                                                      role ==
+                                                                              'student' ||
+                                                                          role ==
+                                                                              'teacher'
+                                                                      ? selectedCreateUserClassId
+                                                                      : null,
+                                                                );
+                                                                _logSuccess(
+                                                                  'CSV actualizat: $csvPath',
+                                                                );
+                                                              } catch (
+                                                                csvError
+                                                              ) {
+                                                                _logFailure(
+                                                                  'Utilizatorul a fost creat, dar CSV-ul nu a putut fi salvat: $csvError',
+                                                                );
+                                                              }
+
                                                               _logSuccess(
                                                                 'Utilizator creat: $uname',
                                                               );
@@ -1142,7 +1266,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                               if (!mounted)
                                                                 return;
                                                               _showInfoMessage(
-                                                                "Utilizator creat: $uname",
+                                                                csvPath == null
+                                                                    ? 'Utilizator creat: $uname. CSV-ul nu a fost actualizat.'
+                                                                    : 'Utilizator creat: $uname. CSV actualizat.',
                                                               );
                                                             } catch (e) {
                                                               final message =
@@ -1160,6 +1286,23 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                             }
                                                           });
                                                         },
+                                                ),
+                                                const SizedBox(height: 12),
+                                                _buildButton(
+                                                  label:
+                                                      'Exportă CSV cu useri și parole',
+                                                  primaryGreen: primaryGreen,
+                                                  fullWidth: true,
+                                                  onPressed:
+                                                      _shareCredentialsCsv,
+                                                ),
+                                                const SizedBox(height: 8),
+                                                const Text(
+                                                  'La fiecare utilizator creat se adaugă automat o linie în CSV. Folosește exportul ca să trimiți fișierul dirigintelui.',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.black54,
+                                                  ),
                                                 ),
                                               ],
                                             ),
@@ -2307,6 +2450,68 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                       ),
                                                     ),
                                                   ],
+                                                ),
+                                                const SizedBox(height: 12),
+                                                _buildButton(
+                                                  label: "Reset Onboarding",
+                                                  primaryGreen:
+                                                      Colors.orange[700]!,
+                                                  onPressed:
+                                                      _isActionBusy(
+                                                        'remove-personal-email',
+                                                      )
+                                                      ? null
+                                                      : () {
+                                                          _runGuarded(
+                                                            'remove-personal-email',
+                                                            () async {
+                                                              if (targetUserC
+                                                                  .text
+                                                                  .trim()
+                                                                  .isEmpty) {
+                                                                _showInfoMessage(
+                                                                  'Completează utilizatorul țintă.',
+                                                                );
+                                                                return;
+                                                              }
+                                                              final shouldProceed =
+                                                                  await _confirmMajorAction(
+                                                                    title:
+                                                                        'Reset Onboarding',
+                                                                    message:
+                                                                        'Emailul personal al utilizatorului "${targetUserC.text.trim()}" va fi sters. '
+                                                                        'La urmatorul login va trebui sa parcurga din nou onboarding-ul.',
+                                                                  );
+                                                              if (!shouldProceed)
+                                                                return;
+                                                              try {
+                                                                await api.removePersonalEmail(
+                                                                  username:
+                                                                      targetUserC
+                                                                          .text,
+                                                                );
+                                                                _logSuccess(
+                                                                  'Onboarding resetat pentru ${targetUserC.text.trim()}.',
+                                                                );
+                                                                _showInfoMessage(
+                                                                  'Onboarding-ul a fost resetat.',
+                                                                );
+                                                              } catch (e) {
+                                                                final message =
+                                                                    _friendlyError(
+                                                                      'remove-personal-email',
+                                                                    );
+                                                                _logFailure(
+                                                                  message,
+                                                                );
+                                                                _showInfoMessage(
+                                                                  message,
+                                                                );
+                                                              }
+                                                            },
+                                                          );
+                                                        },
+                                                  fullWidth: true,
                                                 ),
                                                 const SizedBox(height: 16),
                                                 StreamBuilder<QuerySnapshot>(

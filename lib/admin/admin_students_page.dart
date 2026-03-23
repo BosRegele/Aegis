@@ -195,6 +195,8 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                     final classId = (data['classId'] ?? '').toString();
                     final inSchool = data['inSchool'] as bool? ?? false;
                     final status = (data['status'] ?? 'active').toString();
+                    final onboarded =
+                        data['onboardingComplete'] as bool? ?? false;
 
                     return Container(
                       margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
@@ -219,11 +221,59 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                           fullName,
                           style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
-                        subtitle: Text("user: $username | clasă: $classId"),
+                        subtitle: Row(
+                          children: [
+                            Expanded(
+                              child: Text("user: $username | clasă: $classId"),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: onboarded
+                                    ? const Color(0xFFE8F5E9)
+                                    : const Color(0xFFFFF3E0),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: onboarded
+                                      ? const Color(0xFF4CAF50)
+                                      : const Color(0xFFFF9800),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    onboarded
+                                        ? Icons.how_to_reg
+                                        : Icons.hourglass_top,
+                                    size: 11,
+                                    color: onboarded
+                                        ? const Color(0xFF4CAF50)
+                                        : const Color(0xFFFF9800),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    'OB',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: onboarded
+                                          ? const Color(0xFF4CAF50)
+                                          : const Color(0xFFFF9800),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                         trailing: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
+                            horizontal: 8,
+                            vertical: 4,
                           ),
                           decoration: BoxDecoration(
                             color: inSchool
@@ -246,13 +296,13 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                 color: inSchool
                                     ? const Color(0xFF4CAF50)
                                     : const Color(0xFFF44336),
-                                size: 16,
+                                size: 14,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 3),
                               Text(
                                 inSchool ? 'In scoala' : 'Afara',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: inSchool
                                       ? const Color(0xFF4CAF50)
@@ -328,9 +378,12 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
         return StatefulBuilder(
           builder: (ctx, setDialogState) => Dialog(
             backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 24,
+            ),
             child: Container(
-              constraints: const BoxConstraints(maxWidth: 450), 
+              constraints: const BoxConstraints(maxWidth: 450),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
@@ -341,14 +394,19 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 children: [
                   // --- BANDA VERDE SUS ---
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 20,
+                    ),
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         colors: [Color(0xFF7AAF5B), Color(0xFF5A9641)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
                     ),
                     child: Text(
                       fullName,
@@ -370,8 +428,10 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                           _buildDetailRow("Username", username),
                           _buildDetailRow("Clasă", classId),
                           _buildDetailRow(
-                              "Status", status == 'disabled' ? 'Inactiv' : 'Activ'),
-                          
+                            "Status",
+                            status == 'disabled' ? 'Inactiv' : 'Activ',
+                          ),
+
                           // --- ETICHETĂ LOCAȚIE (STIL PAGINA PRINCIPALĂ) ---
                           Padding(
                             padding: const EdgeInsets.only(top: 4, bottom: 8),
@@ -454,26 +514,34 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                 ),
                               ),
                               builder: (context, psnap) {
-                                if (psnap.hasError) return const SizedBox.shrink();
+                                if (psnap.hasError)
+                                  return const SizedBox.shrink();
                                 if (!psnap.hasData) {
                                   return const Center(
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   );
                                 }
                                 final docs = psnap.data!;
                                 if (docs.isEmpty) {
-                                  return const Text('Niciun părinte înregistrat.');
+                                  return const Text(
+                                    'Niciun părinte înregistrat.',
+                                  );
                                 }
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: docs.map((ds) {
                                     final md =
-                                        ds.data() as Map<String, dynamic>? ?? {};
+                                        ds.data() as Map<String, dynamic>? ??
+                                        {};
                                     final pname =
-                                        (md['fullName'] ?? md['username'] ?? ds.id)
+                                        (md['fullName'] ??
+                                                md['username'] ??
+                                                ds.id)
                                             .toString();
-                                    final pun =
-                                        (md['username'] ?? ds.id).toString();
+                                    final pun = (md['username'] ?? ds.id)
+                                        .toString();
                                     return Container(
                                       margin: const EdgeInsets.only(bottom: 8),
                                       padding: const EdgeInsets.all(12),
@@ -486,8 +554,11 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                       ),
                                       child: Row(
                                         children: [
-                                          const Icon(Icons.family_restroom,
-                                              size: 20, color: Color(0xFF7AAF5B)),
+                                          const Icon(
+                                            Icons.family_restroom,
+                                            size: 20,
+                                            color: Color(0xFF7AAF5B),
+                                          ),
                                           const SizedBox(width: 10),
                                           Expanded(
                                             child: Column(
@@ -532,14 +603,18 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                         Expanded(
                           child: TextButton(
                             style: TextButton.styleFrom(
-                              backgroundColor: Colors.grey.withValues(alpha: 0.15),
+                              backgroundColor: Colors.grey.withValues(
+                                alpha: 0.15,
+                              ),
                               foregroundColor: const Color(0xFF2E3B4E),
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            onPressed: busy ? null : () => Navigator.pop(context),
+                            onPressed: busy
+                                ? null
+                                : () => Navigator.pop(context),
                             child: const Text(
                               "Închide",
                               style: TextStyle(fontWeight: FontWeight.w700),
@@ -564,9 +639,12 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                     final ok = await showDialog<bool>(
                                       context: context,
                                       builder: (_) => AlertDialog(
-                                        title: const Text("Ștergere utilizator"),
+                                        title: const Text(
+                                          "Ștergere utilizator",
+                                        ),
                                         content: Text(
-                                            "Ești sigur că vrei să ștergi elevul: $fullName?"),
+                                          "Ești sigur că vrei să ștergi elevul: $fullName?",
+                                        ),
                                         actions: [
                                           TextButton(
                                             onPressed: () =>
@@ -591,20 +669,26 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                       await store.deleteUser(username);
                                       if (!mounted) return;
                                       Navigator.pop(context);
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
-                                          content:
-                                              Text('Utilizator șters cu succes.'),
+                                          content: Text(
+                                            'Utilizator șters cu succes.',
+                                          ),
                                           backgroundColor: Colors.green,
                                         ),
                                       );
                                     } catch (_) {
                                       setDialogState(() => busy = false);
                                       if (!mounted) return;
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
                                           content: Text(
-                                              'Utilizatorul nu a putut fi șters.'),
+                                            'Utilizatorul nu a putut fi șters.',
+                                          ),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -621,7 +705,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                   )
                                 : const Text(
                                     "Șterge",
-                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                           ),
                         ),

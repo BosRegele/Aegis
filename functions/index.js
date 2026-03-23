@@ -2,6 +2,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { randomBytes, createHash } = require("crypto");
+const nodemailer = require("nodemailer");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -14,6 +15,59 @@ const ACTOR_MAX_FAILURES = 5;
 const ACTOR_BLOCK_SECONDS = 600;
 const ATTEMPT_TOKEN_TTL_SECONDS = 300;
 const ACTOR_KEY_RE = /^[a-f0-9]{32,128}$/;
+
+function normalizeEmail(value) {
+    return String(value || "").trim().toLowerCase();
+}
+
+async function assertPersonalEmailUnique({ uid, email }) {
+    const emailLower = normalizeEmail(email);
+    if (!emailLower || !emailLower.includes("@")) {
+        throw new HttpsError("invalid-argument", "Email personal invalid");
+    }
+
+    const db = admin.firestore();
+    const [takenByVerified, takenByPending] = await Promise.all([
+        db.collection("users")
+            .where("personalEmailLower", "==", emailLower)
+            .limit(3)
+            .get(),
+        db.collection("users")
+            .where("pendingPersonalEmailLower", "==", emailLower)
+            .limit(3)
+            .get(),
+    ]);
+
+    const hasOtherVerifiedOwner = takenByVerified.docs.some((d) => d.id !== uid);
+    const hasOtherPendingOwner = takenByPending.docs.some((d) => d.id !== uid);
+
+    if (hasOtherVerifiedOwner || hasOtherPendingOwner) {
+        throw new HttpsError(
+            "already-exists",
+            "Acest email este deja asignat altui utilizator."
+        );
+    }
+
+    // Backward-compatibility: older user docs may miss *Lower fields.
+    // Fallback to normalized comparison on raw email fields to prevent duplicates.
+    const allUsers = await db.collection("users").get();
+    const hasLegacyOwner = allUsers.docs.some((d) => {
+        if (d.id === uid) return false;
+        const data = d.data() || {};
+        const verified = normalizeEmail(data.personalEmail || "");
+        const pending = normalizeEmail(data.pendingPersonalEmail || "");
+        return verified === emailLower || pending === emailLower;
+    });
+
+    if (hasLegacyOwner) {
+        throw new HttpsError(
+            "already-exists",
+            "Acest email este deja asignat altui utilizator."
+        );
+    }
+
+    return emailLower;
+}
 
 function resolveActorKey(request) {
     const provided = String(request.data?.actorKey || "").trim().toLowerCase();
@@ -365,6 +419,7 @@ exports.adminCreateUser = onCall(async (request) => {
     try {
         await admin.firestore().collection("users").doc(user.uid).set({
             username,
+            authEmail: email,
             fullName,
             role,
             classId: role === "student" || role === "teacher" ? classId : null,
@@ -372,6 +427,13 @@ exports.adminCreateUser = onCall(async (request) => {
             inSchool: false,
             lastInAt: null,
             lastOutAt: null,
+            personalEmail: null,
+            personalEmailLower: null,
+            pendingPersonalEmail: null,
+            pendingPersonalEmailLower: null,
+            emailVerified: false,
+            passwordChanged: false,
+            onboardingComplete: false,
             createdBy: callerUid,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
@@ -475,6 +537,48 @@ exports.adminResetPassword = onCall(async (request) => {
     await admin.firestore().collection("users").doc(uid).set({
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
+
+    return { ok: true, uid };
+});
+
+exports.adminRemovePersonalEmail = onCall(async (request) => {
+    await assertAdmin(request);
+
+    const username = String(request.data.username || "").trim().toLowerCase();
+    if (!username) {
+        throw new HttpsError("invalid-argument", "username lipsa");
+    }
+
+    const uid = await getUidByUsername(username);
+    const userRef = admin.firestore().collection("users").doc(uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+        throw new HttpsError("not-found", "Utilizator inexistent");
+    }
+
+    const role = String(userSnap.data()?.role || "").toLowerCase();
+    if (role === "gate") {
+        throw new HttpsError("failed-precondition", "Turnichetul nu are email personal");
+    }
+
+    await userRef.set({
+        personalEmail: admin.firestore.FieldValue.delete(),
+        personalEmailLower: admin.firestore.FieldValue.delete(),
+        pendingPersonalEmail: admin.firestore.FieldValue.delete(),
+        pendingPersonalEmailLower: admin.firestore.FieldValue.delete(),
+        verificationCode: admin.firestore.FieldValue.delete(),
+        verificationCodeExpiry: admin.firestore.FieldValue.delete(),
+        emailVerified: false,
+        onboardingComplete: false,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    // Invalidate any active 2FA challenge for this user
+    await admin.firestore()
+        .collection("loginSecondFactorChallenges")
+        .doc(uid)
+        .delete()
+        .catch(() => { });
 
     return { ok: true, uid };
 });
@@ -917,7 +1021,7 @@ exports.adminDeleteClassCascade = onCall(async (request) => {
 
     const linkedUsers = await db.collection("users").where("classId", "==", classId).limit(1).get();
     const teacherUsername = String(classSnap.data()?.teacherUsername || "").trim();
-    if (!linkedUsers.empty || teacherUsername.isNotEmpty) {
+    if (!linkedUsers.empty || teacherUsername !== "") {
         throw new HttpsError(
             "failed-precondition",
             `Clasa ${classId} are utilizatori/diriginte asignati. Muta sau sterge utilizatorii inainte.`
@@ -1456,4 +1560,428 @@ exports.onLeaveRequestStatusChanged = onDocumentUpdated("leaveRequests/{docId}",
     } catch (e) {
         console.error("onLeaveRequestStatusChanged: FCM send failed:", e.message);
     }
+});
+// ===== EMAIL VERIFICATION FUNCTIONS =====
+// If SMTP .env values change, redeploy these functions to refresh runtime env (rev2).
+// Adauga acestea la SFARSITUL fisierului functions/index.js
+
+exports.sendVerificationEmail = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login required");
+    }
+
+    const uid = String(request.data?.uid || "").trim();
+    const email = String(request.data?.email || "").trim();
+    const emailLower = normalizeEmail(email);
+
+    if (!uid || !emailLower || !emailLower.includes("@")) {
+        throw new HttpsError("invalid-argument", "uid si email obligatorii si email valid");
+    }
+
+    if (uid !== request.auth.uid) {
+        throw new HttpsError("permission-denied", "Nu poti trimite verificare pentru alt utilizator");
+    }
+
+    const userRef = admin.firestore().collection("users").doc(uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+        throw new HttpsError("not-found", "Profil inexistent");
+    }
+    const role = String(userSnap.data()?.role || "").trim().toLowerCase();
+    if (role === "gate") {
+        throw new HttpsError("failed-precondition", "Turnichetul nu necesita onboarding");
+    }
+
+    await assertPersonalEmailUnique({ uid, email: emailLower });
+
+    // Generez cod 6 cifre
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiryMs = Date.now() + 60 * 60 * 1000; // 1 ora
+
+    // Salvez codul în Firestore
+    await userRef.update({
+        pendingPersonalEmail: email,
+        pendingPersonalEmailLower: emailLower,
+        emailVerified: false,
+        onboardingComplete: false,
+        verificationCode: code,
+        verificationCodeExpiry: admin.firestore.Timestamp.fromMillis(expiryMs),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const smtpHost = String(process.env.SMTP_HOST || "").trim();
+    const smtpPort = Number(process.env.SMTP_PORT || 587);
+    const smtpUser = String(process.env.SMTP_USER || "").trim();
+    const smtpPass = String(process.env.SMTP_PASS || "").trim();
+    const smtpFrom = String(process.env.SMTP_FROM || smtpUser).trim();
+
+    if (!smtpHost || !smtpUser || !smtpPass || !smtpFrom) {
+        throw new HttpsError(
+            "failed-precondition",
+            "SMTP neconfigurat. Seteaza SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM."
+        );
+    }
+
+    const secure = smtpPort === 465;
+    const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure,
+        auth: {
+            user: smtpUser,
+            pass: smtpPass,
+        },
+    });
+
+    await transporter.sendMail({
+        from: smtpFrom,
+        to: email,
+        subject: "Cod verificare cont Firster",
+        text: `Codul tau de verificare este ${code}. Codul expira in 60 de minute.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;">
+            <h2 style="margin: 0 0 12px;">Verificare email Firster</h2>
+            <p>Codul tau de verificare este:</p>
+            <p style="font-size: 28px; font-weight: 700; letter-spacing: 4px; margin: 8px 0 16px;">${code}</p>
+            <p>Codul expira in 60 de minute.</p>
+          </div>
+        `,
+    });
+
+    return { success: true };
+});
+
+exports.markPasswordChanged = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login required");
+    }
+
+    const uid = String(request.data?.uid || "").trim();
+    if (!uid || uid !== request.auth.uid) {
+        throw new HttpsError("permission-denied", "Operatiune nepermisa");
+    }
+
+    const userRef = admin.firestore().collection("users").doc(uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+        throw new HttpsError("not-found", "Profil inexistent");
+    }
+
+    const data = userSnap.data() || {};
+    const role = String(data.role || "").trim().toLowerCase();
+    if (role === "gate") {
+        return { ok: true, skipped: true };
+    }
+
+    const emailVerified = data.emailVerified === true;
+    await userRef.set({
+        passwordChanged: true,
+        onboardingComplete: emailVerified,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    return { ok: true };
+});
+
+exports.verifyEmailCode = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login required");
+    }
+
+    const uid = request.auth.uid;
+    const uidFromData = String(request.data?.uid || "").trim();
+    if (uidFromData && uidFromData !== uid) {
+        throw new HttpsError("permission-denied", "Operatiune nepermisa");
+    }
+    const code = String(request.data?.code || "").trim();
+
+    if (!code) {
+        throw new HttpsError("invalid-argument", "Cod obligatoriu");
+    }
+
+    const userDoc = await admin.firestore().collection("users").doc(uid).get();
+    if (!userDoc.exists) {
+        throw new HttpsError("not-found", "User inexistent");
+    }
+
+    const userData = userDoc.data();
+    const storedCode = String(userData.verificationCode || "");
+    const expiryTs = userData.verificationCodeExpiry;
+    const pendingPersonalEmail = String(userData.pendingPersonalEmail || "").trim();
+    const pendingPersonalEmailLower = normalizeEmail(
+        userData.pendingPersonalEmailLower || pendingPersonalEmail
+    );
+
+    if (!storedCode) {
+        throw new HttpsError("failed-precondition", "Niciun cod de verificare in asteptare");
+    }
+
+    if (storedCode !== code) {
+        throw new HttpsError("invalid-argument", "Cod de verificare incorect");
+    }
+
+    if (!expiryTs || expiryTs.toMillis() < Date.now()) {
+        throw new HttpsError("deadline-exceeded", "Cod de verificare expirat");
+    }
+
+    if (!pendingPersonalEmailLower) {
+        throw new HttpsError("failed-precondition", "Email personal lipsa pentru verificare");
+    }
+
+    await assertPersonalEmailUnique({ uid, email: pendingPersonalEmailLower });
+
+    const passwordChanged = userData.passwordChanged === true;
+
+    // Codul e corect! Marchez ca verificat
+    await admin.firestore().collection("users").doc(uid).update({
+        personalEmail: pendingPersonalEmail,
+        personalEmailLower: pendingPersonalEmailLower,
+        emailVerified: true,
+        onboardingComplete: passwordChanged,
+        pendingPersonalEmail: admin.firestore.FieldValue.delete(),
+        pendingPersonalEmailLower: admin.firestore.FieldValue.delete(),
+        verificationCode: admin.firestore.FieldValue.delete(),
+        verificationCodeExpiry: admin.firestore.FieldValue.delete(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { verified: true };
+});
+
+// ===== 2-FACTOR AUTHENTICATION (2FA) FUNCTIONS =====
+
+const TWO_FA_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+const TWO_FA_COOLDOWN_MS = 60 * 1000;     // 60 seconds between resends
+const TWO_FA_MAX_ATTEMPTS = 5;
+
+function maskEmail(email) {
+    const atIdx = String(email || "").indexOf("@");
+    if (atIdx <= 0) return "***@***";
+    const local = email.substring(0, atIdx);
+    const domain = email.substring(atIdx);
+    if (local.length <= 2) return "*" + domain;
+    return local.charAt(0) + "*".repeat(Math.min(4, local.length - 2)) + local.charAt(local.length - 1) + domain;
+}
+
+async function sendTwoFactorEmail(to, code) {
+    const smtpHost = String(process.env.SMTP_HOST || "").trim();
+    const smtpPort = Number(process.env.SMTP_PORT || 587);
+    const smtpUser = String(process.env.SMTP_USER || "").trim();
+    const smtpPass = String(process.env.SMTP_PASS || "").trim();
+    const smtpFrom = String(process.env.SMTP_FROM || smtpUser).trim();
+
+    if (!smtpHost || !smtpUser || !smtpPass || !smtpFrom) {
+        throw new HttpsError(
+            "failed-precondition",
+            "SMTP neconfigurat. Seteaza SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM."
+        );
+    }
+
+    const secure = smtpPort === 465;
+    const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure,
+        auth: { user: smtpUser, pass: smtpPass },
+    });
+
+    await transporter.sendMail({
+        from: smtpFrom,
+        to,
+        subject: "Cod autentificare in doi pasi Firster",
+        text: `Codul tau de autentificare este ${code}. Codul expira in 10 minute.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;">
+            <h2 style="margin: 0 0 12px;">Autentificare in doi pasi Firster</h2>
+            <p>Codul tau de autentificare este:</p>
+            <p style="font-size: 32px; font-weight: 700; letter-spacing: 6px; margin: 8px 0 16px; color: #16a34a;">${code}</p>
+            <p>Codul expira in <strong>10 minute</strong>.</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 16px;">Daca nu ai solicitat acest cod, ignora acest email.</p>
+          </div>
+        `,
+    });
+}
+
+// Trimite codul 2FA dupa autentificarea cu parola.
+// Returneaza maskedEmail si cooldownRemaining.
+// Daca exista deja un challenge trimis recent (cooldown), nu retrimite — returneaza sent: false.
+exports.authStartSecondFactor = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login required");
+    }
+
+    const uid = request.auth.uid;
+    const db = admin.firestore();
+
+    const userSnap = await db.collection("users").doc(uid).get();
+    if (!userSnap.exists) {
+        throw new HttpsError("not-found", "Profil inexistent");
+    }
+
+    const userData = userSnap.data() || {};
+    const role = String(userData.role || "").trim().toLowerCase();
+    const onboardingComplete = userData.onboardingComplete === true;
+
+    if (role === "gate") {
+        throw new HttpsError("failed-precondition", "2FA nu se aplica turnichetului");
+    }
+    if (!onboardingComplete) {
+        throw new HttpsError("failed-precondition", "Onboarding incomplet");
+    }
+
+    const personalEmail = String(userData.personalEmail || "").trim();
+    if (!personalEmail) {
+        throw new HttpsError("failed-precondition", "Email personal neasignat");
+    }
+
+    const nowMs = Date.now();
+    const challengeRef = db.collection("loginSecondFactorChallenges").doc(uid);
+    const existingSnap = await challengeRef.get();
+
+    // authStartSecondFactor is called ONCE per login — always generate a fresh code.
+    // Cooldown applies only to authResendSecondFactor (user-triggered resends).
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeHash = createHash("sha256").update(code).digest("hex");
+    const nowTs = admin.firestore.Timestamp.fromMillis(nowMs);
+
+    await challengeRef.set({
+        uid,
+        codeHash,
+        expiresAt: admin.firestore.Timestamp.fromMillis(nowMs + TWO_FA_EXPIRY_MS),
+        attempts: 0,
+        verifiedAt: null,
+        createdAt: existingSnap.exists ? (existingSnap.data()?.createdAt ?? nowTs) : nowTs,
+        lastSentAt: nowTs,
+    });
+
+    await sendTwoFactorEmail(personalEmail, code);
+
+    return { sent: true, maskedEmail: maskEmail(personalEmail), cooldownRemaining: 0 };
+});
+
+// Verifica codul 2FA introdus de utilizator.
+exports.authVerifySecondFactor = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login required");
+    }
+
+    const uid = request.auth.uid;
+    const code = String(request.data?.code || "").trim();
+
+    if (!code || !/^\d{6}$/.test(code)) {
+        throw new HttpsError("invalid-argument", "Codul trebuie sa aiba exact 6 cifre");
+    }
+
+    const db = admin.firestore();
+    const challengeRef = db.collection("loginSecondFactorChallenges").doc(uid);
+
+    let alreadyVerified = false;
+    await db.runTransaction(async (tx) => {
+        const snap = await tx.get(challengeRef);
+        if (!snap.exists) {
+            throw new HttpsError("not-found", "Nicio verificare 2FA activa. Solicita un nou cod.");
+        }
+
+        const data = snap.data() || {};
+
+        if (data.verifiedAt != null) {
+            alreadyVerified = true;
+            return;
+        }
+
+        const expiresAtMs = data.expiresAt?.toMillis?.() || 0;
+        if (Date.now() > expiresAtMs) {
+            throw new HttpsError("deadline-exceeded", "Codul a expirat. Solicita un nou cod.");
+        }
+
+        const attempts = Number(data.attempts || 0);
+        if (attempts >= TWO_FA_MAX_ATTEMPTS) {
+            throw new HttpsError(
+                "resource-exhausted",
+                "Prea multe incercari gresite. Solicita un nou cod."
+            );
+        }
+
+        const inputHash = createHash("sha256").update(code).digest("hex");
+
+        if (inputHash !== data.codeHash) {
+            tx.update(challengeRef, {
+                attempts: attempts + 1,
+                lastAttemptAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            const remaining = TWO_FA_MAX_ATTEMPTS - attempts - 1;
+            throw new HttpsError(
+                "invalid-argument",
+                remaining > 0
+                    ? `Cod incorect. Mai ai ${remaining} ${remaining === 1 ? "incercare" : "incercari"}.`
+                    : "Cod incorect. Nu mai ai incercari. Solicita un nou cod."
+            );
+        }
+
+        tx.update(challengeRef, {
+            verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+            attempts: attempts + 1,
+        });
+    });
+
+    return { verified: true };
+});
+
+// Retrimite codul 2FA (cu cooldown de 60s).
+exports.authResendSecondFactor = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login required");
+    }
+
+    const uid = request.auth.uid;
+    const db = admin.firestore();
+
+    const [userSnap, challengeSnap] = await Promise.all([
+        db.collection("users").doc(uid).get(),
+        db.collection("loginSecondFactorChallenges").doc(uid).get(),
+    ]);
+
+    if (!userSnap.exists) {
+        throw new HttpsError("not-found", "Profil inexistent");
+    }
+
+    const personalEmail = String(userSnap.data()?.personalEmail || "").trim();
+    if (!personalEmail) {
+        throw new HttpsError("failed-precondition", "Email personal neasignat");
+    }
+
+    const nowMs = Date.now();
+
+    if (challengeSnap.exists) {
+        const existing = challengeSnap.data() || {};
+        const lastSentMs = existing.lastSentAt?.toMillis?.() || 0;
+        if (nowMs - lastSentMs < TWO_FA_COOLDOWN_MS) {
+            const remaining = Math.ceil((TWO_FA_COOLDOWN_MS - (nowMs - lastSentMs)) / 1000);
+            throw new HttpsError(
+                "resource-exhausted",
+                `Asteapta ${remaining} secunde inainte de a retrimite codul.`
+            );
+        }
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeHash = createHash("sha256").update(code).digest("hex");
+    const nowTs = admin.firestore.Timestamp.fromMillis(nowMs);
+
+    await db.collection("loginSecondFactorChallenges").doc(uid).set({
+        uid,
+        codeHash,
+        expiresAt: admin.firestore.Timestamp.fromMillis(nowMs + TWO_FA_EXPIRY_MS),
+        attempts: 0,
+        verifiedAt: null,
+        createdAt: challengeSnap.exists
+            ? (challengeSnap.data()?.createdAt ?? nowTs)
+            : nowTs,
+        lastSentAt: nowTs,
+    });
+
+    await sendTwoFactorEmail(personalEmail, code);
+
+    return { sent: true, maskedEmail: maskEmail(personalEmail) };
 });

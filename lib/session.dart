@@ -1,9 +1,17 @@
+import 'package:flutter/foundation.dart';
+
 class AppSession {
   static String? uid;
   static String? username;
   static String? role;
   static String? fullName;
   static String? classId;
+
+  // Reactive flag — ValueListenableBuilder in main.dart listens to this.
+  // Must NOT be reset by calling code except via AppSession.clear().
+  static final ValueNotifier<bool> twoFactorNotifier = ValueNotifier(false);
+  static bool get twoFactorVerified => twoFactorNotifier.value;
+  static set twoFactorVerified(bool v) => twoFactorNotifier.value = v;
 
   static bool get isAdmin => role == 'admin';
 
@@ -27,5 +35,6 @@ class AppSession {
     role = null;
     fullName = null;
     classId = null;
+    twoFactorNotifier.value = false;
   }
 }

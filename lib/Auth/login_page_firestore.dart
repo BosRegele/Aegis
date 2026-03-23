@@ -6,13 +6,6 @@ import 'dart:async';
 import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../StudentInterface/mainnavigation.dart';
-import '../session.dart';
-import '../gate_scan_page.dart';
-import '../admin/secretariat_raw_page.dart' show SecretariatRawPage;
-import '../teacher/teacher_dashboard_page.dart';
-import '../parent/parent_home_page.dart';
-
 class LoginPageFirestore extends StatefulWidget {
   const LoginPageFirestore({super.key});
 
@@ -200,6 +193,8 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
 
       final role = (data["role"] ?? "").toString();
       final usernameFromDb = (data["username"] ?? username).toString();
+      // routing is handled by main.dart's StreamBuilder
+      assert(role.isNotEmpty || usernameFromDb.isEmpty);
 
       try {
         await FirebaseFunctions.instance
@@ -211,43 +206,9 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
         // Keep login successful even if this post-login hook fails.
       }
 
-      AppSession.setUser(
-        uidValue: uid,
-        usernameValue: usernameFromDb,
-        roleValue: role,
-        fullNameValue: (data["fullName"] ?? "").toString(),
-        classIdValue: (data["classId"] ?? "").toString(),
-      );
-
-      if (!mounted) return;
-      if (role == "student") {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const AppShell()),
-        );
-      } else if (role == "gate") {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const GateScanPage()),
-        );
-      } else if (role == "admin") {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const SecretariatRawPage()),
-        );
-      } else if (role == "teacher") {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const TeacherDashboardPage()),
-        );
-      } else if (role == "parent") {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const ParentHomePage()),
-        );
-      } else {
-        throw Exception("Autentificare indisponibila");
-      }
+      // Authentication succeeded. The StreamBuilder in main.dart detects the
+      // auth-state change and routes to OnboardingPage, TwoFactorVerifyPage,
+      // or the role dashboard — no Navigator.push needed here.
     } on FirebaseAuthException catch (e) {
       String msg = "Date de autentificare invalide.";
       if (e.code == "wrong-password" ||

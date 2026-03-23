@@ -59,6 +59,11 @@ class AdminStore {
       "passwordSalt": hp["saltB64"],
       "passwordHash": hp["hashB64"],
       "createdAt": FieldValue.serverTimestamp(),
+      // Onboarding fields
+      "onboardingComplete": false,
+      "emailVerified": false,
+      "passwordChanged": false,
+      "personalEmail": null,
     });
     if (role == "teacher") {
       await changeClassTeacher(classId: classId!, teacherUsername: username);
@@ -214,6 +219,11 @@ class AdminStore {
         "passwordSalt": hp["saltB64"],
         "passwordHash": hp["hashB64"],
         "createdAt": FieldValue.serverTimestamp(),
+        // Onboarding fields
+        "onboardingComplete": false,
+        "emailVerified": false,
+        "passwordChanged": false,
+        "personalEmail": null,
       });
 
       // 2) setează teacher pe clasă
