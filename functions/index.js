@@ -15,6 +15,8 @@ const ACTOR_MAX_FAILURES = 5;
 const ACTOR_BLOCK_SECONDS = 600;
 const ATTEMPT_TOKEN_TTL_SECONDS = 300;
 const ACTOR_KEY_RE = /^[a-f0-9]{32,128}$/;
+const PASSWORD_RESET_CODE_TTL_MS = 30 * 60 * 1000;
+const PASSWORD_RESET_RESEND_COOLDOWN_MS = 60 * 1000;
 
 function normalizeEmail(value) {
     return String(value || "").trim().toLowerCase();
@@ -154,6 +156,59 @@ async function deleteByQueryInChunks(query, chunkSize = 400) {
         if (snap.size < chunkSize) break;
         snap = await query.limit(chunkSize).get();
     }
+}
+
+async function resolveUserByLoginInput(inputRaw) {
+    const input = String(inputRaw || "").trim().toLowerCase();
+    if (!input) {
+        throw new HttpsError("invalid-argument", "input lipsa");
+    }
+
+    const db = admin.firestore();
+    let userSnap = null;
+
+    if (input.includes("@")) {
+        const byEmail = await db
+            .collection("users")
+            .where("personalEmailLower", "==", input)
+            .limit(1)
+            .get();
+        if (!byEmail.empty) {
+            userSnap = byEmail.docs[0];
+        }
+    } else if (USERNAME_RE.test(input)) {
+        const byUsername = await db
+            .collection("users")
+            .where("username", "==", input)
+            .limit(1)
+            .get();
+        if (!byUsername.empty) {
+            userSnap = byUsername.docs[0];
+        }
+    } else {
+        throw new HttpsError("invalid-argument", "Input trebuie sa fie username sau email");
+    }
+
+    if (!userSnap) {
+        throw new HttpsError("not-found", "Utilizator inexistent");
+    }
+
+    const userData = userSnap.data() || {};
+    const username = String(userData.username || "").trim().toLowerCase();
+    if (!username) {
+        throw new HttpsError("failed-precondition", "Username lipsa");
+    }
+
+    const personalEmail = String(userData.personalEmail || "").trim();
+    const personalEmailLower = normalizeEmail(userData.personalEmailLower || personalEmail);
+
+    return {
+        uid: userSnap.id,
+        username,
+        userData,
+        personalEmail,
+        personalEmailLower,
+    };
 }
 
 exports.authPrecheckLogin = onCall(async (request) => {
@@ -338,6 +393,168 @@ exports.authRegisterLoginSuccess = onCall(async (request) => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
     }
+
+    return { ok: true };
+});
+
+exports.authResolveLoginInput = onCall(async (request) => {
+    // Resolve login input (username or email) to username
+    // This function is unauthenticated to allow email lookup during login
+    const input = String(request.data?.input || "").trim().toLowerCase();
+    if (!input) {
+        throw new HttpsError("invalid-argument", "input lipsa");
+    }
+
+    // If input is already a valid username, return it as-is
+    if (USERNAME_RE.test(input)) {
+        return { username: input };
+    }
+
+    // If input contains @, treat as email and look up by personalEmailLower
+    if (input.includes("@")) {
+        const emailLower = input.toLowerCase();
+        const snap = await admin.firestore()
+            .collection("users")
+            .where("personalEmailLower", "==", emailLower)
+            .limit(1)
+            .get();
+
+        if (snap.empty) {
+            throw new HttpsError("not-found", "Email-ul nu a fost gasit");
+        }
+
+        const username = String(snap.docs[0].data()?.username || "").trim().toLowerCase();
+        if (!username) {
+            throw new HttpsError("failed-precondition", "Username lipsa pentru email");
+        }
+
+        return { username };
+    }
+
+    // Input doesn't match username pattern and is not an email
+    throw new HttpsError("invalid-argument", "Input trebuie sa fie username sau email");
+});
+
+exports.authRequestPasswordReset = onCall(async (request) => {
+    const input = String(request.data?.input || "").trim().toLowerCase();
+    if (!input) {
+        throw new HttpsError("invalid-argument", "Input obligatoriu");
+    }
+
+    let resolved = null;
+    try {
+        resolved = await resolveUserByLoginInput(input);
+    } catch (_) {
+        // Prevent account enumeration: return success even when user is missing.
+        return { ok: true, sent: false };
+    }
+
+    const role = String(resolved.userData.role || "").trim().toLowerCase();
+    const status = String(resolved.userData.status || "active").trim().toLowerCase();
+    if (role === "gate" || status === "disabled") {
+        return { ok: true, sent: false };
+    }
+
+    const toEmail = resolved.personalEmail;
+    const toEmailLower = resolved.personalEmailLower;
+    if (!toEmailLower || !toEmailLower.includes("@")) {
+        return { ok: true, sent: false };
+    }
+
+    const nowMs = Date.now();
+    const sentAtMs = resolved.userData.passwordResetSentAt?.toMillis?.() || 0;
+    if (sentAtMs > 0 && nowMs - sentAtMs < PASSWORD_RESET_RESEND_COOLDOWN_MS) {
+        const remaining = Math.ceil((PASSWORD_RESET_RESEND_COOLDOWN_MS - (nowMs - sentAtMs)) / 1000);
+        return { ok: true, sent: false, cooldownSeconds: Math.max(1, remaining) };
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiryMs = nowMs + PASSWORD_RESET_CODE_TTL_MS;
+
+    await admin.firestore().collection("users").doc(resolved.uid).set({
+        passwordResetCode: code,
+        passwordResetCodeExpiry: admin.firestore.Timestamp.fromMillis(expiryMs),
+        passwordResetSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    const smtpHost = String(process.env.SMTP_HOST || "").trim();
+    const smtpPort = Number(process.env.SMTP_PORT || 587);
+    const smtpUser = String(process.env.SMTP_USER || "").trim();
+    const smtpPass = String(process.env.SMTP_PASS || "").trim();
+    const smtpFrom = String(process.env.SMTP_FROM || smtpUser).trim();
+
+    if (!smtpHost || !smtpUser || !smtpPass || !smtpFrom) {
+        throw new HttpsError(
+            "failed-precondition",
+            "SMTP neconfigurat. Seteaza SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM."
+        );
+    }
+
+    const secure = smtpPort === 465;
+    const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure,
+        auth: {
+            user: smtpUser,
+            pass: smtpPass,
+        },
+    });
+
+    await transporter.sendMail({
+        from: smtpFrom,
+        to: toEmail,
+        subject: "Resetare parola Firster",
+        text: `Codul tau pentru resetarea parolei este ${code}. Codul expira in 30 de minute.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;">
+            <h2 style="margin: 0 0 12px;">Resetare parola Firster</h2>
+            <p>Codul tau de resetare este:</p>
+            <p style="font-size: 28px; font-weight: 700; letter-spacing: 4px; margin: 8px 0 16px; color: #16a34a;">${code}</p>
+            <p>Codul expira in <strong>30 de minute</strong>.</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 16px;">Daca nu ai solicitat resetarea, ignora acest email.</p>
+          </div>
+        `,
+    });
+
+    return { ok: true, sent: true };
+});
+
+exports.authConfirmPasswordReset = onCall(async (request) => {
+    const input = String(request.data?.input || "").trim().toLowerCase();
+    const code = String(request.data?.code || "").trim();
+    const newPassword = String(request.data?.newPassword || "").trim();
+
+    if (!input || !code || !newPassword) {
+        throw new HttpsError("invalid-argument", "Input, cod si parola noua sunt obligatorii");
+    }
+    if (newPassword.length < 6) {
+        throw new HttpsError("invalid-argument", "Parola trebuie sa aiba minim 6 caractere");
+    }
+
+    const resolved = await resolveUserByLoginInput(input);
+    const userData = resolved.userData || {};
+    const storedCode = String(userData.passwordResetCode || "");
+    const expiryMs = userData.passwordResetCodeExpiry?.toMillis?.() || 0;
+
+    if (!storedCode || storedCode !== code) {
+        throw new HttpsError("invalid-argument", "Cod invalid");
+    }
+    if (!expiryMs || expiryMs < Date.now()) {
+        throw new HttpsError("deadline-exceeded", "Cod expirat");
+    }
+
+    await admin.auth().updateUser(resolved.uid, { password: newPassword });
+
+    const emailVerified = userData.emailVerified === true;
+    await admin.firestore().collection("users").doc(resolved.uid).set({
+        passwordChanged: true,
+        onboardingComplete: emailVerified,
+        passwordResetCode: admin.firestore.FieldValue.delete(),
+        passwordResetCodeExpiry: admin.firestore.FieldValue.delete(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
 
     return { ok: true };
 });
@@ -570,6 +787,7 @@ exports.adminRemovePersonalEmail = onCall(async (request) => {
         verificationCodeExpiry: admin.firestore.FieldValue.delete(),
         emailVerified: false,
         onboardingComplete: false,
+        passwordChanged: false,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 

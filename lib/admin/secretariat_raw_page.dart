@@ -16,6 +16,7 @@ import 'admin_admins_page.dart';
 import 'admin_parents_page.dart';
 import 'admin_turnstiles_page.dart';
 import 'admin_schedules_page.dart';
+import '../services/security_flags_service.dart';
 import '../session.dart';
 
 class SecretariatRawPage extends StatefulWidget {
@@ -111,6 +112,10 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
         return 'Părintele nu a putut fi atribuit elevului.';
       case 'remove-parent':
         return 'Părintele nu a putut fi eliminat din elev.';
+      case 'toggle-onboarding-global':
+        return 'Setarea globală pentru onboarding nu a putut fi actualizată.';
+      case 'toggle-2fa-global':
+        return 'Setarea globală pentru 2FA nu a putut fi actualizată.';
       default:
         return 'Operațiunea nu a putut fi finalizată.';
     }
@@ -2514,6 +2519,8 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                   fullWidth: true,
                                                 ),
                                                 const SizedBox(height: 16),
+                                                _buildGlobalSecurityControls(),
+                                                const SizedBox(height: 16),
                                                 StreamBuilder<QuerySnapshot>(
                                                   stream: FirebaseFirestore
                                                       .instance
@@ -3643,6 +3650,117 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildGlobalSecurityControls() {
+    return StreamBuilder<SecurityFlags>(
+      stream: SecurityFlagsService.watch(),
+      initialData: SecurityFlags.defaults,
+      builder: (context, snapshot) {
+        final flags = snapshot.data ?? SecurityFlags.defaults;
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7FFF1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFCDE8B0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Setari globale securitate',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF3A5C24),
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'ON/OFF pentru onboarding si 2FA la nivelul intregii aplicatii.',
+                style: TextStyle(color: Color(0xFF5A8040), fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                activeColor: const Color(0xFF5A9641),
+                title: const Text('Onboarding global'),
+                subtitle: Text(
+                  flags.onboardingEnabled ? 'Pornit' : 'Oprit',
+                  style: TextStyle(
+                    color: flags.onboardingEnabled
+                        ? const Color(0xFF2F5F2B)
+                        : const Color(0xFF7C3A3A),
+                  ),
+                ),
+                value: flags.onboardingEnabled,
+                onChanged: _isActionBusy('toggle-onboarding-global')
+                    ? null
+                    : (value) {
+                        _runGuarded('toggle-onboarding-global', () async {
+                          try {
+                            await SecurityFlagsService.setOnboardingEnabled(
+                              value,
+                            );
+                            _logSuccess(
+                              'Onboarding global ${value ? 'pornit' : 'oprit'}.',
+                            );
+                            _showInfoMessage(
+                              'Onboarding global ${value ? 'pornit' : 'oprit'}.',
+                            );
+                          } catch (_) {
+                            final message = _friendlyError(
+                              'toggle-onboarding-global',
+                            );
+                            _logFailure(message);
+                            _showInfoMessage(message);
+                          }
+                        });
+                      },
+              ),
+              const Divider(height: 8, color: Color(0xFFD9EDBB)),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                activeColor: const Color(0xFF5A9641),
+                title: const Text('2FA global'),
+                subtitle: Text(
+                  flags.twoFactorEnabled ? 'Pornit' : 'Oprit',
+                  style: TextStyle(
+                    color: flags.twoFactorEnabled
+                        ? const Color(0xFF2F5F2B)
+                        : const Color(0xFF7C3A3A),
+                  ),
+                ),
+                value: flags.twoFactorEnabled,
+                onChanged: _isActionBusy('toggle-2fa-global')
+                    ? null
+                    : (value) {
+                        _runGuarded('toggle-2fa-global', () async {
+                          try {
+                            await SecurityFlagsService.setTwoFactorEnabled(
+                              value,
+                            );
+                            _logSuccess(
+                              '2FA global ${value ? 'pornit' : 'oprit'}.',
+                            );
+                            _showInfoMessage(
+                              '2FA global ${value ? 'pornit' : 'oprit'}.',
+                            );
+                          } catch (_) {
+                            final message = _friendlyError('toggle-2fa-global');
+                            _logFailure(message);
+                            _showInfoMessage(message);
+                          }
+                        });
+                      },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

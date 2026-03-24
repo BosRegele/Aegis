@@ -8,6 +8,7 @@ import 'package:firster/admin/secretariat_raw_page.dart'
 import 'package:firster/gate_scan_page.dart';
 import 'package:firster/teacher/teacher_dashboard_page.dart';
 import 'package:firster/parent/parent_home_page.dart';
+import 'package:firster/services/security_flags_service.dart';
 import 'package:firster/session.dart';
 import 'package:firster/onboarding_page.dart';
 import 'package:flutter/material.dart';
@@ -144,6 +145,13 @@ class MyApp extends StatelessWidget {
               final data = userDoc.data() ?? <String, dynamic>{};
               final status = (data['status'] ?? 'active').toString();
               if (status == 'disabled') {
+                // A cached snapshot may still contain the previous disabled
+                // state right after an admin re-enables the account.
+                if (userDoc.metadata.isFromCache) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
                 unawaited(_cleanupAuthState());
                 unawaited(FirebaseAuth.instance.signOut());
                 return const LoginPageFirestore();
@@ -187,56 +195,71 @@ class MyApp extends StatelessWidget {
                 );
               }
 
-              if (role != 'gate' && !effectivelyOnboarded) {
-                return OnboardingPage(user: user, userData: data);
-              }
-
-              // 2FA gate — uses ValueListenableBuilder so it rebuilds reactively
-              // when AppSession.twoFactorVerified is set to true, without any
-              // Navigator.push that would remove this StreamBuilder from the tree.
-              return ValueListenableBuilder<bool>(
-                valueListenable: AppSession.twoFactorNotifier,
-                builder: (context, twoFaVerified, _) {
-                  if (role != 'gate' &&
-                      effectivelyOnboarded &&
-                      !twoFaVerified) {
-                    final username = (data['username'] ?? '').toString();
-                    return TwoFactorVerifyPage(
-                      uid: user.uid,
-                      role: role,
-                      username: username,
-                      fullName: (data['fullName'] ?? '').toString(),
-                      classId: (data['classId'] ?? '').toString(),
+              return StreamBuilder<SecurityFlags>(
+                stream: SecurityFlagsService.watch(),
+                builder: (context, settingsSnap) {
+                  if (!settingsSnap.hasData) {
+                    return const Scaffold(
+                      body: Center(child: CircularProgressIndicator()),
                     );
                   }
 
-                  final username = (data['username'] ?? '').toString();
+                  final flags = settingsSnap.data!;
 
-                  AppSession.setUser(
-                    uidValue: user.uid,
-                    usernameValue: username,
-                    roleValue: role,
-                    fullNameValue: (data['fullName'] ?? '').toString(),
-                    classIdValue: (data['classId'] ?? '').toString(),
-                  );
-
-                  unawaited(_saveFcmToken(user.uid));
-
-                  if (role == 'student') {
-                    return const AppShell();
-                  } else if (role == 'gate') {
-                    return const GateScanPage();
-                  } else if (role == 'admin') {
-                    return const SecretariatRawPage();
-                  } else if (role == 'teacher') {
-                    return const TeacherDashboardPage();
-                  } else if (role == 'parent') {
-                    return const ParentHomePage();
+                  if (role != 'gate' &&
+                      flags.onboardingEnabled &&
+                      !effectivelyOnboarded) {
+                    return OnboardingPage(user: user, userData: data);
                   }
 
-                  unawaited(_cleanupAuthState());
-                  unawaited(FirebaseAuth.instance.signOut());
-                  return const LoginPageFirestore();
+                  // 2FA gate — uses ValueListenableBuilder so it rebuilds
+                  // reactively when AppSession.twoFactorVerified changes.
+                  return ValueListenableBuilder<bool>(
+                    valueListenable: AppSession.twoFactorNotifier,
+                    builder: (context, twoFaVerified, _) {
+                      if (role != 'gate' &&
+                          flags.twoFactorEnabled &&
+                          effectivelyOnboarded &&
+                          !twoFaVerified) {
+                        final username = (data['username'] ?? '').toString();
+                        return TwoFactorVerifyPage(
+                          uid: user.uid,
+                          role: role,
+                          username: username,
+                          fullName: (data['fullName'] ?? '').toString(),
+                          classId: (data['classId'] ?? '').toString(),
+                        );
+                      }
+
+                      final username = (data['username'] ?? '').toString();
+
+                      AppSession.setUser(
+                        uidValue: user.uid,
+                        usernameValue: username,
+                        roleValue: role,
+                        fullNameValue: (data['fullName'] ?? '').toString(),
+                        classIdValue: (data['classId'] ?? '').toString(),
+                      );
+
+                      unawaited(_saveFcmToken(user.uid));
+
+                      if (role == 'student') {
+                        return const AppShell();
+                      } else if (role == 'gate') {
+                        return const GateScanPage();
+                      } else if (role == 'admin') {
+                        return const SecretariatRawPage();
+                      } else if (role == 'teacher') {
+                        return const TeacherDashboardPage();
+                      } else if (role == 'parent') {
+                        return const ParentHomePage();
+                      }
+
+                      unawaited(_cleanupAuthState());
+                      unawaited(FirebaseAuth.instance.signOut());
+                      return const LoginPageFirestore();
+                    },
+                  );
                 },
               );
             },

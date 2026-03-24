@@ -131,6 +131,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /app_settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     match /classes/{classId} {
       // Secretariat UI reads class lists directly from Firestore.
       // Keep writes admin-only, but allow reads for authenticated users.

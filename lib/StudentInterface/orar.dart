@@ -24,6 +24,7 @@ class _OrarScreenState extends State<OrarScreen> {
   Future<void> _logout() async {
     final shouldLogout = await showDialog<bool>(
       context: context,
+      useRootNavigator: true,
       builder: (context) {
         return AlertDialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 20),

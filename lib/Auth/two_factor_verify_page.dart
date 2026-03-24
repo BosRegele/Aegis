@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 
+import '../services/security_flags_service.dart';
 import '../session.dart';
 
 class TwoFactorVerifyPage extends StatefulWidget {
@@ -37,7 +38,19 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
   @override
   void initState() {
     super.initState();
-    _startChallenge();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    final flags = await SecurityFlagsService.getOnce();
+    if (!mounted) return;
+
+    if (!flags.twoFactorEnabled) {
+      AppSession.twoFactorVerified = true;
+      return;
+    }
+
+    await _startChallenge();
   }
 
   @override
@@ -93,6 +106,12 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
   }
 
   Future<void> _verify() async {
+    final flags = await SecurityFlagsService.getOnce();
+    if (!flags.twoFactorEnabled) {
+      AppSession.twoFactorVerified = true;
+      return;
+    }
+
     final code = _codeController.text.trim();
     if (code.length != 6) {
       setState(() => _error = 'Introdu codul de 6 cifre primit pe email.');
@@ -125,6 +144,12 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
   }
 
   Future<void> _resend() async {
+    final flags = await SecurityFlagsService.getOnce();
+    if (!flags.twoFactorEnabled) {
+      AppSession.twoFactorVerified = true;
+      return;
+    }
+
     if (_resendCooldown > 0 || _sending) return;
     setState(() {
       _sending = true;

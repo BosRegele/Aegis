@@ -129,6 +129,311 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
     return int.tryParse(v?.toString() ?? '') ?? fallback;
   }
 
+  Future<String> _resolveUsernameFromInput(String input) async {
+    final resolveRes = await FirebaseFunctions.instance
+        .httpsCallable('authResolveLoginInput')
+        .call({'input': input});
+    final resolveData = Map<String, dynamic>.from(resolveRes.data as Map);
+    final username = (resolveData['username'] ?? '').toString().toLowerCase();
+    if (username.isEmpty) {
+      throw Exception('Date invalide - username lipsa');
+    }
+    return username;
+  }
+
+  Future<void> _showResetPasswordCodeDialog(String initialInput) async {
+    final inputC = TextEditingController(text: initialInput);
+    final codeC = TextEditingController();
+    final newPassC = TextEditingController();
+    final confirmPassC = TextEditingController();
+
+    bool submitting = false;
+    bool showPass = false;
+    bool showConfirmPass = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !submitting,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: const Text('Resetare parola'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: inputC,
+                      decoration: const InputDecoration(
+                        labelText: 'Username sau email',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: codeC,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Cod resetare (6 cifre)',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: newPassC,
+                      obscureText: !showPass,
+                      decoration: InputDecoration(
+                        labelText: 'Parola noua',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            showPass ? Icons.visibility : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setDialogState(() => showPass = !showPass);
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: confirmPassC,
+                      obscureText: !showConfirmPass,
+                      decoration: InputDecoration(
+                        labelText: 'Confirma parola noua',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            showConfirmPass
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setDialogState(
+                              () => showConfirmPass = !showConfirmPass,
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: submitting ? null : () => Navigator.of(ctx).pop(),
+                  child: const Text('Anuleaza'),
+                ),
+                ElevatedButton(
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          final input = inputC.text.trim().toLowerCase();
+                          final code = codeC.text.trim();
+                          final newPass = newPassC.text.trim();
+                          final confirmPass = confirmPassC.text.trim();
+
+                          if (input.isEmpty ||
+                              code.isEmpty ||
+                              newPass.isEmpty ||
+                              confirmPass.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Completeaza toate campurile.'),
+                              ),
+                            );
+                            return;
+                          }
+                          if (newPass != confirmPass) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Parolele nu coincid.'),
+                              ),
+                            );
+                            return;
+                          }
+                          if (newPass.length < 6) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Parola trebuie sa aiba minim 6 caractere.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          var dialogClosed = false;
+                          setDialogState(() => submitting = true);
+                          try {
+                            await FirebaseFunctions.instance
+                                .httpsCallable('authConfirmPasswordReset')
+                                .call({
+                                  'input': input,
+                                  'code': code,
+                                  'newPassword': newPass,
+                                });
+
+                            if (!mounted) return;
+                            Navigator.of(ctx).pop();
+                            dialogClosed = true;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Parola a fost resetata. Te poti loga acum.',
+                                ),
+                              ),
+                            );
+                          } on FirebaseFunctionsException catch (e) {
+                            var msg = 'Resetare esuata. Incearca din nou.';
+                            if (e.code == 'invalid-argument') {
+                              msg = 'Date invalide sau cod gresit.';
+                            } else if (e.code == 'deadline-exceeded') {
+                              msg = 'Cod expirat. Cere un cod nou.';
+                            }
+                            if (mounted) {
+                              ScaffoldMessenger.of(
+                                context,
+                              ).showSnackBar(SnackBar(content: Text(msg)));
+                            }
+                          } catch (_) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Resetare esuata. Incearca din nou.',
+                                  ),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (dialogClosed) return;
+                            setDialogState(() => submitting = false);
+                          }
+                        },
+                  child: Text(submitting ? 'Se salveaza...' : 'Reseteaza'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    inputC.dispose();
+    codeC.dispose();
+    newPassC.dispose();
+    confirmPassC.dispose();
+  }
+
+  Future<void> _openForgotPasswordFlow() async {
+    final inputC = TextEditingController(text: userC.text.trim());
+    bool sending = false;
+    String? nextInput;
+    String? postMessage;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !sending,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: const Text('Ai uitat parola?'),
+              content: TextField(
+                controller: inputC,
+                decoration: const InputDecoration(
+                  labelText: 'Username sau email',
+                  hintText: 'ex: elev1 sau elev1@gmail.com',
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: sending ? null : () => Navigator.of(ctx).pop(),
+                  child: const Text('Anuleaza'),
+                ),
+                ElevatedButton(
+                  onPressed: sending
+                      ? null
+                      : () async {
+                          final input = inputC.text.trim().toLowerCase();
+                          if (input.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Completeaza username sau email.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          var dialogClosed = false;
+                          setDialogState(() => sending = true);
+                          try {
+                            final res = await FirebaseFunctions.instance
+                                .httpsCallable('authRequestPasswordReset')
+                                .call({'input': input});
+                            final data = Map<String, dynamic>.from(
+                              res.data as Map,
+                            );
+                            final cooldown = _asInt(
+                              data['cooldownSeconds'],
+                              fallback: 0,
+                            );
+
+                            if (!mounted) return;
+                            nextInput = input;
+                            postMessage = cooldown > 0
+                                ? 'Un cod a fost deja trimis recent. Reincearca in ${cooldown}s.'
+                                : 'Daca datele exista in sistem, am trimis codul de resetare pe email.';
+                            Navigator.of(ctx).pop();
+                            dialogClosed = true;
+                          } on FirebaseFunctionsException catch (e) {
+                            var msg =
+                                'Nu am putut trimite codul. Incearca din nou.';
+                            if (e.code == 'failed-precondition') {
+                              msg = e.message ?? msg;
+                            }
+                            if (mounted) {
+                              ScaffoldMessenger.of(
+                                context,
+                              ).showSnackBar(SnackBar(content: Text(msg)));
+                            }
+                          } catch (_) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Nu am putut trimite codul. Incearca din nou.',
+                                  ),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (dialogClosed) return;
+                            setDialogState(() => sending = false);
+                          }
+                        },
+                  child: Text(sending ? 'Se trimite...' : 'Trimite cod'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    inputC.dispose();
+
+    if (!mounted) return;
+    if (postMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(postMessage!)));
+    }
+    if (nextInput != null && nextInput!.isNotEmpty) {
+      await _showResetPasswordCodeDialog(nextInput!);
+    }
+  }
+
   Future<void> _login() async {
     if (loading) return;
 
@@ -148,11 +453,14 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
     setState(() => loading = true);
     String attemptToken = '';
     try {
-      final username = userC.text.trim().toLowerCase();
+      final input = userC.text.trim().toLowerCase();
       final password = passC.text.trim();
-      if (username.isEmpty || password.isEmpty) {
+      if (input.isEmpty || password.isEmpty) {
         throw Exception("Date invalide");
       }
+
+      final username = await _resolveUsernameFromInput(input);
+
       await _ensureActorKey();
       if (_actorKey.isEmpty) {
         throw Exception("Autentificare temporar indisponibila");
@@ -178,7 +486,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
-          .get();
+          .get(const GetOptions(source: Source.server));
 
       if (!doc.exists) {
         await FirebaseAuth.instance.signOut();
@@ -217,13 +525,24 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
           e.code == "user-not-found" ||
           e.code == "invalid-email" ||
           e.code == "user-disabled") {
-        final username = userC.text.trim().toLowerCase();
+        // Extract username from input - might be email or username
+        final input = userC.text.trim().toLowerCase();
+        String usernameForFailure = input;
+        if (input.contains('@')) {
+          // If email was entered, try to resolve it via Cloud Function
+          try {
+            usernameForFailure = await _resolveUsernameFromInput(input);
+          } catch (_) {
+            // If lookup fails, use original input
+          }
+        }
+
         try {
           if (attemptToken.isNotEmpty) {
             final failRes = await FirebaseFunctions.instance
                 .httpsCallable('authReportLoginFailure')
                 .call({
-                  'username': username,
+                  'username': usernameForFailure,
                   'attemptToken': attemptToken,
                   'actorKey': _actorKey,
                 });
@@ -359,7 +678,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                   TextField(
                     controller: userC,
                     decoration: InputDecoration(
-                      hintText: "Nume de utilizator",
+                      hintText: "Nume de utilizator sau email",
                       prefixIcon: const Icon(
                         Icons.person_outline,
                         color: Color.fromRGBO(122, 175, 91, 1),
@@ -420,6 +739,13 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                           });
                         },
                       ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: loading ? null : _openForgotPasswordFlow,
+                      child: const Text('Ai uitat parola?'),
                     ),
                   ),
                   const SizedBox(height: 28),
