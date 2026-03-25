@@ -401,11 +401,14 @@ class _HeaderMenuButton extends StatelessWidget {
               children: [
                 Icon(Icons.person_outline_rounded, color: _primary, size: 20),
                 SizedBox(width: 10),
-                Text(
-                  'Profil',
-                  style: TextStyle(
-                    color: _primary,
-                    fontWeight: FontWeight.w700,
+                Flexible(
+                  child: Text(
+                    'Profil',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -427,11 +430,14 @@ class _HeaderMenuButton extends StatelessWidget {
               children: [
                 Icon(Icons.logout_rounded, color: Color(0xFF8E3557), size: 20),
                 SizedBox(width: 10),
-                Text(
-                  'Log out',
-                  style: TextStyle(
-                    color: Color(0xFF8E3557),
-                    fontWeight: FontWeight.w700,
+                Flexible(
+                  child: Text(
+                    'Deconecteaza-te',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Color(0xFF8E3557),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],

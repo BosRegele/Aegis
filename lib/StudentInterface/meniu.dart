@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firster/StudentInterface/cereri.dart';
 import 'package:firster/StudentInterface/inbox.dart';
-import 'package:firster/StudentInterface/paginaqr.dart';
 import 'package:firster/session.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -23,9 +22,8 @@ const _tertiary = Color(0xFF8E3557);
 
 class MeniuScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigateTab;
-  final VoidCallback? onOpenOrar;
 
-  const MeniuScreen({super.key, this.onNavigateTab, this.onOpenOrar});
+  const MeniuScreen({super.key, this.onNavigateTab});
 
   @override
   State<MeniuScreen> createState() => _MeniuScreenState();
@@ -96,19 +94,9 @@ class _MeniuScreenState extends State<MeniuScreen> {
     return nowMinutes >= start && nowMinutes <= end;
   }
 
-  void _openQr(BuildContext context) {
-    if (widget.onNavigateTab != null) {
-      widget.onNavigateTab!(1);
-      return;
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const TeodorScreen()),
-    );
-  }
-
   void _openCereri(BuildContext context) {
     if (widget.onNavigateTab != null) {
-      widget.onNavigateTab!(3);
+      widget.onNavigateTab!(2);
       return;
     }
     Navigator.of(context).push(
@@ -118,7 +106,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
 
   Future<void> _openMesaje(BuildContext context) async {
     if (widget.onNavigateTab != null) {
-      widget.onNavigateTab!(4);
+      widget.onNavigateTab!(3);
       return;
     }
 
@@ -146,7 +134,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
   void _openProfil(BuildContext context) {
     // Dacă ai o pagină de profil/orar, navighezi către ea
     if (widget.onNavigateTab != null) {
-      widget.onNavigateTab!(2); // ajustează indexul dacă e altul
+      widget.onNavigateTab!(1);
       return;
     }
     // Fallback: poți înlocui cu pagina ta de profil
@@ -196,7 +184,6 @@ class _MeniuScreenState extends State<MeniuScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: _AccessHubCard(
                         lastScanStream: _lastScanStream,
-                        onTap: () => _openQr(context),
                       ),
                     ),
                   ),
@@ -395,11 +382,14 @@ class _ProfileMenuButton extends StatelessWidget {
               children: [
                 Icon(Icons.person_outline_rounded, color: _primary, size: 20),
                 SizedBox(width: 10),
-                Text(
-                  'Profil',
-                  style: TextStyle(
-                    color: _primary,
-                    fontWeight: FontWeight.w700,
+                Flexible(
+                  child: Text(
+                    'Profil',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -421,11 +411,14 @@ class _ProfileMenuButton extends StatelessWidget {
               children: [
                 Icon(Icons.logout_rounded, color: Color(0xFF8E3557), size: 20),
                 SizedBox(width: 10),
-                Text(
-                  'Log out',
-                  style: TextStyle(
-                    color: Color(0xFF8E3557),
-                    fontWeight: FontWeight.w700,
+                Flexible(
+                  child: Text(
+                    'Deconecteaza-te',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Color(0xFF8E3557),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -455,9 +448,8 @@ class _ProfileMenuButton extends StatelessWidget {
 // ────────────────────────────────────────────────────────────────────────────
 class _AccessHubCard extends StatefulWidget {
   final Stream<QuerySnapshot<Map<String, dynamic>>>? lastScanStream;
-  final VoidCallback onTap;
 
-  const _AccessHubCard({required this.lastScanStream, required this.onTap});
+  const _AccessHubCard({required this.lastScanStream});
 
   @override
   State<_AccessHubCard> createState() => _AccessHubCardState();
@@ -565,53 +557,50 @@ class _AccessHubCardState extends State<_AccessHubCard> {
                   color: _surfaceContainerLow,
                   borderRadius: BorderRadius.circular(32),
                 ),
-                child: GestureDetector(
-                  onTap: widget.onTap,
-                  child: Container(
-                    width: 232,
-                    height: 232,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        if (_token.isNotEmpty)
-                          QrImageView(
-                            data: _token,
-                            backgroundColor: Colors.white,
-                            eyeStyle: const QrEyeStyle(
-                              eyeShape: QrEyeShape.square,
-                              color: _primary,
-                            ),
-                            dataModuleStyle: const QrDataModuleStyle(
-                              dataModuleShape: QrDataModuleShape.square,
-                              color: _primary,
-                            ),
-                          )
-                        else
-                          const Icon(
-                            Icons.qr_code_2_rounded,
+                child: Container(
+                  width: 232,
+                  height: 232,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (_token.isNotEmpty)
+                        QrImageView(
+                          data: _token,
+                          backgroundColor: Colors.white,
+                          eyeStyle: const QrEyeStyle(
+                            eyeShape: QrEyeShape.square,
                             color: _primary,
-                            size: 132,
                           ),
-                        if (_loading)
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.75),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Center(
-                              child: CircularProgressIndicator(
-                                color: _primary,
-                                strokeWidth: 2.2,
-                              ),
+                          dataModuleStyle: const QrDataModuleStyle(
+                            dataModuleShape: QrDataModuleShape.square,
+                            color: _primary,
+                          ),
+                        )
+                      else
+                        const Icon(
+                          Icons.qr_code_2_rounded,
+                          color: _primary,
+                          size: 132,
+                        ),
+                      if (_loading)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: _primary,
+                              strokeWidth: 2.2,
                             ),
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -686,10 +675,8 @@ class _AccessHubCardState extends State<_AccessHubCard> {
               }
 
               return Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
-                    width: 148,
+                  Expanded(
                     child: _StatCard(
                       label: 'Status',
                       value: statusText,
@@ -697,8 +684,7 @@ class _AccessHubCardState extends State<_AccessHubCard> {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  SizedBox(
-                    width: 148,
+                  Expanded(
                     child: _StatCard(
                       label: 'Intrare',
                       value: timeText,
@@ -1060,6 +1046,41 @@ class _ProfilPlaceholderScreen extends StatelessWidget {
           'Profil & Orar',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Profil / Logout',
+            icon: const Icon(Icons.person_outline_rounded),
+            onSelected: (value) async {
+              if (value == 'logout') {
+                await FirebaseAuth.instance.signOut();
+                return;
+              }
+
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Ești deja în pagina de profil.')),
+              );
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem<String>(
+                value: 'profile',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.person_outline_rounded),
+                  title: Text('Profil'),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'logout',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.logout_rounded),
+                  title: Text('Deconecteaza-te'),
+                ),
+              ),
+            ],
+          ),
+        ],
         elevation: 0,
       ),
       body: const Center(

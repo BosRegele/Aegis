@@ -2,6 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "StudentId (Android)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "args": ["-d", "29a25d790508"]
+    },
+    {
       "name": "StudentId (Chrome)",
       "request": "launch",
       "type": "dart",

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:firster/StudentInterface/meniu.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -46,10 +48,53 @@ class _ElevQrPageState extends State<ElevQrPage> {
     super.dispose();
   }
 
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+  }
+
+  void _openProfile() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const MeniuScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Elev - QR Dinamic")),
+      appBar: AppBar(
+        title: const Text("Elev - QR Dinamic"),
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Profil / Logout',
+            icon: const Icon(Icons.person_outline_rounded),
+            onSelected: (value) async {
+              if (value == 'profile') {
+                _openProfile();
+                return;
+              }
+              await _logout();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem<String>(
+                value: 'profile',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.person_outline_rounded),
+                  title: Text('Profil'),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'logout',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.logout_rounded),
+                  title: Text('Deconecteaza-te'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

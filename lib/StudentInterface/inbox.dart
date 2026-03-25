@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firster/StudentInterface/cereri.dart';
 import 'package:firster/StudentInterface/meniu.dart';
 import 'package:firster/session.dart';
@@ -55,12 +56,26 @@ class _InboxScreenState extends State<InboxScreen> {
 
   void _openCereri(BuildContext context) {
     if (widget.onNavigateTab != null) {
-      widget.onNavigateTab!(3);
+      widget.onNavigateTab!(2);
       return;
     }
 
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const CereriScreen()),
+    );
+  }
+
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+  }
+
+  void _openProfile(BuildContext context) {
+    if (widget.onNavigateTab != null) {
+      widget.onNavigateTab!(1);
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const MeniuScreen()),
     );
   }
 
@@ -185,7 +200,11 @@ class _InboxScreenState extends State<InboxScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _InboxHeader(onBack: () => _goBack(context)),
+            _InboxHeader(
+              onBack: () => _goBack(context),
+              onProfile: () => _openProfile(context),
+              onLogout: _logout,
+            ),
             Expanded(child: _buildInboxBody()),
           ],
         ),
@@ -249,8 +268,14 @@ class _InboxScreenState extends State<InboxScreen> {
 
 class _InboxHeader extends StatelessWidget {
   final VoidCallback onBack;
+  final VoidCallback onProfile;
+  final Future<void> Function() onLogout;
 
-  const _InboxHeader({required this.onBack});
+  const _InboxHeader({
+    required this.onBack,
+    required this.onProfile,
+    required this.onLogout,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -301,6 +326,11 @@ class _InboxHeader extends StatelessWidget {
                         letterSpacing: -0.8,
                       ),
                     ),
+                  ),
+                  const Spacer(),
+                  _HeaderMenuButton(
+                    onLogout: onLogout,
+                    onProfil: onProfile,
                   ),
                 ],
               ),
@@ -507,6 +537,104 @@ class _HeaderIconButton extends StatelessWidget {
           ),
         ),
         child: Icon(icon, color: Colors.white, size: 19),
+      ),
+    );
+  }
+}
+
+class _HeaderMenuButton extends StatelessWidget {
+  final Future<void> Function() onLogout;
+  final VoidCallback onProfil;
+
+  const _HeaderMenuButton({required this.onLogout, required this.onProfil});
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      tooltip: '',
+      offset: const Offset(0, 64),
+      elevation: 12,
+      color: const Color(0xFFD8EED9),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      onSelected: (value) async {
+        if (value == 'profil') {
+          onProfil();
+        }
+        if (value == 'logout') {
+          await onLogout();
+        }
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem<String>(
+          value: 'profil',
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFB9DEBC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0x660B741D)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.person_outline_rounded, color: _primary, size: 20),
+                SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    'Profil',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const PopupMenuDivider(height: 6),
+        PopupMenuItem<String>(
+          value: 'logout',
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1CDD8),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0x668E3557)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.logout_rounded, color: Color(0xFF8E3557), size: 20),
+                SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    'Deconecteaza-te',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Color(0xFF8E3557),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+      child: Container(
+        width: 54,
+        height: 54,
+        decoration: BoxDecoration(
+          color: const Color(0x337DE38D),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0x6DC7F4CE),
+            width: 1.3,
+          ),
+        ),
+        child: const Icon(Icons.person, color: Colors.white, size: 24),
       ),
     );
   }

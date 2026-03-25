@@ -523,7 +523,7 @@ class _CereriScreenState extends State<CereriScreen> {
 
   void _openProfil() {
     if (widget.onNavigateTab != null) {
-      widget.onNavigateTab!(2);
+      widget.onNavigateTab!(1);
       return;
     }
 
@@ -569,16 +569,20 @@ class _CereriScreenState extends State<CereriScreen> {
                             onTap: _goBack,
                           ),
                           const SizedBox(width: 12),
-                          const Text(
-                            'Cereri de invoire',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 36,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.6,
+                          const Expanded(
+                            child: Text(
+                              'Cereri de invoire',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 36,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.6,
+                              ),
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 12),
                           _HeaderMenuButton(
                             onLogout: _logout,
                             onProfil: _openProfil,
@@ -972,11 +976,14 @@ class _HeaderMenuButton extends StatelessWidget {
               children: [
                 Icon(Icons.person_outline_rounded, color: _primary, size: 20),
                 SizedBox(width: 10),
-                Text(
-                  'Profil',
-                  style: TextStyle(
-                    color: _primary,
-                    fontWeight: FontWeight.w700,
+                Flexible(
+                  child: Text(
+                    'Profil',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -998,11 +1005,14 @@ class _HeaderMenuButton extends StatelessWidget {
               children: [
                 Icon(Icons.logout_rounded, color: Color(0xFF8E3557), size: 20),
                 SizedBox(width: 10),
-                Text(
-                  'Log out',
-                  style: TextStyle(
-                    color: Color(0xFF8E3557),
-                    fontWeight: FontWeight.w700,
+                Flexible(
+                  child: Text(
+                    'Deconecteaza-te',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Color(0xFF8E3557),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
