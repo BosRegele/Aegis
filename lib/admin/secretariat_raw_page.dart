@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:firster/utils/csv_download.dart';
 import 'admin_api.dart';
 import 'admin_store.dart';
 import 'admin_classes_page.dart';
@@ -66,6 +67,10 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
   String log = "";
   final _rng = Random.secure();
   final Set<String> _busyActions = <String>{};
+
+  // Web-only in-memory CSV buffer (no file system on web).
+  final StringBuffer _webCsvBuffer = StringBuffer();
+  bool _webCsvHasHeader = false;
 
   void _log(String s) => setState(() => log = "$s\n$log");
 
@@ -262,10 +267,6 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
     required String role,
     String? classId,
   }) async {
-    final file = await _getCredentialsCsvFile();
-    final exists = await file.exists();
-    final isEmpty = !exists || await file.length() == 0;
-
     final row = [
       DateTime.now().toIso8601String(),
       username,
@@ -274,6 +275,21 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
       role,
       classId ?? '',
     ].map(_csvCell).join(',');
+
+    if (kIsWeb) {
+      if (!_webCsvHasHeader) {
+        _webCsvBuffer.writeln(
+          'created_at,username,password,full_name,role,class_id',
+        );
+        _webCsvHasHeader = true;
+      }
+      _webCsvBuffer.writeln(row);
+      return '(browser memory)';
+    }
+
+    final file = await _getCredentialsCsvFile();
+    final exists = await file.exists();
+    final isEmpty = !exists || await file.length() == 0;
 
     final sink = file.openWrite(mode: FileMode.append);
     if (isEmpty) {
@@ -288,6 +304,21 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
 
   Future<void> _shareCredentialsCsv() async {
     try {
+      if (kIsWeb) {
+        if (!_webCsvHasHeader) {
+          _logFailure('CSV-ul cu credentiale este gol sau nu există încă.');
+          _showInfoMessage('Nu există încă un CSV cu utilizatori generați.');
+          return;
+        }
+        await downloadCsvWeb(
+          _webCsvBuffer.toString(),
+          'credentiale_utilizatori.csv',
+        );
+        _logSuccess('CSV descărcat în browser.');
+        _showInfoMessage('CSV descărcat în browser. ✅');
+        return;
+      }
+
       final file = await _getCredentialsCsvFile();
       if (!await file.exists() || await file.length() == 0) {
         _logFailure('CSV-ul cu credentiale este gol sau nu există încă.');

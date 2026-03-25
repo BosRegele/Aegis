@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -19,20 +20,52 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
+  <meta name="application-name" content="Aegis">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="firster">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <meta name="apple-mobile-web-app-title" content="Aegis">
+  <link rel="apple-touch-icon" href="icons/aegis-192.png?v=6">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon-aegis.png?v=6" />
 
-  <title>firster</title>
-  <link rel="manifest" href="manifest.json">
+  <title>Aegis</title>
+  <link rel="manifest" href="manifest-aegis.json?v=6">
 </head>
+
 <body>
+  <script>
+    // Keep tab title stable even if stale scripts attempt to overwrite it.
+    const appTitle = 'Aegis';
+    const enforceTitle = () => {
+      if (document.title !== appTitle) document.title = appTitle;
+    };
+    enforceTitle();
+
+    // Remove stale app-shell service workers that can serve old builds.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          const url = registration.active?.scriptURL || registration.installing?.scriptURL || registration.waiting?.scriptURL || '';
+          if (!url.includes('firebase-messaging-sw.js')) {
+            registration.unregister();
+          }
+        }
+      });
+    }
+
+    const titleNode = document.querySelector('title');
+    if (titleNode) {
+      new MutationObserver(enforceTitle).observe(titleNode, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    }
+    setInterval(enforceTitle, 1000);
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -41,6 +74,7 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
-  <script src="flutter_bootstrap.js" async></script>
+  <script src="flutter_bootstrap.js?v=6" async></script>
 </body>
+
 </html>

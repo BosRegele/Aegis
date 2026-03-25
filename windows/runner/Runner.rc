@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "firster" "\0"
+            VALUE "FileDescription", "Aegis" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "firster" "\0"
+            VALUE "InternalName", "Aegis" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "firster.exe" "\0"
-            VALUE "ProductName", "firster" "\0"
+            VALUE "OriginalFilename", "Aegis.exe" "\0"
+            VALUE "ProductName", "Aegis" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
