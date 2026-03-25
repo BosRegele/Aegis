@@ -40,6 +40,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
             _pendingStream = FirebaseFirestore.instance
                 .collection('leaveRequests')
                 .where('classId', isEqualTo: classId)
+              .where('targetRole', isEqualTo: 'teacher')
                 .where('status', isEqualTo: 'pending')
                 .snapshots();
           });

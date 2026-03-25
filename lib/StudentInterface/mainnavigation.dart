@@ -3,7 +3,6 @@ import 'package:firster/session.dart';
 import 'package:firster/StudentInterface/meniu.dart';
 import 'package:firster/StudentInterface/orar.dart';
 import 'package:firster/StudentInterface/paginaqr.dart';
-import 'package:firster/StudentInterface/widgets/maniubara.dart';
 import 'package:firster/StudentInterface/cereri.dart';
 import 'package:firster/StudentInterface/inbox.dart';
 import 'package:flutter/material.dart';
@@ -52,8 +51,6 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomNavIndex = _currentIndex <= 2 ? _currentIndex : 0;
-
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -64,10 +61,6 @@ class _AppShellState extends State<AppShell> {
           CereriScreen(onNavigateTab: _setTab),
           InboxScreen(onNavigateTab: _setTab),
         ],
-      ),
-      bottomNavigationBar: FixedBottomNav(
-        currentIndex: bottomNavIndex,
-        onTap: _setTab,
       ),
     );
   }

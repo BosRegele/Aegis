@@ -290,6 +290,7 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
                               : FirebaseFirestore.instance
                                   .collection('leaveRequests')
                                   .where('studentUid', whereIn: _childrenUids)
+                                  .where('targetRole', isEqualTo: 'parent')
                                   .where('status', isEqualTo: 'pending')
                                   .orderBy('requestedAt', descending: true)
                                   .snapshots(),

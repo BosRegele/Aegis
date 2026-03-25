@@ -69,6 +69,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
         child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('leaveRequests')
+              .where('targetRole', isEqualTo: 'parent')
               .where('status', isEqualTo: 'pending')
               .orderBy('requestedAt', descending: true)
               .snapshots(),

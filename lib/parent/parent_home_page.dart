@@ -246,6 +246,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
                                     ? FirebaseFirestore.instance
                                         .collection('leaveRequests')
                                         .where('studentUid', whereIn: _childrenUids)
+                                    .where('targetRole', isEqualTo: 'parent')
                                         .where('status', isEqualTo: 'pending')
                                         .snapshots()
                                     : null,

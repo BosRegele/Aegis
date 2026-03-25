@@ -391,6 +391,7 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                 stream: FirebaseFirestore.instance
                     .collection('leaveRequests')
                     .where('classId', isEqualTo: _classId)
+                  .where('targetRole', isEqualTo: 'teacher')
                     .where('status', isEqualTo: 'pending')
                     .orderBy('requestedAt', descending: true)
                     .snapshots(),
