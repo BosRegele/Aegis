@@ -17,6 +17,7 @@ import 'admin_admins_page.dart';
 import 'admin_parents_page.dart';
 import 'admin_turnstiles_page.dart';
 import 'admin_schedules_page.dart';
+import 'secretariat_global_messages_page.dart';
 import '../services/security_flags_service.dart';
 import '../session.dart';
 
@@ -512,12 +513,14 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF7AAF5B), Color(0xFF5A9641)],
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF7AAF5B), Color(0xFF5A9641)],
+                ),
               ),
             ),
           ),
@@ -726,6 +729,13 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                         label: "Orare",
                                         onTap: () => _openSidebarPage(
                                           const AdminSchedulesPage(),
+                                        ),
+                                      ),
+                                      _buildSidebarItem(
+                                        icon: Icons.campaign_rounded,
+                                        label: "Mesagerie globală",
+                                        onTap: () => _openSidebarPage(
+                                          const SecretariatGlobalMessagesPage(),
                                         ),
                                       ),
                                     ],

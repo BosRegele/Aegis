@@ -37,13 +37,6 @@
 
 <body>
   <script>
-    // Keep tab title stable even if stale scripts attempt to overwrite it.
-    const appTitle = 'Aegis';
-    const enforceTitle = () => {
-      if (document.title !== appTitle) document.title = appTitle;
-    };
-    enforceTitle();
-
     // Remove stale app-shell service workers that can serve old builds.
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
@@ -55,16 +48,6 @@
         }
       });
     }
-
-    const titleNode = document.querySelector('title');
-    if (titleNode) {
-      new MutationObserver(enforceTitle).observe(titleNode, {
-        childList: true,
-        characterData: true,
-        subtree: true,
-      });
-    }
-    setInterval(enforceTitle, 1000);
   </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.

@@ -7,6 +7,12 @@ import 'cereriasteptare.dart';
 import 'statuselevi.dart';
 import 'mesajedir.dart';
 
+bool _isTeacherPending(Map<String, dynamic> data) {
+  final targetRole = (data['targetRole'] ?? '').toString();
+  final status = (data['status'] ?? '').toString();
+  return targetRole == 'teacher' && status == 'pending';
+}
+
 class TeacherDashboardPage extends StatefulWidget {
   const TeacherDashboardPage({super.key});
 
@@ -40,8 +46,6 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
             _pendingStream = FirebaseFirestore.instance
                 .collection('leaveRequests')
                 .where('classId', isEqualTo: classId)
-              .where('targetRole', isEqualTo: 'teacher')
-                .where('status', isEqualTo: 'pending')
                 .snapshots();
           });
         }
@@ -362,7 +366,14 @@ class _PrimaryActionCard extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: pendingStream,
       builder: (context, snap) {
-        final count = snap.data?.docs.length ?? 0;
+        final count =
+            snap.data?.docs
+                .where(
+                  (doc) =>
+                      _isTeacherPending(doc.data() as Map<String, dynamic>),
+                )
+                .length ??
+            0;
         return MouseRegion(
           cursor: SystemMouseCursors.click,
           child: GestureDetector(

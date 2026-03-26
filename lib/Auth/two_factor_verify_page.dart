@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/security_flags_service.dart';
 import '../session.dart';
@@ -50,7 +51,46 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
       return;
     }
 
+    // On web, localStorage is shared across all tabs. If the user already
+    // verified 2FA in another tab within the same session, skip the challenge
+    // to avoid invalidating the other tab's active code.
+    if (await _isAlreadyVerifiedInBrowser()) {
+      AppSession.twoFactorVerified = true;
+      return;
+    }
+
     await _startChallenge();
+  }
+
+  static String _prefKey(String uid) => 'tf_verified_$uid';
+
+  static Future<bool> _isAlreadyVerifiedInBrowser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // We read the key from the current uid set by the outer StreamBuilder.
+      // Because we may not have AppSession.uid at this point yet, we rely on
+      // the stored key independently of uid for lookup.
+      final keys = prefs.getKeys();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      for (final key in keys) {
+        if (!key.startsWith('tf_verified_')) continue;
+        final expiry = prefs.getInt(key);
+        if (expiry != null && now < expiry) return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _persistVerified() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final expiry = DateTime.now()
+          .add(const Duration(hours: 8))
+          .millisecondsSinceEpoch;
+      await prefs.setInt(_prefKey(widget.uid), expiry);
+    } catch (_) {}
   }
 
   @override
@@ -125,6 +165,8 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
       await FirebaseFunctions.instance
           .httpsCallable('authVerifySecondFactor')
           .call({'code': code});
+      // Persist so other open browser tabs skip 2FA automatically.
+      await _persistVerified();
       // Setting twoFactorVerified triggers the ValueListenableBuilder in
       // main.dart to rebuild and route to the correct dashboard — no
       // Navigator.push needed (which would remove main.dart's StreamBuilder

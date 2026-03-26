@@ -60,7 +60,10 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
   }
 
   // --- Funcție nouă pentru aprobare/respingere în masă ---
-  Future<void> _reviewAllRequests(List<QueryDocumentSnapshot> docs, String status) async {
+  Future<void> _reviewAllRequests(
+    List<QueryDocumentSnapshot> docs,
+    String status,
+  ) async {
     final teacherUid = AppSession.uid;
     if (teacherUid == null || teacherUid.isEmpty) return;
 
@@ -83,7 +86,9 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            status == 'approved' ? 'Toate cererile au fost aprobate' : 'Toate cererile au fost respinse',
+            status == 'approved'
+                ? 'Toate cererile au fost aprobate'
+                : 'Toate cererile au fost respinse',
           ),
           backgroundColor: status == 'approved' ? Colors.green : Colors.red,
         ),
@@ -391,9 +396,6 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                 stream: FirebaseFirestore.instance
                     .collection('leaveRequests')
                     .where('classId', isEqualTo: _classId)
-                  .where('targetRole', isEqualTo: 'teacher')
-                    .where('status', isEqualTo: 'pending')
-                    .orderBy('requestedAt', descending: true)
                     .snapshots(),
                 builder: (context, snap) {
                   if (snap.hasError) {
@@ -402,7 +404,24 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                   if (!snap.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  final docs = snap.data!.docs;
+                  final docs =
+                      snap.data!.docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final targetRole = (data['targetRole'] ?? '')
+                            .toString();
+                        final status = (data['status'] ?? '').toString();
+                        return targetRole == 'teacher' && status == 'pending';
+                      }).toList()..sort((a, b) {
+                        final aTs =
+                            (a.data() as Map<String, dynamic>)['requestedAt']
+                                as Timestamp?;
+                        final bTs =
+                            (b.data() as Map<String, dynamic>)['requestedAt']
+                                as Timestamp?;
+                        final aMs = aTs?.millisecondsSinceEpoch ?? 0;
+                        final bMs = bTs?.millisecondsSinceEpoch ?? 0;
+                        return bMs.compareTo(aMs);
+                      });
                   if (docs.isEmpty) {
                     return Center(
                       child: Column(
@@ -426,7 +445,7 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                       ),
                     );
                   }
-                  
+
                   // Aici am adăugat Stack-ul cu lista și butonul bulk persistent
                   return Stack(
                     children: [
@@ -439,7 +458,8 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                           final doc = docs[index];
                           final d = doc.data() as Map<String, dynamic>;
                           final requestId = doc.id;
-                          final studentName = (d['studentName'] ?? '').toString();
+                          final studentName = (d['studentName'] ?? '')
+                              .toString();
                           final dateText = (d['dateText'] ?? '').toString();
                           final timeText = (d['timeText'] ?? '').toString();
                           final message = (d['message'] ?? '').toString();
@@ -450,7 +470,9 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                               borderRadius: BorderRadius.circular(18),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF2E3B4E).withOpacity(0.07),
+                                  color: const Color(
+                                    0xFF2E3B4E,
+                                  ).withOpacity(0.07),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
@@ -471,7 +493,8 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                                     14,
                                   ),
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
                                     children: [
                                       // Avatar
                                       Container(
@@ -518,23 +541,30 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                                                       0xFF4B78D2,
                                                     ).withOpacity(0.10),
                                                     borderRadius:
-                                                        BorderRadius.circular(20),
+                                                        BorderRadius.circular(
+                                                          20,
+                                                        ),
                                                   ),
                                                   child: Row(
-                                                    mainAxisSize: MainAxisSize.min,
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
                                                     children: [
                                                       const Icon(
                                                         Icons
                                                             .calendar_today_rounded,
                                                         size: 11,
-                                                        color: Color(0xFF4B78D2),
+                                                        color: Color(
+                                                          0xFF4B78D2,
+                                                        ),
                                                       ),
                                                       const SizedBox(width: 4),
                                                       Text(
                                                         '$dateText${timeText.isNotEmpty ? ' · $timeText' : ''}',
                                                         style: const TextStyle(
                                                           fontSize: 12,
-                                                          color: Color(0xFF4B78D2),
+                                                          color: Color(
+                                                            0xFF4B78D2,
+                                                          ),
                                                           fontWeight:
                                                               FontWeight.w600,
                                                         ),
@@ -582,10 +612,11 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                                                 ),
                                                 foregroundColor: Colors.white,
                                                 elevation: 0,
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 8,
-                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 8,
+                                                    ),
                                                 textStyle: const TextStyle(
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.w700,
@@ -616,10 +647,11 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                                                 ),
                                                 foregroundColor: Colors.white,
                                                 elevation: 0,
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 8,
-                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 8,
+                                                    ),
                                                 textStyle: const TextStyle(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w700,
@@ -641,7 +673,7 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                           );
                         },
                       ),
-                      
+
                       // Butonul oval persistente pentru aprobare/respingere în masă
                       Positioned(
                         bottom: 20,
@@ -666,12 +698,17 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                                 child: Material(
                                   color: const Color(0xFFE53935), // Roșu
                                   child: InkWell(
-                                    onTap: () => _reviewAllRequests(docs, 'rejected'),
+                                    onTap: () =>
+                                        _reviewAllRequests(docs, 'rejected'),
                                     child: const Center(
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                                          Icon(
+                                            Icons.close_rounded,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
                                           SizedBox(width: 8),
                                           Text(
                                             'Respinge Toate',
@@ -691,12 +728,17 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                                 child: Material(
                                   color: const Color(0xFF4CAF50), // Verde
                                   child: InkWell(
-                                    onTap: () => _reviewAllRequests(docs, 'approved'),
+                                    onTap: () =>
+                                        _reviewAllRequests(docs, 'approved'),
                                     child: const Center(
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.check_rounded, color: Colors.white, size: 20),
+                                          Icon(
+                                            Icons.check_rounded,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
                                           SizedBox(width: 8),
                                           Text(
                                             'Aprobă Toate',

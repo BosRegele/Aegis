@@ -18,6 +18,24 @@ class _ParentHomePageState extends State<ParentHomePage> {
   String? _fullName;
   List<String> _childrenUids = [];
 
+  bool _isVisibleToParent(Map<String, dynamic> data) {
+    final targetRole = (data['targetRole'] ?? '').toString().trim();
+    final source = (data['source'] ?? '').toString().trim();
+    return (targetRole.isEmpty || targetRole == 'parent') &&
+        source != 'secretariat';
+  }
+
+  bool _isPendingParentRequest(Map<String, dynamic> data) {
+    final targetRole = (data['targetRole'] ?? '').toString().trim();
+    final status = (data['status'] ?? '').toString().trim();
+    final source = (data['source'] ?? '').toString().trim();
+    final viewedByParent = data['viewedByParent'] == true;
+    return targetRole == 'parent' &&
+        status == 'pending' &&
+        source != 'secretariat' &&
+        !viewedByParent;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -48,16 +66,22 @@ class _ParentHomePageState extends State<ParentHomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF7AAF5B), // Verdele de pe pagina principala
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text('Deconectare',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, color: Colors.white)), // Text alb
-          content: const Text('Esti sigur ca vrei sa te deconectezi?',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white)), // Text alb
+          backgroundColor: const Color(
+            0xFF7AAF5B,
+          ), // Verdele de pe pagina principala
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: const Text(
+            'Deconectare',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          ), // Text alb
+          content: const Text(
+            'Esti sigur ca vrei sa te deconectezi?',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white),
+          ), // Text alb
           actionsAlignment: MainAxisAlignment.center,
           actions: [
             Container(
@@ -66,7 +90,8 @@ class _ParentHomePageState extends State<ParentHomePage> {
               child: Row(
                 children: [
                   Expanded(
-                    child: _BouncingButton( // Buton Anulare (Dialog)
+                    child: _BouncingButton(
+                      // Buton Anulare (Dialog)
                       onTap: () => Navigator.pop(context, false),
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
@@ -76,17 +101,21 @@ class _ParentHomePageState extends State<ParentHomePage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
-                        child: const Text('Anulează',
-                            style: TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16)),
+                        child: const Text(
+                          'Anulează',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _BouncingButton( // Buton Deconectare (Dialog)
+                    child: _BouncingButton(
+                      // Buton Deconectare (Dialog)
                       onTap: () => Navigator.pop(context, true),
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
@@ -96,11 +125,14 @@ class _ParentHomePageState extends State<ParentHomePage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
-                        child: const Text('Deconectare',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16)),
+                        child: const Text(
+                          'Deconectare',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -162,13 +194,18 @@ class _ParentHomePageState extends State<ParentHomePage> {
                   Positioned(
                     top: 20,
                     right: 20,
-                    child: _BouncingButton( // Buton Deconectare (Header)
+                    child: _BouncingButton(
+                      // Buton Deconectare (Header)
                       onTap: _signOut,
                       borderRadius: BorderRadius.circular(30),
                       child: const SizedBox(
                         width: 52,
                         height: 52,
-                        child: Icon(Icons.logout, color: Colors.white, size: 30),
+                        child: Icon(
+                          Icons.logout,
+                          color: Colors.white,
+                          size: 30,
+                        ),
                       ),
                     ),
                   ),
@@ -211,14 +248,20 @@ class _ParentHomePageState extends State<ParentHomePage> {
                       StreamBuilder<DocumentSnapshot>(
                         stream: AppSession.uid != null
                             ? FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(AppSession.uid)
-                                .snapshots()
+                                  .collection('users')
+                                  .doc(AppSession.uid)
+                                  .snapshots()
                             : null,
                         builder: (context, userSnap) {
-                          final userData = userSnap.data?.data() as Map<String, dynamic>? ?? {};
-                          final requestsLastOpened = (userData['requestsLastOpenedAt'] as Timestamp?)?.toDate();
-                          final inboxLastOpened = (userData['inboxLastOpenedAt'] as Timestamp?)?.toDate();
+                          final userData =
+                              userSnap.data?.data() as Map<String, dynamic>? ??
+                              {};
+                          final requestsLastOpened =
+                              (userData['requestsLastOpenedAt'] as Timestamp?)
+                                  ?.toDate();
+                          final inboxLastOpened =
+                              (userData['inboxLastOpenedAt'] as Timestamp?)
+                                  ?.toDate();
 
                           return Column(
                             children: [
@@ -227,7 +270,10 @@ class _ParentHomePageState extends State<ParentHomePage> {
                                 title: "Elevi",
                                 icon: Icons.people_outline,
                                 // Elevi - Portocaliu
-                                colors: const [Color(0xFFF0B15A), Color(0xFFE47E2D)],
+                                colors: const [
+                                  Color(0xFFF0B15A),
+                                  Color(0xFFE47E2D),
+                                ],
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -241,16 +287,20 @@ class _ParentHomePageState extends State<ParentHomePage> {
                                 title: "Cereri de învoire",
                                 icon: Icons.mail_outline,
                                 // Cereri - Turcoaz
-                                colors: const [Color(0xFF17B5A8), Color(0xFF0C8D80)],
+                                colors: const [
+                                  Color(0xFF17B5A8),
+                                  Color(0xFF0C8D80),
+                                ],
                                 badgeStream: _childrenUids.isNotEmpty
                                     ? FirebaseFirestore.instance
-                                        .collection('leaveRequests')
-                                        .where('studentUid', whereIn: _childrenUids)
-                                    .where('targetRole', isEqualTo: 'parent')
-                                        .where('status', isEqualTo: 'pending')
-                                        .snapshots()
+                                          .collection('leaveRequests')
+                                          .where(
+                                            'studentUid',
+                                            whereIn: _childrenUids,
+                                          )
+                                          .snapshots()
                                     : null,
-                                countPredicate: (data) => data['viewedByParent'] != true,
+                                countPredicate: _isPendingParentRequest,
                                 onTap: () {
                                   // Marcam notificarile ca citite inainte de navigare
                                   if (AppSession.uid != null) {
@@ -258,13 +308,16 @@ class _ParentHomePageState extends State<ParentHomePage> {
                                         .collection('users')
                                         .doc(AppSession.uid)
                                         .update({
-                                      'requestsLastOpenedAt':
-                                          FieldValue.serverTimestamp(),
-                                    });
+                                          'requestsLastOpenedAt':
+                                              FieldValue.serverTimestamp(),
+                                        });
                                   }
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const ParentRequestsPage()),
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const ParentRequestsPage(),
+                                    ),
                                   );
                                 },
                               ),
@@ -274,14 +327,21 @@ class _ParentHomePageState extends State<ParentHomePage> {
                                 title: "Mesaje",
                                 icon: Icons.inbox_outlined,
                                 // Mesaje - Albastru
-                                colors: const [Color(0xFF4B78D2), Color(0xFF304EAF)],
+                                colors: const [
+                                  Color(0xFF4B78D2),
+                                  Color(0xFF304EAF),
+                                ],
                                 badgeStream: _childrenUids.isNotEmpty
                                     ? FirebaseFirestore.instance
-                                        .collection('leaveRequests')
-                                        .where('studentUid', whereIn: _childrenUids)
-                                        .snapshots()
+                                          .collection('leaveRequests')
+                                          .where(
+                                            'studentUid',
+                                            whereIn: _childrenUids,
+                                          )
+                                          .snapshots()
                                     : null,
                                 statusWhitelist: const ['approved', 'rejected'],
+                                countPredicate: _isVisibleToParent,
                                 lastViewed: inboxLastOpened,
                                 timestampField: 'reviewedAt',
                                 onTap: () {
@@ -291,19 +351,22 @@ class _ParentHomePageState extends State<ParentHomePage> {
                                         .collection('users')
                                         .doc(AppSession.uid)
                                         .update({
-                                      'inboxLastOpenedAt': FieldValue.serverTimestamp(),
-                                    });
+                                          'inboxLastOpenedAt':
+                                              FieldValue.serverTimestamp(),
+                                        });
                                   }
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const ParentInboxPage()),
+                                    MaterialPageRoute(
+                                      builder: (_) => const ParentInboxPage(),
+                                    ),
                                   );
                                 },
                               ),
                               const SizedBox(height: 24),
                             ],
                           );
-                        }
+                        },
                       ),
                     ],
                   ),
@@ -368,21 +431,32 @@ class _ParentHomePageState extends State<ParentHomePage> {
                         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                           return const SizedBox();
                         }
-                        
+
                         // Calculam cate sunt necitite
                         int count = 0;
                         if (countPredicate != null) {
-                          count = snapshot.data!.docs.where((doc) => countPredicate(doc.data() as Map<String, dynamic>)).length;
+                          count = snapshot.data!.docs
+                              .where(
+                                (doc) => countPredicate(
+                                  doc.data() as Map<String, dynamic>,
+                                ),
+                              )
+                              .length;
                         } else if (lastViewed == null) {
                           count = snapshot.data!.docs.length;
                         } else {
                           var docs = snapshot.data!.docs;
                           if (statusWhitelist != null) {
-                            docs = docs.where((d) => statusWhitelist.contains(d['status'])).toList();
+                            docs = docs
+                                .where(
+                                  (d) => statusWhitelist.contains(d['status']),
+                                )
+                                .toList();
                           }
                           count = docs.where((doc) {
                             final data = doc.data() as Map<String, dynamic>;
-                            final ts = (data[timestampField] as Timestamp?)?.toDate();
+                            final ts = (data[timestampField] as Timestamp?)
+                                ?.toDate();
                             return ts != null && ts.isAfter(lastViewed);
                           }).length;
                         }
@@ -474,7 +548,9 @@ class _BouncingButtonState extends State<_BouncingButton> {
             Positioned.fill(
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 100),
-                opacity: _isPressed ? 0.2 : 0.0, // transparenta neagra cand e apasat
+                opacity: _isPressed
+                    ? 0.2
+                    : 0.0, // transparenta neagra cand e apasat
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.black,

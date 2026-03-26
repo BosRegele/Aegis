@@ -18,6 +18,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_options.dart';
 
@@ -99,16 +100,58 @@ Future<void> _cleanupAuthState() async {
   await _tokenRefreshSub?.cancel();
   _tokenRefreshSub = null;
   _tokenBoundUid = null;
+  // Clear the persisted 2FA verified flag so the next login (or a different
+  // user on the same machine) must verify again.
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final keysToRemove = prefs
+        .getKeys()
+        .where((k) => k.startsWith('tf_verified_'))
+        .toList();
+    for (final k in keysToRemove) {
+      await prefs.remove(k);
+    }
+  } catch (_) {}
   AppSession.clear();
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  // Cached streams — created once, never recreated on rebuilds.
+  // Recreating streams inside builder functions creates new Firestore
+  // listeners on every rebuild, leading to rapid widget-type swaps and
+  // the "Cannot hit test a render box that has never been laid out" loop.
+  late final Stream<SecurityFlags> _flagsStream;
+  String? _cachedUid;
+  Stream<DocumentSnapshot<Map<String, dynamic>>>? _userDocStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _flagsStream = SecurityFlagsService.watch();
+  }
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> _getUserDocStream(String uid) {
+    if (uid != _cachedUid) {
+      _cachedUid = uid;
+      _userDocStream = FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots();
+    }
+    return _userDocStream!;
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'QR Demo',
+      title: 'Aegis',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF7AAF5B)),
@@ -129,10 +172,7 @@ class MyApp extends StatelessWidget {
           }
 
           return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .snapshots(),
+            stream: _getUserDocStream(user.uid),
             builder: (context, userDocSnap) {
               if (userDocSnap.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
@@ -201,7 +241,7 @@ class MyApp extends StatelessWidget {
               }
 
               return StreamBuilder<SecurityFlags>(
-                stream: SecurityFlagsService.watch(),
+                stream: _flagsStream,
                 builder: (context, settingsSnap) {
                   if (!settingsSnap.hasData) {
                     return const Scaffold(

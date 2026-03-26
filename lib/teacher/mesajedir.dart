@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:firster/common/unified_messages_page.dart';
 import '../session.dart';
 
 class MesajeDirPage extends StatefulWidget {
@@ -19,35 +20,21 @@ String _formatTimeAgo(DateTime dateTime) {
   return '${diff.inDays} zile';
 }
 
-_InboxItemData _fromLeaveRequest(Map<String, dynamic> d) {
-  final status = (d['status'] ?? 'pending').toString();
-  final requestedAt = (d['requestedAt'] as Timestamp?)?.toDate();
-  final dateText = (d['dateText'] ?? '').toString();
-  final timeText = (d['timeText'] ?? '').toString();
+_InboxItemData _fromSecretariatMessage(Map<String, dynamic> d) {
+  final createdAt = (d['createdAt'] as Timestamp?)?.toDate();
+  final classId = (d['classId'] ?? '').toString().trim();
+  final senderName = (d['senderName'] ?? 'Secretariat').toString().trim();
   final message = (d['message'] ?? '').toString();
 
-  String title;
-  _InboxItemType type;
-  switch (status) {
-    case 'approved':
-      title = 'Cerere aprobata';
-      type = _InboxItemType.success;
-      break;
-    case 'rejected':
-      title = 'Cerere respinsa';
-      type = _InboxItemType.error;
-      break;
-    default:
-      title = 'Cerere in asteptare';
-      type = _InboxItemType.info;
-  }
+  final classText = classId.isEmpty ? '' : 'Clasa $classId\n';
+  final senderText = senderName.isEmpty ? '' : 'De la: $senderName\n';
 
   return _InboxItemData(
-    title: title,
-    subtitle: '$dateText $timeText\n$message',
-    time: requestedAt == null ? '-' : _formatTimeAgo(requestedAt),
-    type: type,
-    createdAt: requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+    title: 'Mesaj Secretariat',
+    subtitle: '$classText$senderText$message',
+    time: createdAt == null ? '-' : _formatTimeAgo(createdAt),
+    type: _InboxItemType.info,
+    createdAt: createdAt ?? DateTime.fromMillisecondsSinceEpoch(0),
   );
 }
 
@@ -187,96 +174,6 @@ class _InboxMessageTile extends StatelessWidget {
 class _MesajeDirPageState extends State<MesajeDirPage> {
   @override
   Widget build(BuildContext context) {
-    final teacherUid = AppSession.uid;
-    if (teacherUid == null || teacherUid.isEmpty) {
-      return const Scaffold(body: Center(child: Text("No session")));
-    }
-
-    final teacherDoc = FirebaseFirestore.instance
-        .collection('users')
-        .doc(teacherUid);
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF7AAF5B),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF7AAF5B),
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text('Mesaje', style: TextStyle(color: Colors.white)),
-        elevation: 0,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFE6EBEE),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: FutureBuilder<DocumentSnapshot>(
-          future: teacherDoc.get(),
-          builder: (context, snap) {
-            if (snap.hasError) {
-              return Center(child: Text("Eroare: ${snap.error}"));
-            }
-            if (!snap.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (!snap.data!.exists) {
-              return const Center(child: Text("Teacher not found"));
-            }
-
-            final data = snap.data!.data() as Map<String, dynamic>;
-            final classId = (data["classId"] ?? "").toString().trim();
-            if (classId.isEmpty) {
-              return Center(
-                child: Text(
-                  "Nu ai clasa asignata.\nCere secretariatului sa-ti seteze classId.",
-                ),
-              );
-            }
-
-            final stream = FirebaseFirestore.instance
-                .collection('leaveRequests')
-                .where('classId', isEqualTo: classId)
-                .snapshots();
-
-            return StreamBuilder<QuerySnapshot>(
-              stream: stream,
-              builder: (context, reqSnap) {
-                if (reqSnap.hasError) {
-                  return Center(child: Text('Eroare: ${reqSnap.error}'));
-                }
-                if (!reqSnap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final docs = reqSnap.data!.docs;
-                if (docs.isEmpty) {
-                  return const Center(child: Text('Nu exista mesaje.'));
-                }
-
-                final items =
-                    docs
-                        .map(
-                          (doc) => _fromLeaveRequest(
-                            doc.data() as Map<String, dynamic>,
-                          ),
-                        )
-                        .toList()
-                      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                  itemBuilder: (context, index) {
-                    final message = items[index];
-                    return _InboxMessageTile(data: message, onTap: () {});
-                  },
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemCount: items.length,
-                );
-              },
-            );
-          },
-        ),
-      ),
-    );
+    return const UnifiedMessagesPage(role: UnifiedInboxRole.teacher);
   }
 }

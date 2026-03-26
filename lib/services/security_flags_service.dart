@@ -30,9 +30,14 @@ class SecurityFlagsService {
       .doc('security');
 
   static Stream<SecurityFlags> watch() {
-    return _docRef.snapshots().map(
-      (snapshot) => SecurityFlags.fromMap(snapshot.data()),
-    );
+    return _docRef
+        .snapshots()
+        // Skip "document not found" snapshots that come from an empty local
+        // cache on first load.  Wait for the server to confirm the real state.
+        // Without this, SecurityFlags.fromMap(null) → defaults (both = true)
+        // causes a brief OnboardingPage/TwoFactorPage flash before real data.
+        .where((snap) => snap.exists || !snap.metadata.isFromCache)
+        .map((snapshot) => SecurityFlags.fromMap(snapshot.data()));
   }
 
   static Future<SecurityFlags> getOnce() async {

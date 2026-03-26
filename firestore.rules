@@ -80,6 +80,25 @@ service cloud.firestore {
           request.resource.data.reviewedByName == null;
     }
 
+    function validAdminGlobalMessage() {
+      return isAdmin() &&
+          request.resource.data.keys().hasAll([
+            'message',
+            'targetRole',
+            'status',
+            'requestedAt',
+            'reviewedAt',
+            'reviewedByUid',
+            'reviewedByName',
+            'source',
+          ]) &&
+          request.resource.data.source == 'secretariat' &&
+          request.resource.data.status == 'approved' &&
+          request.resource.data.reviewedByUid == request.auth.uid &&
+          request.resource.data.requestedAt is timestamp &&
+          request.resource.data.reviewedAt is timestamp;
+    }
+
     function validLeaveReviewUpdate() {
       return resource.data.status == 'pending' &&
           request.resource.data.diff(resource.data).changedKeys().hasOnly([
@@ -115,6 +134,50 @@ service cloud.firestore {
           isTeacherForClass(resource.data.classId);
     }
 
+    function validSecretariatMessageCreate() {
+      return isAdmin() &&
+          request.resource.data.keys().hasAll([
+            'recipientRole',
+            'recipientUid',
+            'studentUid',
+            'studentName',
+            'classId',
+            'message',
+            'title',
+            'createdAt',
+            'senderUid',
+            'senderName',
+            'broadcastId',
+            'messageType',
+            'source',
+          ]) &&
+          ['student', 'parent', 'teacher'].hasAny([
+            request.resource.data.recipientRole,
+          ]) &&
+          request.resource.data.recipientUid == '' &&
+          request.resource.data.studentUid == '' &&
+          request.resource.data.source == 'secretariat' &&
+          request.resource.data.messageType == 'secretariatGlobal' &&
+          request.resource.data.senderUid == request.auth.uid &&
+          request.resource.data.createdAt is timestamp;
+    }
+
+    function canReadSecretariatMessage() {
+      return isAdmin() ||
+          (isStudent() &&
+              resource.data.recipientRole == 'student' &&
+          (resource.data.recipientUid == request.auth.uid ||
+            resource.data.recipientUid == '')) ||
+          (isParent() &&
+              resource.data.recipientRole == 'parent' &&
+          (resource.data.studentUid == '' ||
+            isParentOfStudent(resource.data.studentUid))) ||
+          (isTeacher() &&
+              resource.data.recipientRole == 'teacher' &&
+          (resource.data.recipientUid == request.auth.uid ||
+            resource.data.recipientUid == ''));
+    }
+
     function validQrTokenCreate() {
       return isStudent() &&
           request.resource.data.keys().hasAll(['userId', 'expiresAt', 'used']) &&
@@ -145,9 +208,15 @@ service cloud.firestore {
 
     match /leaveRequests/{requestId} {
       allow read: if canReadLeaveRequest();
-      allow create: if validLeaveRequestCreate();
+      allow create: if validLeaveRequestCreate() || validAdminGlobalMessage();
       allow update: if canReviewLeaveRequest();
       allow delete: if isAdmin();
+    }
+
+    match /secretariatMessages/{messageId} {
+      allow read: if canReadSecretariatMessage();
+      allow create: if validSecretariatMessageCreate();
+      allow update, delete: if isAdmin();
     }
 
     match /accessEvents/{eventId} {

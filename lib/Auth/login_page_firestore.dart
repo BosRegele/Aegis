@@ -598,19 +598,23 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
     return Scaffold(
       body: Stack(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color.fromRGBO(122, 175, 91, 1),
-                  Color.fromRGBO(90, 150, 65, 1),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color.fromRGBO(122, 175, 91, 1),
+                    Color.fromRGBO(90, 150, 65, 1),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
             ),
           ),
-          Container(color: Colors.black.withOpacity(0.03)),
+          Positioned.fill(
+            child: Container(color: Colors.black.withOpacity(0.03)),
+          ),
           Center(
             child: Container(
               width: 360,

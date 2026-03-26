@@ -48,7 +48,8 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
   }
 
   Future<void> _handleRequest(String docId, bool approved) async {
-    final parentName = (AppSession.fullName != null && AppSession.fullName!.isNotEmpty)
+    final parentName =
+        (AppSession.fullName != null && AppSession.fullName!.isNotEmpty)
         ? AppSession.fullName!
         : (AppSession.username ?? "Parinte");
     try {
@@ -79,10 +80,9 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
 
   void _showRequestDetails(String docId, Map<String, dynamic> data) {
     // Mark as viewed so the badge decreases
-    FirebaseFirestore.instance
-        .collection('leaveRequests')
-        .doc(docId)
-        .update({'viewedByParent': true});
+    FirebaseFirestore.instance.collection('leaveRequests').doc(docId).update({
+      'viewedByParent': true,
+    });
 
     final studentName = data['studentName'] ?? 'Elev necunoscut';
     final date = data['dateText'] ?? '-';
@@ -117,7 +117,10 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
               // Header
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 24,
+                  horizontal: 20,
+                ),
                 decoration: const BoxDecoration(
                   color: Color(0xFF7AAF5B),
                   borderRadius: BorderRadius.only(
@@ -133,7 +136,11 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
                         color: Colors.white.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.assignment_ind_rounded, size: 40, color: Colors.white),
+                      child: const Icon(
+                        Icons.assignment_ind_rounded,
+                        size: 40,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -148,22 +155,37 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
                   ],
                 ),
               ),
-              
+
               // Content
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
-                    _buildDetailRow(Icons.send_rounded, 'Trimisă la:', requestedAtText),
+                    _buildDetailRow(
+                      Icons.send_rounded,
+                      'Trimisă la:',
+                      requestedAtText,
+                    ),
                     const SizedBox(height: 16),
-                    _buildDetailRow(Icons.calendar_today_rounded, 'Data:', date),
+                    _buildDetailRow(
+                      Icons.calendar_today_rounded,
+                      'Data:',
+                      date,
+                    ),
                     const SizedBox(height: 16),
                     _buildDetailRow(Icons.access_time_rounded, 'Ora:', time),
                     const SizedBox(height: 16),
                     const Divider(height: 24),
                     const Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('Motiv:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey)),
+                      child: Text(
+                        'Motiv:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Container(
@@ -176,7 +198,11 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
                       ),
                       child: Text(
                         message,
-                        style: const TextStyle(fontSize: 16, color: Color(0xFF2D3142), height: 1.4),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF2D3142),
+                          height: 1.4,
+                        ),
                       ),
                     ),
                   ],
@@ -199,7 +225,11 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
                     alignment: Alignment.center,
                     child: const Text(
                       'Închide',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF7AAF5B)),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF7AAF5B),
+                      ),
                     ),
                   ),
                 ),
@@ -226,8 +256,22 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500)),
-            Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2D3142))),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2D3142),
+              ),
+            ),
           ],
         ),
       ],
@@ -288,24 +332,57 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
                           stream: _childrenUids.isEmpty
                               ? null
                               : FirebaseFirestore.instance
-                                  .collection('leaveRequests')
-                                  .where('studentUid', whereIn: _childrenUids)
-                                  .where('targetRole', isEqualTo: 'parent')
-                                  .where('status', isEqualTo: 'pending')
-                                  .orderBy('requestedAt', descending: true)
-                                  .snapshots(),
+                                    .collection('leaveRequests')
+                                    .where('studentUid', whereIn: _childrenUids)
+                                    .snapshots(),
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return const Center(child: CircularProgressIndicator());
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
                             }
                             if (snapshot.hasError) {
-                              return Center(child: Text('Eroare reală: ${snapshot.error}'));
+                              return Center(
+                                child: Text('Eroare reală: ${snapshot.error}'),
+                              );
                             }
                             if (!snapshot.hasData) {
                               return const SizedBox();
                             }
 
-                            final docs = snapshot.data!.docs;
+                            final docs =
+                                snapshot.data!.docs.where((doc) {
+                                  final data =
+                                      doc.data() as Map<String, dynamic>;
+                                  final targetRole = (data['targetRole'] ?? '')
+                                      .toString();
+                                  final status = (data['status'] ?? '')
+                                      .toString();
+                                  final source = (data['source'] ?? '')
+                                      .toString();
+                                  return targetRole == 'parent' &&
+                                      status == 'pending' &&
+                                      source != 'secretariat';
+                                }).toList()..sort((a, b) {
+                                  final aTs =
+                                      (a.data()
+                                              as Map<
+                                                String,
+                                                dynamic
+                                              >)['requestedAt']
+                                          as Timestamp?;
+                                  final bTs =
+                                      (b.data()
+                                              as Map<
+                                                String,
+                                                dynamic
+                                              >)['requestedAt']
+                                          as Timestamp?;
+                                  final aMs = aTs?.millisecondsSinceEpoch ?? 0;
+                                  final bMs = bTs?.millisecondsSinceEpoch ?? 0;
+                                  return bMs.compareTo(aMs);
+                                });
                             if (docs.isEmpty) {
                               return const Center(
                                 child: Text(
@@ -341,7 +418,8 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
                                   children: [
                                     // Cardul principal cu informații (click pentru detalii)
                                     _BouncingButton(
-                                      onTap: () => _showRequestDetails(doc.id, data),
+                                      onTap: () =>
+                                          _showRequestDetails(doc.id, data),
                                       borderRadius: BorderRadius.circular(24),
                                       child: Container(
                                         padding: const EdgeInsets.all(20),

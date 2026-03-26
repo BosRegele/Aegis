@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firster/StudentInterface/cereri.dart';
+import 'package:firster/common/unified_messages_page.dart';
 import 'package:firster/StudentInterface/meniu.dart';
 import 'package:firster/session.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +23,12 @@ class InboxScreen extends StatefulWidget {
 
 class _InboxScreenState extends State<InboxScreen> {
   Stream<QuerySnapshot<Map<String, dynamic>>>? _leaveStream;
+  Stream<QuerySnapshot<Map<String, dynamic>>>? _secretariatStream;
+
+  bool _isVisibleToStudent(Map<String, dynamic> data) {
+    final targetRole = (data['targetRole'] ?? '').toString().trim();
+    return targetRole.isEmpty || targetRole == 'student';
+  }
 
   @override
   void initState() {
@@ -32,6 +39,13 @@ class _InboxScreenState extends State<InboxScreen> {
           .collection('leaveRequests')
           .where('studentUid', isEqualTo: uid)
           .orderBy('requestedAt', descending: true)
+          .limit(50)
+          .snapshots();
+
+      _secretariatStream = FirebaseFirestore.instance
+          .collection('secretariatMessages')
+          .where('recipientUid', isEqualTo: uid)
+          .where('recipientRole', isEqualTo: 'student')
           .limit(50)
           .snapshots();
     }
@@ -60,9 +74,9 @@ class _InboxScreenState extends State<InboxScreen> {
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CereriScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const CereriScreen()));
   }
 
   Future<void> _logout() async {
@@ -74,9 +88,9 @@ class _InboxScreenState extends State<InboxScreen> {
       widget.onNavigateTab!(1);
       return;
     }
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MeniuScreen()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const MeniuScreen()));
   }
 
   String _formatRequestDate(DateTime? date) {
@@ -106,7 +120,8 @@ class _InboxScreenState extends State<InboxScreen> {
     }
 
     final now = DateTime.now();
-    final isToday = now.year == requestedAt.year &&
+    final isToday =
+        now.year == requestedAt.year &&
         now.month == requestedAt.month &&
         now.day == requestedAt.day;
     if (isToday) {
@@ -116,7 +131,8 @@ class _InboxScreenState extends State<InboxScreen> {
     }
 
     final yesterday = now.subtract(const Duration(days: 1));
-    final isYesterday = yesterday.year == requestedAt.year &&
+    final isYesterday =
+        yesterday.year == requestedAt.year &&
         yesterday.month == requestedAt.month &&
         yesterday.day == requestedAt.day;
     if (isYesterday) {
@@ -146,6 +162,7 @@ class _InboxScreenState extends State<InboxScreen> {
           statusLabel: 'Aprobată',
           statusBackground: const Color(0xFFE4F0E1),
           statusForeground: _primary,
+          sortAt: requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
         );
       case 'rejected':
         return _InboxCardData(
@@ -159,14 +176,13 @@ class _InboxScreenState extends State<InboxScreen> {
           statusLabel: 'Respinsă',
           statusBackground: const Color(0xFFF4E6EC),
           statusForeground: const Color(0xFF9D345F),
+          sortAt: requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
         );
       case 'expired':
         return _InboxCardData(
           title: 'Cerere Învoire - ${_formatRequestDate(requestedForDate)}',
           topLabel: _formatTopLabel(requestedAt),
-          message: message.isEmpty
-              ? 'Cererea a expirat automat.'
-              : message,
+          message: message.isEmpty ? 'Cererea a expirat automat.' : message,
           leadingIcon: Icons.history_toggle_off_rounded,
           leadingBackground: const Color(0xFFF2EEDC),
           leadingForeground: const Color(0xFF8A6A1D),
@@ -174,6 +190,7 @@ class _InboxScreenState extends State<InboxScreen> {
           statusLabel: 'Expirată',
           statusBackground: const Color(0xFFF6F0D9),
           statusForeground: const Color(0xFF8A6A1D),
+          sortAt: requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
         );
       default:
         return _InboxCardData(
@@ -189,26 +206,39 @@ class _InboxScreenState extends State<InboxScreen> {
           statusLabel: 'În analiză',
           statusBackground: const Color(0xFFE8ECD9),
           statusForeground: const Color(0xFF404A3A),
+          sortAt: requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
         );
     }
   }
 
+  _InboxCardData _toSecretariatCardData(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data() ?? const <String, dynamic>{};
+    final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+    final message = (data['message'] ?? '').toString().trim();
+    final senderName = (data['senderName'] ?? 'Secretariat').toString().trim();
+
+    return _InboxCardData(
+      title: 'Mesaj Secretariat',
+      topLabel: _formatTopLabel(createdAt),
+      message: message.isEmpty ? 'Ai primit un mesaj nou.' : message,
+      leadingIcon: Icons.campaign_rounded,
+      leadingBackground: const Color(0xFFDCEBFF),
+      leadingForeground: const Color(0xFF1E5EC8),
+      statusIcon: Icons.mark_chat_read_rounded,
+      statusLabel: senderName.isEmpty ? 'Secretariat' : senderName,
+      statusBackground: const Color(0xFFEAF2FF),
+      statusForeground: const Color(0xFF1E5EC8),
+      sortAt: createdAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _surface,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _InboxHeader(
-              onBack: () => _goBack(context),
-              onProfile: () => _openProfile(context),
-              onLogout: _logout,
-            ),
-            Expanded(child: _buildInboxBody()),
-          ],
-        ),
-      ),
+    return UnifiedMessagesPage(
+      role: UnifiedInboxRole.student,
+      onBack: () => _goBack(context),
     );
   }
 
@@ -230,36 +260,59 @@ class _InboxScreenState extends State<InboxScreen> {
           );
         }
 
-        final items = snapshot.data!.docs.map(_toInboxCardData).toList();
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: _secretariatStream,
+          builder: (context, secretariatSnap) {
+            if (secretariatSnap.hasError) {
+              return Center(child: Text('Eroare: ${secretariatSnap.error}'));
+            }
 
-        return ListView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
-          children: [
-            if (items.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: _card,
-                  borderRadius: BorderRadius.circular(28),
-                ),
-                child: const Text(
-                  'Nu există cereri în inbox momentan.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _textMuted,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+            final leaveItems = snapshot.data!.docs
+                .where((doc) {
+                  final data = doc.data();
+                  final source = (data['source'] ?? '').toString().trim();
+                  return _isVisibleToStudent(data) && source != 'secretariat';
+                })
+                .map(_toInboxCardData)
+                .toList();
+
+            final secretariatItems = (secretariatSnap.data?.docs ?? const [])
+                .map(_toSecretariatCardData)
+                .toList();
+
+            final items = <_InboxCardData>[...leaveItems, ...secretariatItems]
+              ..sort((a, b) => b.sortAt.compareTo(a.sortAt));
+
+            return ListView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+              children: [
+                if (items.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: _card,
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: const Text(
+                      'Nu există mesaje în inbox momentan.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _textMuted,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            for (final item in items) ...[
-              _InboxRequestTile(data: item),
-              const SizedBox(height: 18),
-            ],
-            const SizedBox(height: 14),
-            _CreateRequestButton(onTap: () => _openCereri(context)),
-          ],
+                for (final item in items) ...[
+                  _InboxRequestTile(data: item),
+                  const SizedBox(height: 18),
+                ],
+                const SizedBox(height: 14),
+                _CreateRequestButton(onTap: () => _openCereri(context)),
+              ],
+            );
+          },
         );
       },
     );
@@ -328,10 +381,7 @@ class _InboxHeader extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  _HeaderMenuButton(
-                    onLogout: onLogout,
-                    onProfil: onProfile,
-                  ),
+                  _HeaderMenuButton(onLogout: onLogout, onProfil: onProfile),
                 ],
               ),
             ),
@@ -629,10 +679,7 @@ class _HeaderMenuButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0x337DE38D),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: const Color(0x6DC7F4CE),
-            width: 1.3,
-          ),
+          border: Border.all(color: const Color(0x6DC7F4CE), width: 1.3),
         ),
         child: const Icon(Icons.person, color: Colors.white, size: 24),
       ),
@@ -670,6 +717,7 @@ class _InboxCardData {
   final String statusLabel;
   final Color statusBackground;
   final Color statusForeground;
+  final DateTime sortAt;
 
   const _InboxCardData({
     required this.title,
@@ -682,5 +730,6 @@ class _InboxCardData {
     required this.statusLabel,
     required this.statusBackground,
     required this.statusForeground,
+    required this.sortAt,
   });
 }
