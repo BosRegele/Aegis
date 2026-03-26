@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firster/StudentInterface/cereri.dart';
+import 'package:firster/StudentInterface/logout_dialog.dart';
 import 'package:firster/StudentInterface/meniu.dart';
 import 'package:firster/session.dart';
 import 'package:flutter/material.dart';
@@ -66,6 +67,16 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 
   Future<void> _logout() async {
+    final shouldLogout = await showStudentLogoutDialog(
+      context,
+      accentColor: _primary,
+      surfaceColor: _card,
+      softSurfaceColor: const Color(0xFFE8ECE3),
+      titleColor: _textDark,
+      messageColor: _textMuted,
+      dangerColor: const Color(0xFF8E3557),
+    );
+    if (!shouldLogout) return;
     await FirebaseAuth.instance.signOut();
   }
 
@@ -285,49 +296,44 @@ class _InboxHeader extends StatelessWidget {
         bottomRight: Radius.circular(52),
       ),
       child: Container(
-        height: 170,
+        height: 150,
         width: double.infinity,
         color: _primary,
         child: Stack(
           children: [
             Positioned(
-              right: -78,
-              top: -90,
-              child: _HeaderCircle(size: 300, opacity: 0.08),
+              top: -50,
+              right: 170,
+              child: _HeaderCircle(size: 150, opacity: 0.12),
             ),
             Positioned(
-              right: 44,
-              top: 58,
-              child: _HeaderCircle(size: 86, opacity: 0.07),
-            ),
-            Positioned(
-              left: 192,
-              bottom: -34,
-              child: _HeaderCircle(size: 92, opacity: 0.08),
+              top: 95,
+              right: 205,
+              child: _HeaderCircle(size: 96, opacity: 0.12),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
+              padding: const EdgeInsets.fromLTRB(14, 20, 14, 0),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _HeaderIconButton(
                     icon: Icons.arrow_back_ios_new_rounded,
                     onTap: onBack,
                   ),
-                  const SizedBox(width: 18),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
+                  const SizedBox(width: 12),
+                  const Expanded(
                     child: Text(
                       'Mesaje',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 40,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.8,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.6,
                       ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 12),
                   _HeaderMenuButton(
                     onLogout: onLogout,
                     onProfil: onProfile,
@@ -624,17 +630,17 @@ class _HeaderMenuButton extends StatelessWidget {
         ),
       ],
       child: Container(
-        width: 54,
-        height: 54,
+        width: 50,
+        height: 50,
         decoration: BoxDecoration(
           color: const Color(0x337DE38D),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: const Color(0x6DC7F4CE),
-            width: 1.3,
+            width: 1,
           ),
         ),
-        child: const Icon(Icons.person, color: Colors.white, size: 24),
+        child: const Icon(Icons.person, color: Colors.white, size: 21),
       ),
     );
   }

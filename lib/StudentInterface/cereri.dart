@@ -1,4 +1,5 @@
 import 'package:firster/StudentInterface/meniu.dart';
+import 'package:firster/StudentInterface/logout_dialog.dart';
 import 'package:firster/StudentInterface/orar.dart';
 import 'package:firster/session.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -45,6 +46,16 @@ class _CereriScreenState extends State<CereriScreen> {
   }
 
   Future<void> _logout() async {
+    final shouldLogout = await showStudentLogoutDialog(
+      context,
+      accentColor: _primary,
+      surfaceColor: _card,
+      softSurfaceColor: _cardMuted,
+      titleColor: _textDark,
+      messageColor: _textMuted,
+      dangerColor: const Color(0xFF8E3557),
+    );
+    if (!shouldLogout) return;
     await FirebaseAuth.instance.signOut();
     AppSession.clear();
   }
@@ -1021,17 +1032,17 @@ class _HeaderMenuButton extends StatelessWidget {
         ),
       ],
       child: Container(
-        width: 54,
-        height: 54,
+        width: 50,
+        height: 50,
         decoration: BoxDecoration(
           color: const Color(0x337DE38D),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: const Color(0x6DC7F4CE),
-            width: 1.3,
+            width: 1,
           ),
         ),
-        child: const Icon(Icons.person, color: Colors.white, size: 24),
+        child: const Icon(Icons.person, color: Colors.white, size: 21),
       ),
     );
   }
