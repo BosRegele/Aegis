@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../session.dart';
+import 'admin_notifications.dart';
 import 'admin_store.dart';
 
 class AdminAdminsPage extends StatefulWidget {
@@ -27,7 +28,7 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
 
     if (!AppSession.isAdmin) {
       return const Scaffold(
-        body: Center(child: Text("Access denied (admin only)")),
+        body: Center(child: Text("Acces interzis (doar admin).")),
       );
     }
 
@@ -87,6 +88,12 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
             );
           },
         ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: AdminNotificationBell(),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -261,7 +268,7 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                     ),
                   ),
 
-                  // --- ACTIONS ---
+                  // --- ACTIUNI ---
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                     child: Column(

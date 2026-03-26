@@ -90,7 +90,7 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting schedule: $e')),
+            SnackBar(content: Text('Eroare la ștergerea programului: $e')),
           );
         }
       }
@@ -101,7 +101,7 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
   Widget build(BuildContext context) {
     if (!AppSession.isAdmin) {
       return const Scaffold(
-        body: Center(child: Text("Access denied (admin only)")),
+        body: Center(child: Text("Acces interzis (doar admin).")),
       );
     }
 
