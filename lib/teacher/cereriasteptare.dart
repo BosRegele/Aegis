@@ -766,32 +766,3 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
     );
   }
 }
-
-class _ActionBtn extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ActionBtn({
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          shape: BoxShape.circle,
-          border: Border.all(color: color.withOpacity(0.4), width: 1.2),
-        ),
-        child: Icon(icon, color: color, size: 20),
-      ),
-    );
-  }
-}

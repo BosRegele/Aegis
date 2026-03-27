@@ -256,9 +256,6 @@ class _ParentHomePageState extends State<ParentHomePage> {
                           final userData =
                               userSnap.data?.data() as Map<String, dynamic>? ??
                               {};
-                          final requestsLastOpened =
-                              (userData['requestsLastOpenedAt'] as Timestamp?)
-                                  ?.toDate();
                           final inboxLastOpened =
                               (userData['inboxLastOpenedAt'] as Timestamp?)
                                   ?.toDate();

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firster/StudentInterface/logout_dialog.dart';
 import 'package:firster/session.dart';
 import 'package:flutter/material.dart';
 
@@ -23,6 +24,7 @@ class OrarScreen extends StatefulWidget {
 
 class _OrarScreenState extends State<OrarScreen> {
   Stream<DocumentSnapshot<Map<String, dynamic>>>? _userDocStream;
+  Stream<QuerySnapshot<Map<String, dynamic>>>? _lastScanStream;
 
   @override
   void initState() {
@@ -35,9 +37,25 @@ class _OrarScreenState extends State<OrarScreen> {
         .collection('users')
         .doc(uid)
         .snapshots();
+    _lastScanStream = FirebaseFirestore.instance
+      .collection('accessEvents')
+      .where('userId', isEqualTo: uid)
+      .orderBy('timestamp', descending: true)
+      .limit(1)
+      .snapshots();
   }
 
   Future<void> _logout() async {
+    final shouldLogout = await showStudentLogoutDialog(
+      context,
+      accentColor: _primary,
+      surfaceColor: _surface,
+      softSurfaceColor: _surfaceContainerHigh,
+      titleColor: _onSurface,
+      messageColor: _outline,
+      dangerColor: const Color(0xFF8E3557),
+    );
+    if (!shouldLogout) return;
     await FirebaseAuth.instance.signOut();
     AppSession.clear();
   }
@@ -48,6 +66,27 @@ class _OrarScreenState extends State<OrarScreen> {
       return;
     }
     Navigator.of(context).maybePop();
+  }
+
+  String _formatLastScan(dynamic rawValue) {
+    DateTime? lastScanTime;
+
+    if (rawValue is Timestamp) {
+      lastScanTime = rawValue.toDate();
+    } else if (rawValue is String) {
+      lastScanTime = DateTime.tryParse(rawValue);
+    }
+
+    if (lastScanTime == null) {
+      return '--';
+    }
+
+    final day = lastScanTime.day.toString().padLeft(2, '0');
+    final month = lastScanTime.month.toString().padLeft(2, '0');
+    final year = lastScanTime.year;
+    final hour = lastScanTime.hour.toString().padLeft(2, '0');
+    final minute = lastScanTime.minute.toString().padLeft(2, '0');
+    return '$day.$month.$year $hour:$minute';
   }
 
   @override
@@ -66,33 +105,11 @@ class _OrarScreenState extends State<OrarScreen> {
             final fullName = (userData['fullName'] ?? '').toString().trim();
             final classId = (userData['classId'] ?? '').toString().trim();
             final className = (userData['className'] ?? '').toString().trim();
-            final lastScanRaw = userData['lastScan'] != null
-                ? userData['lastScan'] as dynamic
-                : null;
             final displayName = fullName.isNotEmpty ? fullName : fallbackName;
 
             final resolvedClassName = className.isNotEmpty
                 ? className
                 : (classId.isNotEmpty ? classId : 'Clasa necunoscută');
-
-            String lastScanDisplay = '--';
-            if (lastScanRaw != null) {
-              try {
-                final lastScanTime = lastScanRaw is Timestamp
-                    ? lastScanRaw.toDate()
-                    : (lastScanRaw is String
-                        ? DateTime.parse(lastScanRaw)
-                        : null);
-                if (lastScanTime != null) {
-                  final day = lastScanTime.day.toString().padLeft(2, '0');
-                  final month = lastScanTime.month.toString().padLeft(2, '0');
-                  final year = lastScanTime.year;
-                  final hour = lastScanTime.hour.toString().padLeft(2, '0');
-                  final minute = lastScanTime.minute.toString().padLeft(2, '0');
-                  lastScanDisplay = '$day.$month.$year $hour:$minute';
-                }
-              } catch (_) {}
-            }
 
             final classStream = classId.isNotEmpty
                 ? FirebaseFirestore.instance
@@ -122,60 +139,66 @@ class _OrarScreenState extends State<OrarScreen> {
                         onBack: _goBack,
                         onLogout: _logout,
                       ),
-                      Transform.translate(
-                        offset: const Offset(0, -48),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Container(
-                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                            decoration: BoxDecoration(
-                              color: _surfaceLowest,
-                              borderRadius: BorderRadius.circular(34),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x140B7A20),
-                                  blurRadius: 34,
-                                  offset: Offset(0, 16),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Name aligned left
-                                Text(
-                                  displayName,
-                                  style: const TextStyle(
-                                    color: _onSurface,
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.05,
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                          decoration: BoxDecoration(
+                            color: _surfaceLowest,
+                            borderRadius: BorderRadius.circular(34),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x140B7A20),
+                                blurRadius: 34,
+                                offset: Offset(0, 16),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          displayName,
+                                          style: const TextStyle(
+                                            color: _onSurface,
+                                            fontSize: 31,
+                                            fontWeight: FontWeight.w800,
+                                            height: 1.05,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Clasa $resolvedClassName',
+                                          style: const TextStyle(
+                                            color: _outline,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 6),
-                                // Class info
-                                Text(
-                                  'Clasa $resolvedClassName',
-                                  style: const TextStyle(
-                                    color: _outline,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                // DIRIGINTE section
-                                _PersonInfoBox(
-                                  label: 'DIRIGINTE',
-                                  icon: Icons.school,
-                                  teacherUid: teacherUid,
-                                  teacherUsername: teacherUsername,
-                                ),
-                                const SizedBox(height: 12),
-                                // PÂRINTE section
-                                _ParentInfoBox(),
-                                const SizedBox(height: 20),
-                              ],
-                            ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              _PersonInfoBox(
+                                label: 'DIRIGINTE',
+                                icon: Icons.school,
+                                teacherUid: teacherUid,
+                                teacherUsername: teacherUsername,
+                              ),
+                              const SizedBox(height: 12),
+                              _ParentInfoBox(),
+                              const SizedBox(height: 20),
+                            ],
                           ),
                         ),
                       ),
@@ -184,43 +207,59 @@ class _OrarScreenState extends State<OrarScreen> {
                           horizontal: 38,
                           vertical: 20,
                         ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _surfaceContainerLow,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.qr_code_2_rounded,
-                                color: _primary,
-                                size: 22,
+                        child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                          stream: _lastScanStream,
+                          builder: (context, lastScanSnapshot) {
+                            final lastScanData =
+                                lastScanSnapshot.data?.docs.isNotEmpty == true
+                                ? lastScanSnapshot.data!.docs.first.data()
+                                : null;
+                            final lastScanDisplay = _formatLastScan(
+                              lastScanData?['timestamp'],
+                            );
+
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 16,
                               ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'Ultima Scanare',
-                                style: TextStyle(
-                                  color: _outline,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                              decoration: BoxDecoration(
+                                color: _surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(18),
                               ),
-                              const SizedBox(width: 10),
-                              Text(
-                                lastScanDisplay,
-                                style: const TextStyle(
-                                  color: _onSurface,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.qr_code_2_rounded,
+                                    color: _primary,
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'Ultima Scanare',
+                                    style: TextStyle(
+                                      color: _outline,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Flexible(
+                                    child: Text(
+                                      lastScanDisplay,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: _onSurface,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
                       ),
                       Padding(
@@ -308,51 +347,46 @@ class _OrarHeroHeader extends StatelessWidget {
         bottomRight: Radius.circular(52),
       ),
       child: Container(
-        height: 180,
+        height: 150,
         color: _primary,
         child: Stack(
           children: [
             Positioned(
-              right: -80,
-              top: -90,
-              child: _Circle(size: 300, opacity: 0.08),
+              top: -50,
+              right: 170,
+              child: _Circle(size: 150, opacity: 0.12),
             ),
             Positioned(
-              right: 40,
-              top: 58,
-              child: _Circle(size: 84, opacity: 0.07),
-            ),
-            Positioned(
-              left: -62,
-              bottom: -48,
-              child: _Circle(size: 188, opacity: 0.08),
+              top: 95,
+              right: 205,
+              child: _Circle(size: 96, opacity: 0.12),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-              child: Column(
+              padding: const EdgeInsets.fromLTRB(14, 20, 14, 0),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      _HeaderIconButton(
-                        icon: Icons.arrow_back_ios_new_rounded,
-                        onTap: onBack,
+                  _HeaderIconButton(
+                    icon: Icons.arrow_back_ios_new_rounded,
+                    onTap: onBack,
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Profil',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.6,
                       ),
-                      const SizedBox(width: 16),
-                      const Text(
-                        'Profil',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.6,
-                        ),
-                      ),
-                      const Spacer(),
-                      _HeaderMenuButton(
-                        onLogout: onLogout,
-                        onProfil: () {},
-                      ),
-                    ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _HeaderMenuButton(
+                    onLogout: onLogout,
+                    onProfil: () {},
                   ),
                 ],
               ),
@@ -446,17 +480,17 @@ class _HeaderMenuButton extends StatelessWidget {
         ),
       ],
       child: Container(
-        width: 62,
-        height: 62,
+        width: 50,
+        height: 50,
         decoration: BoxDecoration(
           color: const Color(0x337DE38D),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: const Color(0x6DC7F4CE),
-            width: 1.4,
+            width: 1,
           ),
         ),
-        child: const Icon(Icons.person, color: Colors.white, size: 28),
+        child: const Icon(Icons.person, color: Colors.white, size: 21),
       ),
     );
   }
@@ -597,8 +631,9 @@ class _PersonInfoBox extends StatelessWidget {
                     label,
                     style: const TextStyle(
                       color: _outline,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -606,7 +641,7 @@ class _PersonInfoBox extends StatelessWidget {
                     'Nedefinit',
                     style: TextStyle(
                       color: _onSurface,
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -687,8 +722,9 @@ class _PersonInfoBox extends StatelessWidget {
                   label,
                   style: const TextStyle(
                     color: _outline,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -696,7 +732,7 @@ class _PersonInfoBox extends StatelessWidget {
                   displayName,
                   style: const TextStyle(
                     color: _onSurface,
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
                   maxLines: 1,
@@ -745,8 +781,9 @@ class _ParentInfoBox extends StatelessWidget {
                     'PÂRINTE / TUTORE',
                     style: TextStyle(
                       color: _outline,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -754,7 +791,7 @@ class _ParentInfoBox extends StatelessWidget {
                     'Nedefinit',
                     style: TextStyle(
                       color: _onSurface,
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -806,8 +843,9 @@ class _ParentInfoBox extends StatelessWidget {
                         'PÂRINTE / TUTORE',
                         style: TextStyle(
                           color: _outline,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -815,7 +853,7 @@ class _ParentInfoBox extends StatelessWidget {
                         'Nedefinit',
                         style: TextStyle(
                           color: _onSurface,
-                          fontSize: 14,
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -868,8 +906,9 @@ class _ParentInfoBox extends StatelessWidget {
                           'PÂRINTE / TUTORE',
                           style: TextStyle(
                             color: _outline,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -877,7 +916,7 @@ class _ParentInfoBox extends StatelessWidget {
                           displayName,
                           style: const TextStyle(
                             color: _onSurface,
-                            fontSize: 14,
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
                           maxLines: 1,

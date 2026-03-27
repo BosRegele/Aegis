@@ -16,7 +16,6 @@ class UnifiedMessagesPage extends StatefulWidget {
 }
 
 class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
-  List<String> _childrenUids = [];
   bool _loadingChildren = false;
 
   @override
@@ -33,7 +32,6 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
     if (uid.isEmpty) {
       if (mounted) {
         setState(() {
-          _childrenUids = [];
           _loadingChildren = false;
         });
       }
@@ -41,21 +39,15 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
     }
 
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
-      final children = doc.data()?['children'];
+      await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (mounted) {
         setState(() {
-          _childrenUids = children is List ? List<String>.from(children) : [];
           _loadingChildren = false;
         });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _childrenUids = [];
           _loadingChildren = false;
         });
       }

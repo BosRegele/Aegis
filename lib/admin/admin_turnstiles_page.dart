@@ -181,7 +181,6 @@ class _AdminTurnstilesPageState extends State<AdminTurnstilesPage> {
     // Definirea culorilor locale pentru a fi sigur de consistență
     const Color primaryGreen = Color(0xFF7AAF5B);
     const Color darkGreen = Color(0xFF5A9641);
-    const Color borderColor = Color(0xFFCDE8B0);
 
     showDialog(
       context: context,

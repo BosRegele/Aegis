@@ -5,12 +5,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firster/StudentInterface/cereri.dart';
 import 'package:firster/StudentInterface/inbox.dart';
+import 'package:firster/StudentInterface/logout_dialog.dart';
 import 'package:firster/session.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 const _primary = Color(0xFF0B7A20);
-const _primaryContainer = Color(0xFF258C35);
 const _surface = Color(0xFFF7F9F0);
 const _surfaceContainerLow = Color(0xFFF0F4E9);
 const _surfaceContainerHigh = Color(0xFFE7EDE1);
@@ -128,6 +128,16 @@ class _MeniuScreenState extends State<MeniuScreen> {
   }
 
   Future<void> _logout() async {
+    final shouldLogout = await showStudentLogoutDialog(
+      context,
+      accentColor: _primary,
+      surfaceColor: _surface,
+      softSurfaceColor: _surfaceContainerHigh,
+      titleColor: _onSurface,
+      messageColor: _outline,
+      dangerColor: _tertiary,
+    );
+    if (!shouldLogout) return;
     await FirebaseAuth.instance.signOut();
   }
 
@@ -281,7 +291,7 @@ class _TopHeroHeader extends StatelessWidget {
               child: _Circle(size: 186, opacity: 0.08),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 40, 24, 0),
+              padding: const EdgeInsets.fromLTRB(14, 20, 14, 0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -359,7 +369,7 @@ class _ProfileMenuButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
       tooltip: '',
-      offset: const Offset(0, 68),
+      offset: const Offset(0, 64),
       elevation: 12,
       color: const Color(0xFFD8EED9),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -427,17 +437,17 @@ class _ProfileMenuButton extends StatelessWidget {
         ),
       ],
       child: Container(
-        width: 62,
-        height: 62,
+        width: 50,
+        height: 50,
         decoration: BoxDecoration(
           color: const Color(0x337DE38D),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: const Color(0x6DC7F4CE),
-            width: 1.4,
+            width: 1,
           ),
         ),
-        child: const Icon(Icons.person, color: Colors.white, size: 28),
+        child: const Icon(Icons.person, color: Colors.white, size: 21),
       ),
     );
   }
@@ -1049,9 +1059,36 @@ class _ProfilPlaceholderScreen extends StatelessWidget {
         actions: [
           PopupMenuButton<String>(
             tooltip: 'Profil / Logout',
-            icon: const Icon(Icons.person_outline_rounded),
+            offset: const Offset(0, 64),
+            icon: Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: const Color(0x337DE38D),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0x6DC7F4CE),
+                  width: 1,
+                ),
+              ),
+              child: const Icon(
+                Icons.person,
+                color: Colors.white,
+                size: 21,
+              ),
+            ),
             onSelected: (value) async {
               if (value == 'logout') {
+                final shouldLogout = await showStudentLogoutDialog(
+                  context,
+                  accentColor: _primary,
+                  surfaceColor: _surface,
+                  softSurfaceColor: _surfaceContainerHigh,
+                  titleColor: _onSurface,
+                  messageColor: _outline,
+                  dangerColor: _tertiary,
+                );
+                if (!shouldLogout) return;
                 await FirebaseAuth.instance.signOut();
                 return;
               }
