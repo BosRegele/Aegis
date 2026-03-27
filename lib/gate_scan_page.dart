@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firster/session.dart';
 
 class GateScanPage extends StatefulWidget {
@@ -15,6 +16,10 @@ class _GateScanPageState extends State<GateScanPage> {
   String _status = "Scanează un QR...";
   bool _isAllowed = false;
   bool _lock = false;
+
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+  }
 
   Future<Map<String, dynamic>> _redeemToken(String tokenId) async {
     final callable = FirebaseFunctions.instance.httpsCallable('redeemQrToken');
@@ -30,7 +35,6 @@ class _GateScanPageState extends State<GateScanPage> {
     setState(() {
       _status = "Verificare...";
     });
-
 
     try {
       final res = await _redeemToken(tokenId);
@@ -52,13 +56,17 @@ class _GateScanPageState extends State<GateScanPage> {
           statusMessage = "✅ ALLOW\n$fullName\n$classId\n(userId=$userId)";
         }
       } else if (reason == "ALREADY_IN_SCHOOL") {
-        statusMessage = "❌ DENY (already in school)\nClasele nu s-au terminat încă";
+        statusMessage =
+            "❌ DENY (already in school)\nClasele nu s-au terminat încă";
       } else if (reason == "OUTSIDE_CLASS_DAY") {
-        statusMessage = "❌ DENY (outside class day)\nNu se pot ieși în afara zilei de școală";
+        statusMessage =
+            "❌ DENY (outside class day)\nNu se pot ieși în afara zilei de școală";
       } else if (reason == "NO_SCHEDULE") {
-        statusMessage = "❌ DENY (no schedule)\nOrarul nu este setat pentru clasa acestui elev";
+        statusMessage =
+            "❌ DENY (no schedule)\nOrarul nu este setat pentru clasa acestui elev";
       } else {
-        statusMessage = "❌ DENY ($reason)\n$fullName\n$classId\n(userId=$userId)";
+        statusMessage =
+            "❌ DENY ($reason)\n$fullName\n$classId\n(userId=$userId)";
       }
 
       setState(() {
@@ -87,7 +95,14 @@ class _GateScanPageState extends State<GateScanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Poartă - Scan (Firebase)")),
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Deconecteaza-te',
+          icon: const Icon(Icons.logout),
+          onPressed: _logout,
+        ),
+        title: const Text("Poartă - Scan (Firebase)"),
+      ),
       body: Column(
         children: [
           Expanded(
