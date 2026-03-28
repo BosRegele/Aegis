@@ -9,13 +9,13 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 
 import '../session.dart';
-import 'admin_admins_page.dart';
 import 'admin_api.dart';
 import 'admin_notifications.dart';
 import 'admin_parents_page.dart';
 import 'admin_students_page.dart';
 import 'admin_teachers_page.dart';
 import 'admin_turnstiles_page.dart';
+import 'admin_vacante.dart' as admin_vacante;
 
 class AdminClassesPage extends StatefulWidget {
   const AdminClassesPage({super.key});
@@ -382,10 +382,11 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                     onMenuTap: () => Navigator.of(context).pop(),
                     onStudentsTap: () => _replacePage(const AdminStudentsPage()),
                     onPersonalTap: () => _replacePage(const AdminTeachersPage()),
-                    onAdminiTap: () => _replacePage(const AdminAdminsPage()),
                     onTurnichetiTap: () =>
                         _replacePage(const AdminTurnstilesPage()),
                     onClaseTap: () {},
+                    onVacanteTap: () =>
+                        _replacePage(const admin_vacante.AdminClassesPage()),
                     onParintiTap: () => _replacePage(const AdminParentsPage()),
                     onLogoutTap: _showLogoutDialog,
                   ),
@@ -744,9 +745,9 @@ class _ClassesSidebar extends StatelessWidget {
   final VoidCallback onMenuTap;
   final VoidCallback onStudentsTap;
   final VoidCallback onPersonalTap;
-  final VoidCallback onAdminiTap;
   final VoidCallback onTurnichetiTap;
   final VoidCallback onClaseTap;
+  final VoidCallback onVacanteTap;
   final VoidCallback onParintiTap;
   final VoidCallback onLogoutTap;
 
@@ -754,9 +755,9 @@ class _ClassesSidebar extends StatelessWidget {
     required this.onMenuTap,
     required this.onStudentsTap,
     required this.onPersonalTap,
-    required this.onAdminiTap,
     required this.onTurnichetiTap,
     required this.onClaseTap,
+    required this.onVacanteTap,
     required this.onParintiTap,
     required this.onLogoutTap,
   });
@@ -806,14 +807,9 @@ class _ClassesSidebar extends StatelessWidget {
             onTap: onPersonalTap,
           ),
           _SidebarTile(
-            label: 'Admini',
-            icon: Icons.admin_panel_settings_rounded,
-            onTap: onAdminiTap,
-          ),
-          _SidebarTile(
-            label: 'Turnicheti',
-            icon: Icons.door_front_door_rounded,
-            onTap: onTurnichetiTap,
+            label: 'Parinti',
+            icon: Icons.family_restroom_rounded,
+            onTap: onParintiTap,
           ),
           _SidebarTile(
             label: 'Clase',
@@ -822,9 +818,14 @@ class _ClassesSidebar extends StatelessWidget {
             onTap: onClaseTap,
           ),
           _SidebarTile(
-            label: 'Parinti',
-            icon: Icons.family_restroom_rounded,
-            onTap: onParintiTap,
+            label: 'Vacante',
+            icon: Icons.event_available_rounded,
+            onTap: onVacanteTap,
+          ),
+          _SidebarTile(
+            label: 'Turnicheti',
+            icon: Icons.door_front_door_rounded,
+            onTap: onTurnichetiTap,
           ),
           const Spacer(),
           Padding(
