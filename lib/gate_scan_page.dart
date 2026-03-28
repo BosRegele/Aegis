@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-<<<<<<< HEAD
-=======
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firster/session.dart';
->>>>>>> 27bca0e4608c337456fd15066f71715965184be2
 
 class GateScanPage extends StatefulWidget {
   const GateScanPage({super.key});
