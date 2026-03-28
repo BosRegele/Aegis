@@ -6,6 +6,7 @@ class AppSession {
   static String? role;
   static String? fullName;
   static String? classId;
+  static Map<String, dynamic>? bootstrapUserData;
 
   // Reactive flag — ValueListenableBuilder in main.dart listens to this.
   // Must NOT be reset by calling code except via AppSession.clear().
@@ -29,12 +30,21 @@ class AppSession {
     classId = classIdValue;
   }
 
+  static void setBootstrapUserData({
+    required String uidValue,
+    required Map<String, dynamic> data,
+  }) {
+    uid = uidValue;
+    bootstrapUserData = Map<String, dynamic>.from(data);
+  }
+
   static void clear() {
     uid = null;
     username = null;
     role = null;
     fullName = null;
     classId = null;
+    bootstrapUserData = null;
     twoFactorNotifier.value = false;
   }
 }

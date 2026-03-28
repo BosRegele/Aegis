@@ -187,7 +187,11 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if hasProfile();
+      // Some legacy accounts may still have inconsistent profile documents
+      // during bootstrap/login. Keep reads available to authenticated users so
+      // the app can resolve and migrate those profiles instead of hanging on a
+      // permission-denied error.
+      allow read: if isSignedIn();
       allow create: if isAdmin();
       allow update: if isAdmin() ||
           (isOwnUser(userId) && onlyOwnInboxFieldsChanged());

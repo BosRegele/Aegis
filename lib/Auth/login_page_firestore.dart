@@ -5,6 +5,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../session.dart';
 
 class LoginPageFirestore extends StatefulWidget {
   const LoginPageFirestore({super.key});
@@ -14,6 +15,7 @@ class LoginPageFirestore extends StatefulWidget {
 }
 
 class _LoginPageFirestoreState extends State<LoginPageFirestore> {
+  static const Duration _authTimeout = Duration(seconds: 15);
   final userC = TextEditingController();
   final passC = TextEditingController();
   bool loading = false;
@@ -129,10 +131,21 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
     return int.tryParse(v?.toString() ?? '') ?? fallback;
   }
 
+  Future<T> _withAuthTimeout<T>(Future<T> future, String operationLabel) async {
+    try {
+      return await future.timeout(_authTimeout);
+    } on TimeoutException {
+      throw Exception('$operationLabel timeout');
+    }
+  }
+
   Future<String> _resolveUsernameFromInput(String input) async {
-    final resolveRes = await FirebaseFunctions.instance
-        .httpsCallable('authResolveLoginInput')
-        .call({'input': input});
+    final resolveRes = await _withAuthTimeout(
+      FirebaseFunctions.instance
+          .httpsCallable('authResolveLoginInput')
+          .call({'input': input}),
+      'authResolveLoginInput',
+    );
     final resolveData = Map<String, dynamic>.from(resolveRes.data as Map);
     final username = (resolveData['username'] ?? '').toString().toLowerCase();
     if (username.isEmpty) {
@@ -466,9 +479,12 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
         throw Exception("Autentificare temporar indisponibila");
       }
 
-      final precheck = await FirebaseFunctions.instance
-          .httpsCallable('authPrecheckLogin')
-          .call({'username': username, 'actorKey': _actorKey});
+      final precheck = await _withAuthTimeout(
+        FirebaseFunctions.instance
+            .httpsCallable('authPrecheckLogin')
+            .call({'username': username, 'actorKey': _actorKey}),
+        'authPrecheckLogin',
+      );
       final preData = Map<String, dynamic>.from(precheck.data as Map);
       attemptToken = (preData['attemptToken'] ?? '').toString();
       if (preData['blocked'] == true) {
@@ -478,15 +494,21 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       }
 
       final email = "$username@school.local";
-      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+      final cred = await _withAuthTimeout(
+        FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        ),
+        'signInWithEmailAndPassword',
       );
       final uid = cred.user!.uid;
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get(const GetOptions(source: Source.server));
+      final doc = await _withAuthTimeout(
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get(const GetOptions(source: Source.server)),
+        'users/$uid get',
+      );
 
       if (!doc.exists) {
         await FirebaseAuth.instance.signOut();
@@ -504,11 +526,25 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       // routing is handled by main.dart's StreamBuilder
       assert(role.isNotEmpty || usernameFromDb.isEmpty);
 
+      AppSession.setUser(
+        uidValue: uid,
+        usernameValue: usernameFromDb,
+        roleValue: role,
+        fullNameValue: (data['fullName'] ?? '').toString(),
+        classIdValue: (data['classId'] ?? '').toString(),
+      );
+      AppSession.setBootstrapUserData(uidValue: uid, data: data);
+
       try {
-        await FirebaseFunctions.instance
-            .httpsCallable('authRegisterLoginSuccess')
-            .call({'actorKey': _actorKey});
+        await _withAuthTimeout(
+          FirebaseFunctions.instance
+              .httpsCallable('authRegisterLoginSuccess')
+              .call({'actorKey': _actorKey}),
+          'authRegisterLoginSuccess',
+        );
       } on FirebaseFunctionsException {
+        // Keep login successful even if this post-login hook fails.
+      } on Exception {
         // Keep login successful even if this post-login hook fails.
       } catch (_) {
         // Keep login successful even if this post-login hook fails.
@@ -572,12 +608,21 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
           context,
         ).showSnackBar(SnackBar(content: Text(msg)));
       }
-    } catch (_) {
+    } on TimeoutException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Autentificare esuata. Incearca din nou."),
+            content: Text('Autentificarea a expirat. Verifica internetul si incearca din nou.'),
           ),
+        );
+      }
+    } catch (e) {
+      final msg = e.toString().contains('timeout')
+          ? 'Autentificarea a expirat. Verifica internetul si incearca din nou.'
+          : 'Autentificare esuata. Incearca din nou.';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg)),
         );
       }
     } finally {

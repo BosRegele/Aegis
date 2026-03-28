@@ -174,25 +174,43 @@ class _MyAppState extends State<MyApp> {
           return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             stream: _getUserDocStream(user.uid),
             builder: (context, userDocSnap) {
-              if (userDocSnap.connectionState == ConnectionState.waiting) {
+              final bootstrapData = AppSession.uid == user.uid
+                  ? AppSession.bootstrapUserData
+                  : null;
+              final userDoc = userDocSnap.data;
+              final resolvedData = userDoc?.data() ?? bootstrapData;
+
+              if (userDocSnap.connectionState == ConnectionState.waiting &&
+                  resolvedData == null) {
                 return const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 );
               }
 
-              final userDoc = userDocSnap.data;
-              if (userDoc == null || !userDoc.exists) {
+              if (userDocSnap.hasError && resolvedData == null) {
                 unawaited(_cleanupAuthState());
                 unawaited(FirebaseAuth.instance.signOut());
                 return const LoginPageFirestore();
               }
 
-              final data = userDoc.data() ?? <String, dynamic>{};
+              if (userDoc != null && !userDoc.exists) {
+                unawaited(_cleanupAuthState());
+                unawaited(FirebaseAuth.instance.signOut());
+                return const LoginPageFirestore();
+              }
+
+              if (resolvedData == null) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              final data = resolvedData;
               final status = (data['status'] ?? 'active').toString();
               if (status == 'disabled') {
                 // A cached snapshot may still contain the previous disabled
                 // state right after an admin re-enables the account.
-                if (userDoc.metadata.isFromCache) {
+                if (userDoc != null && userDoc.metadata.isFromCache) {
                   return const Scaffold(
                     body: Center(child: CircularProgressIndicator()),
                   );
@@ -242,14 +260,9 @@ class _MyAppState extends State<MyApp> {
 
               return StreamBuilder<SecurityFlags>(
                 stream: _flagsStream,
+                initialData: SecurityFlags.defaults,
                 builder: (context, settingsSnap) {
-                  if (!settingsSnap.hasData) {
-                    return const Scaffold(
-                      body: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-
-                  final flags = settingsSnap.data!;
+                  final flags = settingsSnap.data ?? SecurityFlags.defaults;
 
                   if (role != 'gate' &&
                       flags.onboardingEnabled &&
