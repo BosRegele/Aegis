@@ -1583,9 +1583,8 @@ exports.redeemQrToken = onCall(async (request) => {
             userId,
             fullName,
             classId,
-            gateUid: callerUid,
+            type: eventType,
             timestamp: nowTs,
-            fullName,
             tokenId,
         };
         return result;

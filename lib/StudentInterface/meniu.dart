@@ -94,6 +94,26 @@ class _MeniuScreenState extends State<MeniuScreen> {
     return nowMinutes >= start && nowMinutes <= end;
   }
 
+  String _formatClassLabel(String rawValue) {
+    final trimmed = rawValue.trim();
+    if (trimmed.isEmpty) {
+      return 'Clasa nealocata';
+    }
+
+    final normalized = trimmed
+        .replaceFirst(RegExp(r'^clasa\s+', caseSensitive: false), '')
+        .trim();
+    final compact = normalized.replaceAll(RegExp(r'\s+'), '');
+    final match = RegExp(r'^(\d{1,2})([A-Za-z])$').firstMatch(compact);
+    if (match == null) {
+      return trimmed;
+    }
+
+    final grade = match.group(1)!;
+    final letter = match.group(2)!.toUpperCase();
+    return 'Clasa a $grade-a $letter';
+  }
+
   void _openCereri(BuildContext context) {
     if (widget.onNavigateTab != null) {
       widget.onNavigateTab!(2);
@@ -170,74 +190,114 @@ class _MeniuScreenState extends State<MeniuScreen> {
             final data = snapshot.data?.data() ?? const <String, dynamic>{};
             final fullName = (data['fullName'] ?? '').toString().trim();
             final resolvedName = fullName.isNotEmpty ? fullName : fallbackName;
+            final classId =
+                (data['classId'] ?? AppSession.classId ?? '').toString().trim();
             final className = (data['className'] ?? '').toString().trim();
-            final unreadCount = (data['unreadCount'] as int?) ?? 0;
+            final inboxLastOpenedAt =
+              (data['inboxLastOpenedAt'] as Timestamp?)?.toDate();
+            final classStream = classId.isNotEmpty
+                ? FirebaseFirestore.instance
+                    .collection('classes')
+                    .doc(classId)
+                    .snapshots()
+                : _classDocStream;
 
-            return SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ── HEADER ──────────────────────────────────────────
-                  _TopHeroHeader(
-                    displayName: resolvedName,
-                    className:
-                        className.isNotEmpty ? className : 'Clasa a XII-a B',
-                    onLogout: _logout,
-                    onProfil: () => _openProfil(context),
-                  ),
+            return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: classStream,
+              builder: (context, classSnapshot) {
+                final classData =
+                    classSnapshot.data?.data() ?? const <String, dynamic>{};
+                final classDocName =
+                    (classData['name'] ?? '').toString().trim();
+                final rawClassName = className.isNotEmpty
+                    ? className
+                    : (classDocName.isNotEmpty
+                          ? classDocName
+                          : (classId.isNotEmpty ? classId : 'Clasa nealocata'));
+                final resolvedClassName = _formatClassLabel(rawClassName);
 
-                  // ── ACCESS CARD ──────────────────────────────────────
-                  Transform.translate(
-                    offset: const Offset(0, -48),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: _AccessHubCard(
-                        lastScanStream: _lastScanStream,
-                      ),
-                    ),
-                  ),
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final compactHeight = constraints.maxHeight < 760;
+                    final topSectionHeight = compactHeight ? 512.0 : 548.0;
+                    final accessTop = compactHeight ? 136.0 : 146.0;
 
-                  // ── CERERI + MESAJE ──────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                    child: Transform.translate(
-                      offset: const Offset(0, -32),
-                      child: Column(
-                        children: [
-                          IntrinsicHeight(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          height: topSectionHeight,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              _TopHeroHeader(
+                                displayName: resolvedName,
+                                className: resolvedClassName,
+                                onLogout: _logout,
+                                onProfil: () => _openProfil(context),
+                              ),
+                              Positioned(
+                                top: accessTop,
+                                left: 20,
+                                right: 20,
+                                child: _AccessHubCard(
+                                  inSchool: (data['inSchool'] as bool?) ?? false,
+                                  lastInAt: data['lastInAt'],
+                                  lastScanStream: _lastScanStream,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  child: _CereriCard(
-                                    onTap: () => _openCereri(context),
+                                SizedBox(height: compactHeight ? 6 : 10),
+                                IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(
+                                        child: _CereriCard(
+                                          onTap: () => _openCereri(context),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: _MesajeCard(
+                                          studentUid:
+                                              FirebaseAuth
+                                                  .instance
+                                                  .currentUser
+                                                  ?.uid ??
+                                              '',
+                                          inboxLastOpenedAt:
+                                              inboxLastOpenedAt,
+                                          onTap: () => _openMesaje(context),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: _MesajeCard(
-                                    unreadCount: unreadCount,
-                                    onTap: () => _openMesaje(context),
-                                  ),
+                                const SizedBox(height: 14),
+                                _LeaveStatusCard(
+                                  classDocStream: classStream,
+                                  leaveActiveStream: _leaveActiveStream,
+                                  isWithinSchedule: _isWithinSchedule,
+                                  onTap: () => _openCereri(context),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          _LeaveStatusCard(
-                            classDocStream: _classDocStream,
-                            leaveActiveStream: _leaveActiveStream,
-                            isWithinSchedule: _isWithinSchedule,
-                            onTap: () => _openCereri(context),
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
             );
           },
         ),
@@ -270,7 +330,7 @@ class _TopHeroHeader extends StatelessWidget {
         bottomRight: Radius.circular(52),
       ),
       child: Container(
-        height: 240,
+        height: 220,
         color: _primary,
         child: Stack(
           clipBehavior: Clip.none,
@@ -293,7 +353,7 @@ class _TopHeroHeader extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 20, 14, 0),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     child: Column(
@@ -303,7 +363,7 @@ class _TopHeroHeader extends StatelessWidget {
                           'Bine ai venit,\n$displayName',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 33,
+                            fontSize: 31,
                             height: 1.10,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.5,
@@ -314,16 +374,19 @@ class _TopHeroHeader extends StatelessWidget {
                           className,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.84),
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  _ProfileMenuButton(
-                    onLogout: onLogout,
-                    onProfil: onProfil,
+                  Transform.translate(
+                    offset: const Offset(0, -38),
+                    child: _ProfileMenuButton(
+                      onLogout: onLogout,
+                      onProfil: onProfil,
+                    ),
                   ),
                 ],
               ),
@@ -457,9 +520,15 @@ class _ProfileMenuButton extends StatelessWidget {
 // ACCESS HUB CARD
 // ────────────────────────────────────────────────────────────────────────────
 class _AccessHubCard extends StatefulWidget {
+  final bool inSchool;
+  final dynamic lastInAt;
   final Stream<QuerySnapshot<Map<String, dynamic>>>? lastScanStream;
 
-  const _AccessHubCard({required this.lastScanStream});
+  const _AccessHubCard({
+    required this.inSchool,
+    required this.lastInAt,
+    required this.lastScanStream,
+  });
 
   @override
   State<_AccessHubCard> createState() => _AccessHubCardState();
@@ -528,13 +597,35 @@ class _AccessHubCardState extends State<_AccessHubCard> {
     return '$m:$s SEC';
   }
 
+  DateTime? _readDateTime(dynamic rawValue) {
+    if (rawValue is Timestamp) {
+      return rawValue.toDate();
+    }
+    if (rawValue is DateTime) {
+      return rawValue;
+    }
+    if (rawValue is String) {
+      return DateTime.tryParse(rawValue);
+    }
+    return null;
+  }
+
+  String _formatClockTime(DateTime? value) {
+    if (value == null) {
+      return '--:--';
+    }
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(22, 22, 22, 26),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
         color: _surfaceLowest,
-        borderRadius: BorderRadius.circular(40),
+        borderRadius: BorderRadius.circular(34),
         boxShadow: const [
           BoxShadow(
             color: Color(0x180B7A20),
@@ -548,13 +639,13 @@ class _AccessHubCardState extends State<_AccessHubCard> {
           const Text(
             'Acces Campus',
             style: TextStyle(
-              fontSize: 29,
+              fontSize: 31,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.7,
               color: _onSurface,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
           // QR + timer badge
           Stack(
@@ -562,15 +653,15 @@ class _AccessHubCardState extends State<_AccessHubCard> {
             alignment: Alignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: _surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(32),
+                  borderRadius: BorderRadius.circular(24),
                 ),
                 child: Container(
-                  width: 232,
-                  height: 232,
-                  padding: const EdgeInsets.all(14),
+                  width: 176,
+                  height: 176,
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -592,10 +683,10 @@ class _AccessHubCardState extends State<_AccessHubCard> {
                           ),
                         )
                       else
-                        const Icon(
+                         const Icon(
                           Icons.qr_code_2_rounded,
                           color: _primary,
-                          size: 132,
+                          size: 96,
                         ),
                       if (_loading)
                         Container(
@@ -615,10 +706,10 @@ class _AccessHubCardState extends State<_AccessHubCard> {
                 ),
               ),
               Positioned(
-                bottom: -14,
+                    bottom: -10,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 18, vertical: 10),
+                      horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: _primary,
                     borderRadius: BorderRadius.circular(999),
@@ -658,31 +749,26 @@ class _AccessHubCardState extends State<_AccessHubCard> {
             ],
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 14),
 
           // ── STATUS + INTRARE centrate ────────────────────────────
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: widget.lastScanStream,
             builder: (context, snapshot) {
               final docs = snapshot.data?.docs ?? [];
-              String statusText = 'Intrat';
-              String timeText = '--:--';
-              Color statusColor = _primary;
+              final latestDoc = docs.isNotEmpty ? docs.first.data() : null;
+              final latestType = (latestDoc?['type'] ?? '').toString().trim();
+              final latestTimestamp = _readDateTime(latestDoc?['timestamp']);
+              final lastInAt = _readDateTime(widget.lastInAt);
 
-              if (docs.isNotEmpty) {
-                final doc = docs.first;
-                final type = (doc.data()['type'] ?? '').toString();
-                final ts = doc.data()['timestamp'] as Timestamp?;
-                if (type == 'exit') {
-                  statusText = 'Ieșit';
-                  statusColor = _tertiary;
-                }
-                if (ts != null) {
-                  final dt = ts.toDate();
-                  timeText =
-                      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-                }
-              }
+              final statusFromUser = widget.inSchool;
+              final fallbackStatusFromEvent = latestType == 'exit' ? false : true;
+              final resolvedInSchool =
+                  lastInAt != null || latestDoc == null ? statusFromUser : fallbackStatusFromEvent;
+
+              final statusText = resolvedInSchool ? 'Intrat' : 'Ieșit';
+              final statusColor = resolvedInSchool ? _primary : _tertiary;
+              final timeText = _formatClockTime(lastInAt ?? latestTimestamp);
 
               return Row(
                 children: [
@@ -728,10 +814,10 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: _surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -749,7 +835,7 @@ class _StatCard extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 15,
               fontWeight: FontWeight.w800,
               color: valueColor,
             ),
@@ -772,15 +858,15 @@ class _CereriCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 232,
-        padding: const EdgeInsets.all(22),
+        height: 184,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [Color(0xFF0B7A20), Color(0xFF2D9640)],
           ),
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: const [
             BoxShadow(
               color: Color(0x350B7A20),
@@ -793,16 +879,16 @@ class _CereriCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 72,
-              height: 72,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: const Icon(
                 Icons.description_rounded,
                 color: Colors.white,
-                size: 34,
+                size: 24,
               ),
             ),
             const Spacer(),
@@ -810,12 +896,12 @@ class _CereriCard extends StatelessWidget {
               'Cererile de\nînvoire',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 19,
+                fontSize: 22,
                 height: 1.18,
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
               'Creează o cerere nouă',
               style: TextStyle(
@@ -835,70 +921,153 @@ class _CereriCard extends StatelessWidget {
 // MESAJE CARD
 // ────────────────────────────────────────────────────────────────────────────
 class _MesajeCard extends StatelessWidget {
-  final int unreadCount;
+  final String studentUid;
+  final DateTime? inboxLastOpenedAt;
   final VoidCallback onTap;
-  const _MesajeCard({required this.unreadCount, required this.onTap});
+  const _MesajeCard({
+    required this.studentUid,
+    required this.inboxLastOpenedAt,
+    required this.onTap,
+  });
+
+  DateTime? _readDateTime(dynamic value) {
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+    if (value is DateTime) {
+      return value;
+    }
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+    return null;
+  }
+
+  DateTime? _leaveMessageTime(Map<String, dynamic> data) {
+    return _readDateTime(data['reviewedAt']) ?? _readDateTime(data['requestedAt']);
+  }
+
+  bool _isVisibleLeaveMessage(Map<String, dynamic> data) {
+    final source = (data['source'] ?? '').toString().trim();
+    return source != 'secretariat';
+  }
+
+  int _countUnread(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> leaveDocs,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> secretariatDocs,
+  ) {
+    final lastViewed = inboxLastOpenedAt;
+    if (lastViewed == null) {
+      return leaveDocs.where((doc) => _isVisibleLeaveMessage(doc.data())).length +
+          secretariatDocs.length;
+    }
+
+    final leaveUnread = leaveDocs.where((doc) {
+      final data = doc.data();
+      if (!_isVisibleLeaveMessage(data)) {
+        return false;
+      }
+      final when = _leaveMessageTime(data);
+      return when != null && when.isAfter(lastViewed);
+    }).length;
+
+    final secretariatUnread = secretariatDocs.where((doc) {
+      final when = _readDateTime(doc.data()['createdAt']);
+      return when != null && when.isAfter(lastViewed);
+    }).length;
+
+    return leaveUnread + secretariatUnread;
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        height: 232,
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: _surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(
-            color: _outlineVariant.withValues(alpha: 0.36),
-            width: 1.1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: _primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const Icon(
-                Icons.forum_rounded,
-                color: _primary,
-                size: 34,
-              ),
-            ),
-            const Spacer(),
-            const Text(
-              'Mesaje',
-              style: TextStyle(
-                color: _onSurface,
-                fontSize: 19,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.circle, size: 12, color: _primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '$unreadCount mesaje noi',
-                    style: const TextStyle(
-                      color: _outline,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: studentUid.isEmpty
+            ? null
+            : FirebaseFirestore.instance
+                .collection('leaveRequests')
+                .where('studentUid', isEqualTo: studentUid)
+                .orderBy('requestedAt', descending: true)
+                .limit(50)
+                .snapshots(),
+        builder: (context, leaveSnapshot) {
+          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: studentUid.isEmpty
+                ? null
+                : FirebaseFirestore.instance
+                    .collection('secretariatMessages')
+                    .where('recipientUid', isEqualTo: studentUid)
+                    .where('recipientRole', isEqualTo: 'student')
+                    .limit(50)
+                    .snapshots(),
+            builder: (context, secretariatSnapshot) {
+              final unreadCount = _countUnread(
+                leaveSnapshot.data?.docs ?? const [],
+                secretariatSnapshot.data?.docs ?? const [],
+              );
+
+              return Container(
+                height: 184,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: _outlineVariant.withValues(alpha: 0.36),
+                    width: 1.1,
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: _primary.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.forum_rounded,
+                        color: _primary,
+                        size: 24,
+                      ),
+                    ),
+                    const Spacer(),
+                    const Text(
+                      'Mesaje',
+                      style: TextStyle(
+                        color: _onSurface,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.circle, size: 12, color: _primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '$unreadCount mesaje noi',
+                            style: const TextStyle(
+                              color: _outline,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -952,12 +1121,12 @@ class _LeaveStatusCard extends StatelessWidget {
               onTap: onTap,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 18,
+                  horizontal: 14,
+                  vertical: 14,
                 ),
                 decoration: BoxDecoration(
                   color: _surfaceLowest,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(22),
                   border: Border.all(
                     color: _outlineVariant.withValues(alpha: 0.18),
                   ),
@@ -972,33 +1141,33 @@ class _LeaveStatusCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Container(
-                      width: 68,
-                      height: 68,
+                      width: 56,
+                      height: 56,
                       decoration: BoxDecoration(
                         color: _surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Icon(
                         Icons.description_rounded,
                         color: _primary,
-                        size: 32,
+                        size: 26,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     const Expanded(
                       child: Text(
                         'Cerere Învoire',
                         style: TextStyle(
                           color: _onSurface,
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 9,
+                        horizontal: 12,
+                        vertical: 8,
                       ),
                       decoration: BoxDecoration(
                         color: _primary.withValues(alpha: 0.09),
@@ -1020,7 +1189,7 @@ class _LeaveStatusCard extends StatelessWidget {
                             statusText.toUpperCase(),
                             style: TextStyle(
                               color: statusColor,
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.8,
                             ),

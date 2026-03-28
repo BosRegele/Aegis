@@ -280,11 +280,13 @@ class _SecretariatGlobalMessagesPageState
                               )
                             : const Icon(Icons.send_rounded),
                         label: Text(
-                          _sending ? 'Se trimite...' : 'Trimite global',
+                          'Trimite global',
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF5A9641),
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: const Color(0xFF5A9641),
+                          disabledForegroundColor: Colors.white,
                           minimumSize: const Size.fromHeight(50),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),

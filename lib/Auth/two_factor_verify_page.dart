@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -90,6 +91,9 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
           .add(const Duration(hours: 8))
           .millisecondsSinceEpoch;
       await prefs.setInt(_prefKey(widget.uid), expiry);
+      await FirebaseFirestore.instance.collection('users').doc(widget.uid).set({
+        'twoFactorVerifiedUntil': Timestamp.fromMillisecondsSinceEpoch(expiry),
+      }, SetOptions(merge: true));
     } catch (_) {}
   }
 
@@ -225,6 +229,22 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_sending && _maskedEmail.isEmpty && _error.isEmpty) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.6,
+              color: Color(0xFF7AAF5B),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Stack(
         children: [
@@ -265,21 +285,9 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
                   width: 1.5,
                 ),
               ),
-              child: _sending
-                  ? const Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(color: Color(0xFF7AAF5B)),
-                        SizedBox(height: 16),
-                        Text(
-                          'Trimitem codul...',
-                          style: TextStyle(color: Colors.black54),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                         const Icon(
                           Icons.shield_outlined,
                           size: 52,
@@ -295,18 +303,32 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Am trimis un cod de 6 cifre la\n${_maskedEmail.isNotEmpty ? _maskedEmail : "emailul tau"}.',
+                          _sending
+                              ? 'Pregatim trimiterea codului catre\n${_maskedEmail.isNotEmpty ? _maskedEmail : "emailul tau"}.'
+                              : 'Am trimis un cod de 6 cifre la\n${_maskedEmail.isNotEmpty ? _maskedEmail : "emailul tau"}.',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.black54,
                             height: 1.4,
                           ),
                         ),
+                        if (_sending) ...[
+                          const SizedBox(height: 18),
+                          const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              color: Color(0xFF7AAF5B),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 24),
                         TextField(
                           controller: _codeController,
                           keyboardType: TextInputType.number,
                           maxLength: 6,
+                          enabled: !_sending,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 28,
@@ -354,7 +376,7 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
                           width: double.infinity,
                           height: 48,
                           child: ElevatedButton(
-                            onPressed: _loading ? null : _verify,
+                            onPressed: (_loading || _sending) ? null : _verify,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF7AAF5B),
                               foregroundColor: Colors.white,

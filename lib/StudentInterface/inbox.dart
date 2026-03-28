@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firster/StudentInterface/cereri.dart';
-import 'package:firster/common/unified_messages_page.dart';
 import 'package:firster/StudentInterface/meniu.dart';
 import 'package:firster/session.dart';
 import 'package:flutter/material.dart';
@@ -24,11 +23,6 @@ class InboxScreen extends StatefulWidget {
 class _InboxScreenState extends State<InboxScreen> {
   Stream<QuerySnapshot<Map<String, dynamic>>>? _leaveStream;
   Stream<QuerySnapshot<Map<String, dynamic>>>? _secretariatStream;
-
-  bool _isVisibleToStudent(Map<String, dynamic> data) {
-    final targetRole = (data['targetRole'] ?? '').toString().trim();
-    return targetRole.isEmpty || targetRole == 'student';
-  }
 
   @override
   void initState() {
@@ -114,32 +108,13 @@ class _InboxScreenState extends State<InboxScreen> {
     return '${date.day} ${months[date.month - 1]}';
   }
 
-  String _formatTopLabel(DateTime? requestedAt) {
-    if (requestedAt == null) {
-      return '--';
+  String _formatSentLabel(DateTime? sentAt) {
+    if (sentAt == null) {
+      return '--\n--:--';
     }
-
-    final now = DateTime.now();
-    final isToday =
-        now.year == requestedAt.year &&
-        now.month == requestedAt.month &&
-        now.day == requestedAt.day;
-    if (isToday) {
-      final hour = requestedAt.hour.toString().padLeft(2, '0');
-      final minute = requestedAt.minute.toString().padLeft(2, '0');
-      return '$hour:$minute';
-    }
-
-    final yesterday = now.subtract(const Duration(days: 1));
-    final isYesterday =
-        yesterday.year == requestedAt.year &&
-        yesterday.month == requestedAt.month &&
-        yesterday.day == requestedAt.day;
-    if (isYesterday) {
-      return 'IERI';
-    }
-
-    return _formatRequestDate(requestedAt).toUpperCase();
+    final hour = sentAt.hour.toString().padLeft(2, '0');
+    final minute = sentAt.minute.toString().padLeft(2, '0');
+    return '${_formatRequestDate(sentAt)}\n$hour:$minute';
   }
 
   _InboxCardData _toInboxCardData(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -153,7 +128,7 @@ class _InboxScreenState extends State<InboxScreen> {
       case 'approved':
         return _InboxCardData(
           title: 'Cerere Învoire - ${_formatRequestDate(requestedForDate)}',
-          topLabel: _formatTopLabel(requestedAt),
+          topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty ? 'Cererea a fost aprobată.' : message,
           leadingIcon: Icons.description_rounded,
           leadingBackground: const Color(0xFFE7EFE2),
@@ -167,7 +142,7 @@ class _InboxScreenState extends State<InboxScreen> {
       case 'rejected':
         return _InboxCardData(
           title: 'Cerere Învoire - ${_formatRequestDate(requestedForDate)}',
-          topLabel: _formatTopLabel(requestedAt),
+          topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty ? 'Cererea a fost respinsă.' : message,
           leadingIcon: Icons.description_rounded,
           leadingBackground: const Color(0xFFF2E4EA),
@@ -181,7 +156,7 @@ class _InboxScreenState extends State<InboxScreen> {
       case 'expired':
         return _InboxCardData(
           title: 'Cerere Învoire - ${_formatRequestDate(requestedForDate)}',
-          topLabel: _formatTopLabel(requestedAt),
+          topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty ? 'Cererea a expirat automat.' : message,
           leadingIcon: Icons.history_toggle_off_rounded,
           leadingBackground: const Color(0xFFF2EEDC),
@@ -195,7 +170,7 @@ class _InboxScreenState extends State<InboxScreen> {
       default:
         return _InboxCardData(
           title: 'Cerere Învoire - ${_formatRequestDate(requestedForDate)}',
-          topLabel: _formatTopLabel(requestedAt),
+            topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty
               ? 'Cererea este în așteptarea aprobării.'
               : message,
@@ -221,7 +196,7 @@ class _InboxScreenState extends State<InboxScreen> {
 
     return _InboxCardData(
       title: 'Mesaj Secretariat',
-      topLabel: _formatTopLabel(createdAt),
+      topLabel: _formatSentLabel(createdAt),
       message: message.isEmpty ? 'Ai primit un mesaj nou.' : message,
       leadingIcon: Icons.campaign_rounded,
       leadingBackground: const Color(0xFFDCEBFF),
@@ -236,9 +211,21 @@ class _InboxScreenState extends State<InboxScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return UnifiedMessagesPage(
-      role: UnifiedInboxRole.student,
-      onBack: () => _goBack(context),
+    return Scaffold(
+      backgroundColor: _surface,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _InboxHeader(
+              onBack: () => _goBack(context),
+              onProfile: () => _openProfile(context),
+              onLogout: _logout,
+            ),
+            Expanded(child: _buildInboxBody()),
+          ],
+        ),
+      ),
     );
   }
 
@@ -271,7 +258,7 @@ class _InboxScreenState extends State<InboxScreen> {
                 .where((doc) {
                   final data = doc.data();
                   final source = (data['source'] ?? '').toString().trim();
-                  return _isVisibleToStudent(data) && source != 'secretariat';
+                  return source != 'secretariat';
                 })
                 .map(_toInboxCardData)
                 .toList();
@@ -283,9 +270,17 @@ class _InboxScreenState extends State<InboxScreen> {
             final items = <_InboxCardData>[...leaveItems, ...secretariatItems]
               ..sort((a, b) => b.sortAt.compareTo(a.sortAt));
 
+            final horizontalPadding =
+                MediaQuery.sizeOf(context).width < 390 ? 14.0 : 18.0;
+
             return ListView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                18,
+                horizontalPadding,
+                MediaQuery.paddingOf(context).bottom + 28,
+              ),
               children: [
                 if (items.isEmpty)
                   Container(
@@ -332,57 +327,63 @@ class _InboxHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 390;
+    final headerHeight = compact ? 138.0 : 146.0;
+    final titleSize = compact ? 29.0 : 33.0;
+
     return ClipRRect(
       borderRadius: const BorderRadius.only(
         bottomLeft: Radius.circular(52),
         bottomRight: Radius.circular(52),
       ),
       child: Container(
-        height: 170,
+        height: headerHeight,
         width: double.infinity,
         color: _primary,
         child: Stack(
           children: [
             Positioned(
-              right: -78,
-              top: -90,
-              child: _HeaderCircle(size: 300, opacity: 0.08),
+              right: -56,
+              top: -74,
+              child: _HeaderCircle(size: 220, opacity: 0.08),
             ),
             Positioned(
-              right: 44,
-              top: 58,
-              child: _HeaderCircle(size: 86, opacity: 0.07),
+              right: 34,
+              top: 46,
+              child: _HeaderCircle(size: 72, opacity: 0.07),
             ),
             Positioned(
-              left: 192,
-              bottom: -34,
-              child: _HeaderCircle(size: 92, opacity: 0.08),
+              left: 156,
+              bottom: -28,
+              child: _HeaderCircle(size: 82, opacity: 0.08),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 28, 20, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _HeaderIconButton(
-                    icon: Icons.arrow_back_ios_new_rounded,
-                    onTap: onBack,
-                  ),
-                  const SizedBox(width: 18),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Text(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Center(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _HeaderIconButton(
+                      icon: Icons.arrow_back_rounded,
+                      onTap: onBack,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
                       'Mesaje',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 40,
+                        fontSize: titleSize,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.8,
                       ),
                     ),
-                  ),
-                  const Spacer(),
-                  _HeaderMenuButton(onLogout: onLogout, onProfil: onProfile),
-                ],
+                    ),
+                    const SizedBox(width: 16),
+                    _HeaderMenuButton(onLogout: onLogout, onProfil: onProfile),
+                  ],
+                ),
               ),
             ),
           ],
@@ -399,8 +400,20 @@ class _InboxRequestTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 390;
+    final iconBoxSize = compact ? 64.0 : 72.0;
+    final titleSize = compact ? 20.0 : 24.0;
+    final bodySize = compact ? 16.0 : 18.0;
+    final topLabelSize = compact ? 12.0 : 14.0;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      padding: EdgeInsets.fromLTRB(
+        compact ? 16 : 18,
+        compact ? 16 : 18,
+        compact ? 16 : 18,
+        compact ? 16 : 18,
+      ),
       decoration: BoxDecoration(
         color: _card,
         borderRadius: BorderRadius.circular(26),
@@ -416,8 +429,8 @@ class _InboxRequestTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: iconBoxSize,
+            height: iconBoxSize,
             decoration: BoxDecoration(
               color: data.leadingBackground,
               borderRadius: BorderRadius.circular(16),
@@ -425,10 +438,10 @@ class _InboxRequestTile extends StatelessWidget {
             child: Icon(
               data.leadingIcon,
               color: data.leadingForeground,
-              size: 38,
+              size: compact ? 34 : 38,
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: compact ? 14 : 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,38 +452,38 @@ class _InboxRequestTile extends StatelessWidget {
                     Expanded(
                       child: Text(
                         data.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: _textDark,
-                          fontSize: 24,
+                          fontSize: titleSize,
                           fontWeight: FontWeight.w800,
                           height: 1.12,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: compact ? 8 : 10),
                     Text(
                       data.topLabel,
                       textAlign: TextAlign.right,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: _textMuted,
-                        fontSize: 14,
+                        fontSize: topLabelSize,
                         fontWeight: FontWeight.w700,
-                        height: 1.05,
+                        height: 1.22,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: compact ? 8 : 10),
                 Text(
                   data.message,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Color(0xFF3A4037),
-                    fontSize: 18,
+                    fontSize: bodySize,
                     fontWeight: FontWeight.w500,
                     height: 1.45,
                   ),
                 ),
-                const SizedBox(height: 18),
+                SizedBox(height: compact ? 16 : 18),
                 _StatusBadge(data: data),
               ],
             ),
@@ -488,8 +501,13 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 390;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 14 : 16,
+        vertical: compact ? 9 : 10,
+      ),
       decoration: BoxDecoration(
         color: data.statusBackground,
         borderRadius: BorderRadius.circular(999),
@@ -497,13 +515,17 @@ class _StatusBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(data.statusIcon, color: data.statusForeground, size: 22),
-          const SizedBox(width: 10),
+          Icon(
+            data.statusIcon,
+            color: data.statusForeground,
+            size: compact ? 20 : 22,
+          ),
+          SizedBox(width: compact ? 8 : 10),
           Text(
             data.statusLabel,
             style: TextStyle(
               color: data.statusForeground,
-              fontSize: 16,
+              fontSize: compact ? 15 : 16,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -520,11 +542,13 @@ class _CreateRequestButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 390;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(22),
       child: Ink(
-        height: 92,
+        height: compact ? 84 : 92,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -542,18 +566,22 @@ class _CreateRequestButton extends StatelessWidget {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             CircleAvatar(
-              radius: 16,
+              radius: compact ? 15 : 16,
               backgroundColor: Colors.white,
-              child: Icon(Icons.add_rounded, color: _primary, size: 28),
+              child: Icon(
+                Icons.add_rounded,
+                color: _primary,
+                size: compact ? 24 : 28,
+              ),
             ),
-            SizedBox(width: 16),
+            SizedBox(width: compact ? 14 : 16),
             Text(
               'Creează Cerere Nouă',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 22,
+                fontSize: compact ? 19 : 22,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.4,
               ),
@@ -575,18 +603,17 @@ class _HeaderIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.20),
-            width: 1,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 34,
+        height: 34,
+        child: Center(
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 32,
           ),
         ),
-        child: Icon(icon, color: Colors.white, size: 19),
       ),
     );
   }
@@ -674,14 +701,14 @@ class _HeaderMenuButton extends StatelessWidget {
         ),
       ],
       child: Container(
-        width: 54,
-        height: 54,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
           color: const Color(0x337DE38D),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0x6DC7F4CE), width: 1.3),
         ),
-        child: const Icon(Icons.person, color: Colors.white, size: 24),
+        child: const Icon(Icons.person, color: Colors.white, size: 22),
       ),
     );
   }

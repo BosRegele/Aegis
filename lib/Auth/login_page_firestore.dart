@@ -362,7 +362,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                   onPressed: sending ? null : () => Navigator.of(ctx).pop(),
                   child: const Text('Anuleaza'),
                 ),
-                ElevatedButton(
+                ElevatedButton.icon(
                   onPressed: sending
                       ? null
                       : () async {
@@ -425,7 +425,14 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                             setDialogState(() => sending = false);
                           }
                         },
-                  child: Text(sending ? 'Se trimite...' : 'Trimite cod'),
+                  icon: sending
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.email_outlined, size: 18),
+                  label: const Text('Trimite cod'),
                 ),
               ],
             );

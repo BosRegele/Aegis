@@ -189,6 +189,19 @@ class _CereriScreenState extends State<CereriScreen> {
 
   int _toMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
 
+  Future<Map<String, dynamic>> _loadCurrentUserData() async {
+    final uid = AppSession.uid ?? '';
+    if (uid.isEmpty) {
+      return const <String, dynamic>{};
+    }
+
+    final userSnap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+    return userSnap.data() ?? const <String, dynamic>{};
+  }
+
   Future<bool> _fetchDaySchedule(int weekday) async {
     final classId = AppSession.classId;
     if (classId == null || classId.isEmpty) return false;
@@ -342,11 +355,7 @@ class _CereriScreenState extends State<CereriScreen> {
       return const <String, String>{};
     }
 
-    final userSnap = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
-    final userData = userSnap.data() ?? const <String, dynamic>{};
+    final userData = await _loadCurrentUserData();
 
     if (_targetRole == 'parent') {
       final parents = List<String>.from(userData['parents'] ?? const <String>[]);
@@ -410,12 +419,29 @@ class _CereriScreenState extends State<CereriScreen> {
     }
 
     if (teacherUid.isEmpty) {
-      return const <String, String>{};
+      final teacherByClassQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'teacher')
+          .where('classId', isEqualTo: classId)
+          .limit(1)
+          .get();
+
+      if (teacherByClassQuery.docs.isNotEmpty) {
+        final doc = teacherByClassQuery.docs.first;
+        final teacherData = doc.data();
+        teacherUid = doc.id;
+        teacherUsername = (teacherData['username'] ?? teacherUsername)
+            .toString()
+            .trim();
+        teacherName = (teacherData['fullName'] ?? teacherUsername)
+            .toString()
+            .trim();
+      }
     }
 
     return <String, String>{
       'uid': teacherUid,
-      'name': teacherName,
+      'name': teacherName.isNotEmpty ? teacherName : 'Diriginte',
       'username': teacherUsername,
     };
   }
@@ -445,20 +471,29 @@ class _CereriScreenState extends State<CereriScreen> {
     setState(() => _submitting = true);
 
     try {
+      final userData = await _loadCurrentUserData();
       final recipient = await _resolveRecipient();
       final targetUid = (recipient['uid'] ?? '').trim();
-      if (targetUid.isEmpty) {
+      if (_targetRole == 'parent' && targetUid.isEmpty) {
         throw Exception('Nu a fost gasit destinatarul selectat.');
       }
 
-      final classId = AppSession.classId ?? '';
-      final studentName = (AppSession.fullName?.isNotEmpty == true)
-          ? AppSession.fullName!
-          : (AppSession.username ?? '');
+      final classId =
+          (userData['classId'] ?? AppSession.classId ?? '').toString().trim();
+      final studentUsername =
+          (userData['username'] ?? AppSession.username ?? '').toString().trim();
+      final studentName =
+          (userData['fullName'] ?? AppSession.fullName ?? studentUsername)
+              .toString()
+              .trim();
+
+      if (classId.isEmpty) {
+        throw Exception('Elevul nu are clasa setata in profil.');
+      }
 
       await FirebaseFirestore.instance.collection('leaveRequests').add({
         'studentUid': studentUid,
-        'studentUsername': (AppSession.username ?? '').toString(),
+        'studentUsername': studentUsername,
         'studentName': studentName,
         'classId': classId,
         'dateText': _dateController.text,
@@ -466,7 +501,9 @@ class _CereriScreenState extends State<CereriScreen> {
         'message': message,
         'targetRole': _targetRole,
         'targetUid': targetUid,
-        'targetName': (recipient['name'] ?? '').trim(),
+        'targetName': (recipient['name'] ??
+            (_targetRole == 'teacher' ? 'Diriginte' : ''))
+          .trim(),
         'targetUsername': (recipient['username'] ?? '').trim(),
         'status': 'pending',
         'requestedAt': Timestamp.now(),
@@ -503,10 +540,16 @@ class _CereriScreenState extends State<CereriScreen> {
         _timeController.clear();
         _messageController.clear();
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Eroare la trimiterea cererii.')),
+        SnackBar(
+          content: Text(
+            e.toString().contains('Exception:')
+                ? e.toString().replaceFirst('Exception: ', '')
+                : 'Eroare la trimiterea cererii.',
+          ),
+        ),
       );
     } finally {
       if (mounted) {
@@ -545,73 +588,87 @@ class _CereriScreenState extends State<CereriScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 390;
+    final headerHeight = compact ? 138.0 : 146.0;
+    final titleSize = compact ? 29.0 : 33.0;
+
     return Scaffold(
       backgroundColor: _surface,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
+            Column(
+              children: [
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(54),
                 bottomRight: Radius.circular(54),
               ),
               child: Container(
-                height: 150,
+                height: headerHeight,
                 width: double.infinity,
                 color: _primary,
                 child: Stack(
                   children: [
                     Positioned(
-                      top: -50,
-                      right: 170,
-                      child: _HeaderCircle(size: 150, opacity: 0.12),
+                      top: -72,
+                      right: -52,
+                      child: _HeaderCircle(size: 220, opacity: 0.08),
                     ),
                     Positioned(
-                      top: 95,
-                      right: 205,
-                      child: _HeaderCircle(size: 96, opacity: 0.12),
+                      top: 44,
+                      right: 34,
+                      child: _HeaderCircle(size: 72, opacity: 0.07),
+                    ),
+                    Positioned(
+                      left: 156,
+                      bottom: -28,
+                      child: _HeaderCircle(size: 82, opacity: 0.08),
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 20, 14, 0),
-                      child: Row(
-                        children: [
-                          _HeaderIconButton(
-                            icon: Icons.arrow_back_ios_new_rounded,
-                            onTap: _goBack,
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Text(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: Center(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            _HeaderIconButton(
+                              icon: Icons.arrow_back_rounded,
+                              onTap: _goBack,
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Text(
                               'Cereri de invoire',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 36,
+                                fontSize: titleSize,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: -0.6,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          _HeaderMenuButton(
-                            onLogout: _logout,
-                            onProfil: _openProfil,
-                          ),
-                        ],
+                            ),
+                            const SizedBox(width: 16),
+                            _HeaderMenuButton(
+                              onLogout: _logout,
+                              onProfil: _openProfil,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                     Row(
                       children: [
                         Expanded(
@@ -700,39 +757,41 @@ class _CereriScreenState extends State<CereriScreen> {
                     const SizedBox(height: 8),
                     _ReasonBox(controller: _messageController),
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _submitting ? null : _submitRequest,
-                        icon: _submitting
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.send_rounded, size: 30),
-                        label: const Text(
-                          'Trimite Cererea',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _submitting ? null : _submitRequest,
+                            icon: _submitting
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.send_rounded, size: 30),
+                            label: const Text(
+                              'Trimite Cererea',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _primary,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: _primary,
+                              disabledForegroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(74),
+                              elevation: 6,
+                              shadowColor: const Color(0x660B741D),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(22),
+                              ),
+                            ),
                           ),
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primary,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(74),
-                          elevation: 6,
-                          shadowColor: const Color(0x660B741D),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(22),
-                          ),
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 34),
                     Container(
                       width: double.infinity,
@@ -769,10 +828,61 @@ class _CereriScreenState extends State<CereriScreen> {
                         ],
                       ),
                     ),
-                  ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_submitting)
+              Positioned.fill(
+                child: AbsorbPointer(
+                  child: Container(
+                    color: Colors.white.withValues(alpha: 0.62),
+                    child: Center(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 28),
+                        padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x16000000),
+                              blurRadius: 18,
+                              offset: Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: _primary,
+                              ),
+                            ),
+                            SizedBox(width: 14),
+                            Flexible(
+                              child: Text(
+                                'Se trimite cererea...',
+                                style: TextStyle(
+                                  color: _textDark,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -1032,8 +1142,8 @@ class _HeaderMenuButton extends StatelessWidget {
         ),
       ],
       child: Container(
-        width: 50,
-        height: 50,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
           color: const Color(0x337DE38D),
           borderRadius: BorderRadius.circular(16),
@@ -1042,7 +1152,7 @@ class _HeaderMenuButton extends StatelessWidget {
             width: 1,
           ),
         ),
-        child: const Icon(Icons.person, color: Colors.white, size: 21),
+        child: const Icon(Icons.person, color: Colors.white, size: 22),
       ),
     );
   }
@@ -1058,18 +1168,17 @@ class _HeaderIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.20),
-            width: 1,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 34,
+        height: 34,
+        child: Center(
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 32,
           ),
         ),
-        child: Icon(icon, color: Colors.white, size: 19),
       ),
     );
   }
