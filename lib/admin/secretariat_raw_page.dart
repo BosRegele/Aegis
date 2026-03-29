@@ -3725,78 +3725,102 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                 style: TextStyle(color: Color(0xFF5A8040), fontSize: 12),
               ),
               const SizedBox(height: 12),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                activeColor: const Color(0xFF5A9641),
-                title: const Text('Onboarding global'),
-                subtitle: Text(
-                  flags.onboardingEnabled ? 'Pornit' : 'Oprit',
-                  style: TextStyle(
-                    color: flags.onboardingEnabled
-                        ? const Color(0xFF2F5F2B)
-                        : const Color(0xFF7C3A3A),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Onboarding global'),
+                        Text(
+                          flags.onboardingEnabled ? 'Pornit' : 'Oprit',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: flags.onboardingEnabled
+                                ? const Color(0xFF2F5F2B)
+                                : const Color(0xFF7C3A3A),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                value: flags.onboardingEnabled,
-                onChanged: _isActionBusy('toggle-onboarding-global')
-                    ? null
-                    : (value) {
-                        _runGuarded('toggle-onboarding-global', () async {
-                          try {
-                            await SecurityFlagsService.setOnboardingEnabled(
-                              value,
-                            );
-                            _logSuccess(
-                              'Onboarding global ${value ? 'pornit' : 'oprit'}.',
-                            );
-                            _showInfoMessage(
-                              'Onboarding global ${value ? 'pornit' : 'oprit'}.',
-                            );
-                          } catch (_) {
-                            final message = _friendlyError(
-                              'toggle-onboarding-global',
-                            );
-                            _logFailure(message);
-                            _showInfoMessage(message);
-                          }
-                        });
-                      },
+                  Switch.adaptive(
+                    activeColor: const Color(0xFF5A9641),
+                    value: flags.onboardingEnabled,
+                    onChanged: _isActionBusy('toggle-onboarding-global')
+                        ? null
+                        : (value) {
+                            _runGuarded('toggle-onboarding-global', () async {
+                              try {
+                                await SecurityFlagsService.setOnboardingEnabled(
+                                  value,
+                                );
+                                _logSuccess(
+                                  'Onboarding global ${value ? 'pornit' : 'oprit'}.',
+                                );
+                                _showInfoMessage(
+                                  'Onboarding global ${value ? 'pornit' : 'oprit'}.',
+                                );
+                              } catch (_) {
+                                final message = _friendlyError(
+                                  'toggle-onboarding-global',
+                                );
+                                _logFailure(message);
+                                _showInfoMessage(message);
+                              }
+                            });
+                          },
+                  ),
+                ],
               ),
               const Divider(height: 8, color: Color(0xFFD9EDBB)),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                activeColor: const Color(0xFF5A9641),
-                title: const Text('2FA global'),
-                subtitle: Text(
-                  flags.twoFactorEnabled ? 'Pornit' : 'Oprit',
-                  style: TextStyle(
-                    color: flags.twoFactorEnabled
-                        ? const Color(0xFF2F5F2B)
-                        : const Color(0xFF7C3A3A),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('2FA global'),
+                        Text(
+                          flags.twoFactorEnabled ? 'Pornit' : 'Oprit',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: flags.twoFactorEnabled
+                                ? const Color(0xFF2F5F2B)
+                                : const Color(0xFF7C3A3A),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                value: flags.twoFactorEnabled,
-                onChanged: _isActionBusy('toggle-2fa-global')
-                    ? null
-                    : (value) {
-                        _runGuarded('toggle-2fa-global', () async {
-                          try {
-                            await SecurityFlagsService.setTwoFactorEnabled(
-                              value,
-                            );
-                            _logSuccess(
-                              '2FA global ${value ? 'pornit' : 'oprit'}.',
-                            );
-                            _showInfoMessage(
-                              '2FA global ${value ? 'pornit' : 'oprit'}.',
-                            );
-                          } catch (_) {
-                            final message = _friendlyError('toggle-2fa-global');
-                            _logFailure(message);
-                            _showInfoMessage(message);
-                          }
-                        });
-                      },
+                  Switch.adaptive(
+                    activeColor: const Color(0xFF5A9641),
+                    value: flags.twoFactorEnabled,
+                    onChanged: _isActionBusy('toggle-2fa-global')
+                        ? null
+                        : (value) {
+                            _runGuarded('toggle-2fa-global', () async {
+                              try {
+                                await SecurityFlagsService.setTwoFactorEnabled(
+                                  value,
+                                );
+                                _logSuccess(
+                                  '2FA global ${value ? 'pornit' : 'oprit'}.',
+                                );
+                                _showInfoMessage(
+                                  '2FA global ${value ? 'pornit' : 'oprit'}.',
+                                );
+                              } catch (_) {
+                                final message = _friendlyError(
+                                  'toggle-2fa-global',
+                                );
+                                _logFailure(message);
+                                _showInfoMessage(message);
+                              }
+                            });
+                          },
+                  ),
+                ],
               ),
             ],
           ),

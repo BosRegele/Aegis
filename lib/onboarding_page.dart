@@ -195,20 +195,20 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
     try {
       await widget.user.updatePassword(newPass);
+      // Set twoFactorVerified BEFORE the Firestore write so that when
+      // main.dart's StreamBuilder reacts to the passwordChanged update it
+      // already sees twoFactorVerified = true and skips the 2FA screen.
+      AppSession.twoFactorVerified = true;
       await _api.markPasswordChanged(uid: widget.user.uid);
 
-      setState(() {
-        _step = _stepComplete;
-        _loading = false;
-      });
-
       if (mounted) {
-        await Future.delayed(const Duration(milliseconds: 1200));
-        if (mounted) {
-          AppSession.twoFactorVerified = true;
-          Navigator.of(context).pushReplacementNamed('/');
-        }
+        setState(() {
+          _step = _stepComplete;
+          _loading = false;
+        });
       }
+      // No manual navigation needed – the Firestore stream in main.dart
+      // automatically re-routes the user once passwordChanged is reflected.
     } on FirebaseAuthException catch (e) {
       setState(() {
         _errorMsg = 'Eroare: ${e.message}';

@@ -11,13 +11,13 @@ class SecurityFlags {
 
   static const defaults = SecurityFlags(
     onboardingEnabled: true,
-    twoFactorEnabled: true,
+    twoFactorEnabled: false,
   );
 
   factory SecurityFlags.fromMap(Map<String, dynamic>? map) {
     return SecurityFlags(
       onboardingEnabled: map?['onboardingEnabled'] as bool? ?? true,
-      twoFactorEnabled: map?['twoFactorEnabled'] as bool? ?? true,
+      twoFactorEnabled: map?['twoFactorEnabled'] as bool? ?? false,
     );
   }
 }

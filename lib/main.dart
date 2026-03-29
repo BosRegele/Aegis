@@ -34,6 +34,13 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
+  if (kIsWeb) {
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: false,
+      webExperimentalForceLongPolling: true,
+    );
+  }
+
   if (!kIsWeb) {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -117,10 +124,12 @@ Future<void> _cleanupAuthState({bool clearPersistedTwoFactor = true}) async {
 
     if (uidToClear != null && uidToClear.isNotEmpty) {
       try {
-        await FirebaseFirestore.instance.collection('users').doc(uidToClear).set(
-          {'twoFactorVerifiedUntil': FieldValue.delete()},
-          SetOptions(merge: true),
-        );
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uidToClear)
+            .set({
+              'twoFactorVerifiedUntil': FieldValue.delete(),
+            }, SetOptions(merge: true));
       } catch (_) {}
     }
   }
@@ -143,6 +152,19 @@ class _MyAppState extends State<MyApp> {
   String? _cachedUid;
   Stream<DocumentSnapshot<Map<String, dynamic>>>? _userDocStream;
   bool _hadAuthenticatedUser = false;
+
+  // Cached so that StreamBuilder rebuilds do not recreate the Future,
+  // which would reset the FutureBuilder to ConnectionState.waiting.
+  String? _twoFactorPersistedUid;
+  Future<bool>? _twoFactorPersistedFuture;
+
+  Future<bool> _getOrCreateTwoFactorFuture(String uid) {
+    if (_twoFactorPersistedUid != uid || _twoFactorPersistedFuture == null) {
+      _twoFactorPersistedUid = uid;
+      _twoFactorPersistedFuture = _loadPersistedTwoFactorState(uid);
+    }
+    return _twoFactorPersistedFuture!;
+  }
 
   Future<bool> _loadPersistedTwoFactorState(String uid) async {
     if (AppSession.twoFactorVerified) {
@@ -204,9 +226,7 @@ class _MyAppState extends State<MyApp> {
           final user = snapshot.data;
           if (user == null) {
             unawaited(
-              _cleanupAuthState(
-                clearPersistedTwoFactor: _hadAuthenticatedUser,
-              ),
+              _cleanupAuthState(clearPersistedTwoFactor: _hadAuthenticatedUser),
             );
             return const LoginPageFirestore();
           }
@@ -328,7 +348,7 @@ class _MyAppState extends State<MyApp> {
 
                   return FutureBuilder<bool>(
                     future: requiresTwoFactor
-                        ? _loadPersistedTwoFactorState(user.uid)
+                        ? _getOrCreateTwoFactorFuture(user.uid)
                         : Future<bool>.value(false),
                     builder: (context, persistedTwoFaSnap) {
                       if (requiresTwoFactor &&
@@ -344,8 +364,8 @@ class _MyAppState extends State<MyApp> {
                         valueListenable: AppSession.twoFactorNotifier,
                         builder: (context, twoFaVerified, _) {
                           if (requiresTwoFactor && !twoFaVerified) {
-                            final username =
-                                (data['username'] ?? '').toString();
+                            final username = (data['username'] ?? '')
+                                .toString();
                             return TwoFactorVerifyPage(
                               uid: user.uid,
                               role: role,
@@ -355,8 +375,7 @@ class _MyAppState extends State<MyApp> {
                             );
                           }
 
-                          final username =
-                              (data['username'] ?? '').toString();
+                          final username = (data['username'] ?? '').toString();
 
                           AppSession.setUser(
                             uidValue: user.uid,

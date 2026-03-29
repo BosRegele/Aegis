@@ -645,209 +645,386 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
+  // ── Colors ──
+  static const _darkBg = Color(0xFF0A2E11);
+  static const _greenAccent = Color(0xFF0B741D);
+  static const _cardBg = Color(0xFFF5F7F2);
+  static const _inputBorder = Color(0xFFD6D9D0);
+  static const _hintColor = Color(0xFF8A8F84);
+
+  // ── Dot pattern painter ──
+  Widget _buildDotPattern({int alpha = 10, double spacing = 20, double radius = 1.5}) {
+    return CustomPaint(
+      painter: _DotPatternPainter(alpha: alpha, spacing: spacing, radius: radius),
+      size: Size.infinite,
+    );
+  }
+
+  // ── Branding panel (left side on landscape) ──
+  Widget _buildBrandingPanel() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF145A1E),
+            Color(0xFF0D3B15),
+            Color(0xFF0A2E11),
+          ],
+          stops: [0.0, 0.5, 1.0],
+        ),
+      ),
+      child: Stack(
         children: [
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color.fromRGBO(122, 175, 91, 1),
-                    Color.fromRGBO(90, 150, 65, 1),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+          Positioned.fill(child: _buildDotPattern(alpha: 22, spacing: 20, radius: 1.5)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 56),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Image.asset(
+                    'assets/images/aegis_logo.png',
+                    width: 72,
+                    height: 72,
+                  ),
                 ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: Container(color: Colors.black.withOpacity(0.03)),
-          ),
-          Center(
-            child: Container(
-              width: 360,
-              padding: const EdgeInsets.all(35),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30),
-                color: Colors.white.withOpacity(0.95),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.25),
-                    blurRadius: 30,
-                    offset: const Offset(0, 15),
+                const SizedBox(height: 36),
+                const Text(
+                  'Poarta ta către\nsecuritate academică',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    height: 1.25,
                   ),
-                  BoxShadow(
-                    color: Colors.green.withOpacity(0.1),
-                    blurRadius: 25,
-                    spreadRadius: -10,
-                  ),
-                ],
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
-                  width: 1.5,
                 ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color.fromRGBO(122, 175, 91, 1),
-                          Color.fromRGBO(90, 150, 65, 1),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green.withOpacity(0.4),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.shield_rounded,
-                      size: 60,
-                      color: Colors.white,
-                    ),
+                const SizedBox(height: 18),
+                Text(
+                  'Soluția completă, optimizată pentru mobil, '
+                  'pentru gestionarea accesului și plecărilor din școală. '
+                  'Crește siguranța prin identități QR dinamice, '
+                  'integrare automată a orarului și aprobări în timp real '
+                  'din partea părinților.',
+                  style: TextStyle(
+                    color: Colors.white.withAlpha(180),
+                    fontSize: 14,
+                    height: 1.55,
                   ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    "Autentificare",
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-
-                  TextField(
-                    controller: userC,
-                    decoration: InputDecoration(
-                      hintText: "Nume de utilizator sau email",
-                      prefixIcon: const Icon(
-                        Icons.person_outline,
-                        color: Color.fromRGBO(122, 175, 91, 1),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: BorderSide(
-                          color: Colors.green.withOpacity(0.3),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: const BorderSide(
-                          color: Color.fromRGBO(122, 175, 91, 1),
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  TextField(
-                    controller: passC,
-                    obscureText: !passwordVisible,
-                    decoration: InputDecoration(
-                      hintText: "Parola",
-                      prefixIcon: const Icon(
-                        Icons.lock_outline,
-                        color: Color.fromRGBO(122, 175, 91, 1),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: BorderSide(
-                          color: Colors.green.withOpacity(0.3),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
-                        borderSide: const BorderSide(
-                          color: Color.fromRGBO(122, 175, 91, 1),
-                          width: 2,
-                        ),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          passwordVisible
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                          color: Colors.grey,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            passwordVisible = !passwordVisible;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: loading ? null : _openForgotPasswordFlow,
-                      child: const Text('Ai uitat parola?'),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: (loading || _isLocallyBlocked) ? null : _login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromRGBO(122, 175, 91, 1),
-                        elevation: 8,
-                        shadowColor: Colors.green.withOpacity(0.6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                      ),
-                      child: Text(
-                        loading
-                            ? "Se conecteaza..."
-                            : _isLocallyBlocked
-                            ? "Blocat (${_remainingSeconds}s)"
-                            : "Conectează-te",
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 80,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
+
+  // ── Login form card ──
+  Widget _buildLoginForm({required bool compact}) {
+    final radius = BorderRadius.circular(12);
+
+    return Container(
+      width: compact ? double.infinity : 420,
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 28 : 44,
+        vertical: compact ? 36 : 48,
+      ),
+      decoration: BoxDecoration(
+        color: _cardBg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (compact) ...[
+            Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Image.asset(
+                  'assets/images/aegis_logo.png',
+                  width: 56,
+                  height: 56,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+          const Text(
+            'Autentificare',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1A1F1A),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Introduceți datele pentru a accesa contul',
+            style: TextStyle(fontSize: 13, color: _hintColor),
+          ),
+          const SizedBox(height: 28),
+
+          // Username / Email
+          const Text(
+            'Nume utilizator sau Email',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF2C332C),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: userC,
+            decoration: InputDecoration(
+              hintText: 'ex: ion.popescu@scoala.ro',
+              hintStyle: const TextStyle(color: _hintColor, fontSize: 14),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                  borderRadius: radius,
+                  borderSide: const BorderSide(color: _inputBorder)),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: radius,
+                  borderSide: const BorderSide(color: _inputBorder)),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius: radius,
+                  borderSide:
+                      const BorderSide(color: _greenAccent, width: 1.5)),
+              suffixIcon:
+                  const Icon(Icons.alternate_email, color: _hintColor, size: 20),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Password label row
+          Row(
+            children: [
+              const Text(
+                'Parolă',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2C332C),
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: loading ? null : _openForgotPasswordFlow,
+                child: const Text(
+                  'Ai uitat parola?',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _greenAccent,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: passC,
+            obscureText: !passwordVisible,
+            decoration: InputDecoration(
+              hintText: '••••••••',
+              hintStyle: const TextStyle(color: _hintColor, fontSize: 14),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                  borderRadius: radius,
+                  borderSide: const BorderSide(color: _inputBorder)),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: radius,
+                  borderSide: const BorderSide(color: _inputBorder)),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius: radius,
+                  borderSide:
+                      const BorderSide(color: _greenAccent, width: 1.5)),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  passwordVisible
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: _hintColor,
+                  size: 20,
+                ),
+                onPressed: () =>
+                    setState(() => passwordVisible = !passwordVisible),
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // Login button
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: (loading || _isLocallyBlocked) ? null : _login,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _greenAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+                textStyle: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+              child: loading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2.5, color: Colors.white),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _isLocallyBlocked
+                              ? 'Blocat (${_remainingSeconds}s)'
+                              : 'Conectează-te',
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.arrow_forward, size: 18),
+                      ],
+                    ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Footer
+          Center(
+            child: Column(
+              children: const [
+                Text(
+                  'Nu ai un cont încă?',
+                  style: TextStyle(fontSize: 13, color: _hintColor),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Contactează administrația instituției',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: _greenAccent,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width > 750;
+
+    return Scaffold(
+      backgroundColor: _darkBg,
+      body: Stack(
+        children: [
+          Positioned.fill(child: _buildDotPattern(alpha: 8, radius: 1.0)),
+          SafeArea(
+            child: isWide ? _buildLandscape() : _buildPortrait(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── LANDSCAPE: split view ──
+  Widget _buildLandscape() {
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        elevation: 24,
+        shadowColor: Colors.black,
+        borderRadius: BorderRadius.circular(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 960, maxHeight: 620),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Row(
+              children: [
+                Expanded(child: _buildBrandingPanel()),
+                Expanded(
+                  child: Container(
+                    color: _cardBg,
+                    alignment: Alignment.center,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: _buildLoginForm(compact: false),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── PORTRAIT: card over dark background ──
+  Widget _buildPortrait() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+        child: Material(
+          color: Colors.transparent,
+          elevation: 20,
+          shadowColor: Colors.black,
+          borderRadius: BorderRadius.circular(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: _buildLoginForm(compact: true),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Dot pattern painter ──
+class _DotPatternPainter extends CustomPainter {
+  final int alpha;
+  final double spacing;
+  final double radius;
+
+  const _DotPatternPainter({
+    this.alpha = 10,
+    this.spacing = 20,
+    this.radius = 1.5,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withAlpha(alpha)
+      ..style = PaintingStyle.fill;
+    for (double y = 0; y < size.height; y += spacing) {
+      for (double x = 0; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), radius, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DotPatternPainter oldDelegate) =>
+      oldDelegate.alpha != alpha ||
+      oldDelegate.spacing != spacing ||
+      oldDelegate.radius != radius;
 }
