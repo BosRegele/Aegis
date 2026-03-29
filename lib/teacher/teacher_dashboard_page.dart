@@ -7,6 +7,9 @@ import 'cereriasteptare.dart';
 import 'statuselevi.dart';
 import 'mesajedir.dart';
 
+const _kGreen = Color(0xFF1D5C2B);
+const _kBg = Color(0xFFF2F4F0);
+
 class TeacherDashboardPage extends StatefulWidget {
   const TeacherDashboardPage({super.key});
 
@@ -146,185 +149,29 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF7AAF5B),
+      backgroundColor: _kBg,
       body: SafeArea(
         child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           stream: _teacherStream,
           builder: (context, snap) {
             final data = snap.data?.data() ?? const <String, dynamic>{};
             final fullName = (data['fullName'] ?? '').toString().trim();
-            final classId = (data['classId'] ?? '').toString().trim();
             final displayName = fullName.isNotEmpty
                 ? fullName
                 : (AppSession.username ?? 'Diriginte');
 
             return Column(
               children: [
-                // ── Header verde cu logo + nume + clasă ─────────────────
-                Container(
-                  width: double.infinity,
-                  color: const Color(0xFF7AAF5B),
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                  child: Column(
-                    children: [
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: IconButton(
-                          tooltip: 'Logout',
-                          onPressed: _logout,
-                          icon: const Icon(
-                            Icons.logout_rounded,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.22),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.shield_rounded,
-                            size: 64,
-                            color: Colors.white,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        displayName,
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 4),
-                      if (classId.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.25),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            'Diriginte · Clasa $classId',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        )
-                      else
-                        const Text(
-                          'Diriginte',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                // ── Corp principal ──────────────────────────────────────
+                _buildHeader(displayName),
                 Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    clipBehavior: Clip.antiAlias,
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE6EBEE),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(28),
-                        topRight: Radius.circular(28),
-                      ),
-                    ),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ── Card proeminent: Învoiri ──────────────────
-                          _PrimaryActionCard(
-                            icon: Icons.article_rounded,
-                            iconBgColor: const Color(0xFF17B5A8),
-                            title: 'Cereri de învoire',
-                            subtitle: 'Aprobă sau respinge cererile elevilor',
-                            pendingStream: _pendingStream,
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const CereriAsteptarePage(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          // ── Label secțiune ────────────────────────────
-                          const Padding(
-                            padding: EdgeInsets.only(left: 4, bottom: 8),
-                            child: Text(
-                              'Clasa mea',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF5F6771),
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
-                          // ── Lista acțiuni ─────────────────────────────
-                          _NavCard(
-                            icon: Icons.group_rounded,
-                            iconColor: const Color(0xFF4B78D2),
-                            title: 'Elevii clasei',
-                            subtitle: 'Status, scanări și permisiuni active',
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const StatusEleviPage(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          _NavCard(
-                            icon: Icons.calendar_month_rounded,
-                            iconColor: const Color(0xFFE47E2D),
-                            title: 'Orar',
-                            subtitle: 'Orarul clasei pe zile',
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const OrarDirPage(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          _NavCard(
-                            icon: Icons.chat_bubble_rounded,
-                            iconColor: const Color(0xFF6E46C2),
-                            title: 'Mesaje',
-                            subtitle: 'Comunicare cu părinții și elevii',
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const MesajeDirPage(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    child: Column(
+                      children: [
+                        _buildActivityCard(),
+                        const SizedBox(height: 20),
+                        _buildGrid(context),
+                      ],
                     ),
                   ),
                 ),
@@ -335,222 +182,421 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
       ),
     );
   }
-}
 
-// ─── Card proeminent cu badge live ───────────────────────────────────────────
-
-class _PrimaryActionCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconBgColor;
-  final String title;
-  final String subtitle;
-  final Stream<QuerySnapshot>? pendingStream;
-  final VoidCallback? onTap;
-
-  const _PrimaryActionCard({
-    required this.icon,
-    required this.iconBgColor,
-    required this.title,
-    required this.subtitle,
-    this.pendingStream,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: pendingStream,
-      builder: (context, snap) {
-        final count = snap.data?.docs.length ?? 0;
-        return MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onTap,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF17B5A8), Color(0xFF0C8D80)],
-                ),
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF17B5A8).withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 56,
-                    height: 56,
+  // ─── Header verde cu dots + salut + buton profil ────────────────────────────
+  Widget _buildHeader(String name) {
+    return Stack(
+      children: [
+        Container(
+          width: double.infinity,
+          color: _kGreen,
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: _logout,
+                  child: Container(
+                    width: 46,
+                    height: 46,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(14),
+                      color: Colors.white.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(13),
                     ),
-                    child: Icon(icon, color: Colors.white, size: 32),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
+                    child: const Icon(
+                      Icons.person_rounded,
+                      color: Colors.white,
+                      size: 26,
                     ),
                   ),
-                  if (count > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Text(
-                        count.toString(),
-                        style: const TextStyle(
-                          color: Color(0xFF0C8D80),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    )
-                  else
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Colors.white70,
-                      size: 28,
-                    ),
-                ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Bine ai venit,',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w500,
+                  height: 1.2,
+                ),
+              ),
+              Text(
+                name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Dots decorative pattern
+        Positioned.fill(
+          child: IgnorePointer(
+            child: CustomPaint(painter: _DotPatternPainter()),
+          ),
+        ),
+        // Cercuri decorative stânga-jos
+        Positioned(
+          left: -55,
+          bottom: -15,
+          child: IgnorePointer(
+            child: Container(
+              width: 170,
+              height: 170,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.07),
+                shape: BoxShape.circle,
               ),
             ),
           ),
+        ),
+        Positioned(
+          left: -20,
+          bottom: 35,
+          child: IgnorePointer(
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.07),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── Card "Activitate Recentă" ──────────────────────────────────────────────
+  Widget _buildActivityCard() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _pendingStream,
+      builder: (context, snap) {
+        final pendingDocs = snap.data?.docs ?? [];
+
+        final items = <_ActivityData>[];
+
+        // Cereri în așteptare reale (max 1 pentru a lăsa loc celorlalte)
+        for (final doc in pendingDocs.take(1)) {
+          final d = doc.data() as Map<String, dynamic>;
+          final classId = (d['classId'] ?? '').toString();
+          items.add(_ActivityData(
+            icon: Icons.warning_amber_rounded,
+            iconColor: const Color(0xFFF5A623),
+            title: 'Cerere în așteptare - $classId',
+            time: 'ACUM',
+          ));
+        }
+
+        items.add(const _ActivityData(
+          icon: Icons.campaign_rounded,
+          iconColor: _kGreen,
+          title: 'Anunț școlar nou',
+          time: 'ASTĂZI',
+        ));
+
+        if (pendingDocs.length > 1) {
+          final d = pendingDocs[1].data() as Map<String, dynamic>;
+          final studentName = (d['studentName'] ?? '').toString();
+          items.add(_ActivityData(
+            icon: Icons.cancel_rounded,
+            iconColor: _kGreen,
+            title: 'Cerere respinsă - $studentName',
+            time: 'ASTĂZI',
+          ));
+        }
+
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.07),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 18),
+              const Text(
+                'Activitate Recentă',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A2E1D),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDDDDDD),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 6),
+              ...items.map((item) => _ActivityItemWidget(data: item)),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ─── Grid 2×2 ───────────────────────────────────────────────────────────────
+  Widget _buildGrid(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _pendingStream,
+      builder: (context, snap) {
+        final count = snap.data?.docs.length ?? 0;
+        final cereriSub = count > 0
+            ? '$count ${count == 1 ? 'cerere nouă' : 'cereri noi'}'
+            : 'Nicio cerere nouă';
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  _GridCard(
+                    icon: Icons.group_rounded,
+                    title: 'Clasa Mea',
+                    subtitle: 'Gestionare elevi',
+                    isDark: true,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const StatusEleviPage(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _GridCard(
+                    icon: Icons.article_rounded,
+                    title: 'Cereri',
+                    subtitle: cereriSub,
+                    isDark: true,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CereriAsteptarePage(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                children: [
+                  _GridCard(
+                    icon: Icons.calendar_month_rounded,
+                    title: 'Orar',
+                    subtitle: 'Vezi programul',
+                    isDark: false,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const OrarDirPage()),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _GridCard(
+                    icon: Icons.chat_bubble_rounded,
+                    title: 'Mesaje',
+                    subtitle: 'Comunicare părinți',
+                    isDark: false,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MesajeDirPage()),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );
   }
 }
 
-// ─── Card navigare (full-width, list style) ──────────────────────────────────
+// ─── Dot pattern painter ──────────────────────────────────────────────────────
 
-class _NavCard extends StatelessWidget {
+class _DotPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.14)
+      ..style = PaintingStyle.fill;
+    const spacing = 20.0;
+    const radius = 1.8;
+    for (double x = spacing / 2; x < size.width; x += spacing) {
+      for (double y = spacing / 2; y < size.height; y += spacing) {
+        canvas.drawCircle(Offset(x, y), radius, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ─── Model date activitate ────────────────────────────────────────────────────
+
+class _ActivityData {
   final IconData icon;
   final Color iconColor;
   final String title;
-  final String subtitle;
-  final VoidCallback? onTap;
+  final String time;
 
-  const _NavCard({
+  const _ActivityData({
     required this.icon,
     required this.iconColor,
     required this.title,
-    required this.subtitle,
-    this.onTap,
+    required this.time,
   });
+}
+
+// ─── Widget rând activitate ───────────────────────────────────────────────────
+
+class _ActivityItemWidget extends StatelessWidget {
+  final _ActivityData data;
+
+  const _ActivityItemWidget({required this.data});
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE6F4EA),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(data.icon, color: data.iconColor, size: 24),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data.title,
+                  style: const TextStyle(
+                    color: Color(0xFF1A2E1D),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                child: Icon(icon, color: iconColor, size: 26),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF2E3B4E),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF5F6771),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 2),
+                Text(
+                  data.time,
+                  style: const TextStyle(
+                    color: Color(0xFF8A9E8C),
+                    fontSize: 12,
+                    letterSpacing: 0.5,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.grey[400],
-                size: 24,
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 }
 
-class SimplePage extends StatelessWidget {
-  final String title;
+// ─── Card grid 2×2 ───────────────────────────────────────────────────────────
 
-  const SimplePage({required this.title, super.key});
+class _GridCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool isDark;
+  final VoidCallback? onTap;
+
+  const _GridCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.isDark,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text(title, style: const TextStyle(fontSize: 24))),
+    final bg = isDark ? _kGreen : const Color(0xFFE8E9E4);
+    final iconBg = isDark
+        ? Colors.white.withOpacity(0.18)
+        : _kGreen.withOpacity(0.12);
+    final iconColor = isDark ? Colors.white : _kGreen;
+    final titleColor = isDark ? Colors.white : const Color(0xFF1A2E1D);
+    final subtitleColor = isDark
+        ? Colors.white.withOpacity(0.72)
+        : const Color(0xFF6B7A6D);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: iconColor, size: 28),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              title,
+              style: TextStyle(
+                color: titleColor,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: subtitleColor,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
