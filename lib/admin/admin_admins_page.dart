@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../core/session.dart';
-import 'services/admin_store.dart';
+import '../session.dart';
+import 'admin_notifications.dart';
+import 'admin_store.dart';
 
 class AdminAdminsPage extends StatefulWidget {
   const AdminAdminsPage({super.key});
@@ -27,7 +28,7 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
 
     if (!AppSession.isAdmin) {
       return const Scaffold(
-        body: Center(child: Text("Access denied (admin only)")),
+        body: Center(child: Text("Acces interzis (doar admin).")),
       );
     }
 
@@ -69,10 +70,7 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(999),
@@ -90,6 +88,12 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
             );
           },
         ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: AdminNotificationBell(),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -105,22 +109,15 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Colors.green.withValues(alpha: 0.30),
-                  ),
+                  borderSide: BorderSide(color: Colors.green.withValues(alpha: 0.30)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Colors.green.withValues(alpha: 0.30),
-                  ),
+                  borderSide: BorderSide(color: Colors.green.withValues(alpha: 0.30)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(
-                    color: Color(0xFF7AAF5B),
-                    width: 2,
-                  ),
+                  borderSide: const BorderSide(color: Color(0xFF7AAF5B), width: 2),
                 ),
               ),
               onChanged: (v) => setState(() => q = v.trim().toLowerCase()),
@@ -137,38 +134,25 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                   .where('role', isEqualTo: 'admin')
                   .snapshots(),
               builder: (context, snap) {
-                if (snap.hasError)
-                  return Center(
-                    child: SelectableText("Eroare:\n${snap.error}"),
-                  );
-                if (!snap.hasData)
-                  return const Center(child: CircularProgressIndicator());
+                if (snap.hasError) return Center(child: SelectableText("Eroare:\n${snap.error}"));
+                if (!snap.hasData) return const Center(child: CircularProgressIndicator());
 
                 final docs = [...snap.data!.docs];
                 docs.sort((a, b) {
-                  final an = ((a.data() as Map)['fullName'] ?? '')
-                      .toString()
-                      .toLowerCase();
-                  final bn = ((b.data() as Map)['fullName'] ?? '')
-                      .toString()
-                      .toLowerCase();
+                  final an = ((a.data() as Map)['fullName'] ?? '').toString().toLowerCase();
+                  final bn = ((b.data() as Map)['fullName'] ?? '').toString().toLowerCase();
                   return an.compareTo(bn);
                 });
 
                 final filtered = docs.where((d) {
                   if (q.isEmpty) return true;
                   final data = d.data() as Map<String, dynamic>;
-                  final username = (data['username'] ?? d.id)
-                      .toString()
-                      .toLowerCase();
-                  final fullName = (data['fullName'] ?? '')
-                      .toString()
-                      .toLowerCase();
+                  final username = (data['username'] ?? d.id).toString().toLowerCase();
+                  final fullName = (data['fullName'] ?? '').toString().toLowerCase();
                   return fullName.contains(q) || username.contains(q);
                 }).toList();
 
-                if (filtered.isEmpty)
-                  return const Center(child: Text("Nu există rezultate"));
+                if (filtered.isEmpty) return const Center(child: Text("Nu există rezultate"));
 
                 return ListView.builder(
                   itemCount: filtered.length,
@@ -179,8 +163,6 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                     final username = (data['username'] ?? '').toString();
                     final fullName = (data['fullName'] ?? username).toString();
                     final status = (data['status'] ?? 'active').toString();
-                    final onboarded =
-                        data['onboardingComplete'] as bool? ?? false;
 
                     return Container(
                       margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
@@ -199,65 +181,11 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: primaryGreen.withValues(alpha: 0.20),
-                          child: const Icon(
-                            Icons.admin_panel_settings,
-                            color: primaryGreen,
-                          ),
+                          child: const Icon(Icons.admin_panel_settings, color: primaryGreen),
                         ),
-                        title: Text(
-                          fullName,
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
+                        title: Text(fullName, style: const TextStyle(fontWeight: FontWeight.w500)),
                         subtitle: Text("username: $username"),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: onboarded
-                                    ? const Color(0xFFE8F5E9)
-                                    : const Color(0xFFFFF3E0),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: onboarded
-                                      ? const Color(0xFF4CAF50)
-                                      : const Color(0xFFFF9800),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    onboarded
-                                        ? Icons.how_to_reg
-                                        : Icons.hourglass_top,
-                                    size: 13,
-                                    color: onboarded
-                                        ? const Color(0xFF4CAF50)
-                                        : const Color(0xFFFF9800),
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    'OB',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: onboarded
-                                          ? const Color(0xFF4CAF50)
-                                          : const Color(0xFFFF9800),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.chevron_right, color: Colors.grey),
-                          ],
-                        ),
+                        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
                         onTap: () => _openAdminDialog(
                           context,
                           uid: uid,
@@ -283,23 +211,9 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF5F6771),
-              fontSize: 13,
-            ),
-          ),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF5F6771), fontSize: 13)),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF2E3B4E),
-              fontSize: 15,
-            ),
-          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2E3B4E), fontSize: 15)),
         ],
       ),
     );
@@ -319,16 +233,10 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
         return StatefulBuilder(
           builder: (ctx, setDialogState) => Dialog(
             backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 24,
-            ),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 400),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-              ),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -342,18 +250,9 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(24),
-                      ),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                     ),
-                    child: Text(
-                      fullName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                    child: Text(fullName, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
                   ),
 
                   // --- CONTENT ---
@@ -364,17 +263,12 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                       children: [
                         _buildDetailRow("Username Administrator", username),
                         _buildDetailRow("Rol Sistem", "Administrator General"),
-                        _buildDetailRow(
-                          "Status Cont",
-                          status == 'disabled'
-                              ? 'Dezactivat'
-                              : 'Activ (Enabled)',
-                        ),
+                        _buildDetailRow("Status Cont", status == 'disabled' ? 'Dezactivat' : 'Activ (Enabled)'),
                       ],
                     ),
                   ),
 
-                  // --- ACTIONS ---
+                  // --- ACTIUNI ---
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                     child: Column(
@@ -385,37 +279,19 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                             Expanded(
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: status == 'disabled'
-                                      ? const Color(0xFF4CAF50)
-                                      : Colors.orangeAccent,
+                                  backgroundColor: status == 'disabled' ? const Color(0xFF4CAF50) : Colors.orangeAccent,
                                   foregroundColor: Colors.white,
                                   elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                 ),
-                                onPressed: busy
-                                    ? null
-                                    : () async {
-                                        final disable = status != 'disabled';
-                                        setDialogState(() => busy = true);
-                                        await store.setDisabled(
-                                          username,
-                                          disable,
-                                        );
-                                        if (mounted) Navigator.pop(context);
-                                      },
-                                child: Text(
-                                  status == 'disabled'
-                                      ? "Activează"
-                                      : "Dezactivează",
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
+                                onPressed: busy ? null : () async {
+                                  final disable = status != 'disabled';
+                                  setDialogState(() => busy = true);
+                                  await store.setDisabled(username, disable);
+                                  if (mounted) Navigator.pop(context);
+                                },
+                                child: Text(status == 'disabled' ? "Activează" : "Dezactivează", style: const TextStyle(fontWeight: FontWeight.w700)),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -426,73 +302,37 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                                   backgroundColor: const Color(0xFFE53935),
                                   foregroundColor: Colors.white,
                                   elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                 ),
-                                onPressed: busy
-                                    ? null
-                                    : () async {
-                                        final ok = await showDialog<bool>(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            title: const Text(
-                                              "Confirmare Ștergere",
-                                            ),
-                                            content: Text(
-                                              "Sigur vrei să ștergi administratorul $username? Această acțiune este ireversibilă.",
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  false,
-                                                ),
-                                                child: const Text("Anulează"),
-                                              ),
-                                              ElevatedButton(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.red,
-                                                  foregroundColor: Colors.white,
-                                                ),
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  true,
-                                                ),
-                                                child: const Text(
-                                                  "Șterge definitiv",
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                        if (ok != true) return;
-                                        setDialogState(() => busy = true);
-                                        try {
-                                          await store.deleteUser(username);
-                                          if (mounted) Navigator.pop(context);
-                                        } catch (_) {
-                                          setDialogState(() => busy = false);
-                                        }
-                                      },
-                                child: busy
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
+                                onPressed: busy ? null : () async {
+                                  final ok = await showDialog<bool>(
+                                    context: context,
+                                    builder: (_) => AlertDialog(
+                                      title: const Text("Confirmare Ștergere"),
+                                      content: Text("Sigur vrei să ștergi administratorul $username? Această acțiune este ireversibilă."),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Anulează")),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                                          onPressed: () => Navigator.pop(context, true),
+                                          child: const Text("Șterge definitiv"),
                                         ),
-                                      )
-                                    : const Text(
-                                        "Șterge",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
+                                      ],
+                                    ),
+                                  );
+                                  if (ok != true) return;
+                                  setDialogState(() => busy = true);
+                                  try {
+                                    await store.deleteUser(username);
+                                    if (mounted) Navigator.pop(context);
+                                  } catch (_) {
+                                    setDialogState(() => busy = false);
+                                  }
+                                },
+                                child: busy 
+                                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                  : const Text("Șterge", style: TextStyle(fontWeight: FontWeight.w700)),
                               ),
                             ),
                           ],
@@ -502,20 +342,13 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                           width: double.infinity,
                           child: TextButton(
                             style: TextButton.styleFrom(
-                              backgroundColor: Colors.grey.withValues(
-                                alpha: 0.1,
-                              ),
+                              backgroundColor: Colors.grey.withValues(alpha: 0.1),
                               foregroundColor: const Color(0xFF2E3B4E),
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                             ),
                             onPressed: () => Navigator.pop(context),
-                            child: const Text(
-                              "Închide",
-                              style: TextStyle(fontWeight: FontWeight.w700),
-                            ),
+                            child: const Text("Închide", style: TextStyle(fontWeight: FontWeight.w700)),
                           ),
                         ),
                       ],
