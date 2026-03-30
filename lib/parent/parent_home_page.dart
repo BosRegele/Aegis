@@ -1,351 +1,242 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
 import '../Auth/login_page_firestore.dart';
 import '../core/session.dart';
 import 'parent_inbox_page.dart';
 import 'parent_requests_page.dart';
 import 'parent_students_page.dart';
 
-const _kHeaderGreen = Color(0xFF0A741F);
-const _kPageBg = Color(0xFFEDF2E8);
-const _kSurface = Color(0xFFF6F7F3);
+// ── Colour tokens (same palette as student) ──────────────────────────────────
+const _primary = Color(0xFF0D631B);
+const _surface = Color(0xFFF7F9F0);
+const _surfaceContainerLow = Color(0xFFF0F4E9);
+const _surfaceLowest = Color(0xFFFFFFFF);
+const _outline = Color(0xFF717B6E);
+const _outlineVariant = Color(0xFFC8D1C2);
+const _onSurface = Color(0xFF151A14);
+const _danger = Color(0xFF8E3557);
 
-class ParentHomePage extends StatefulWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN WIDGET
+// ─────────────────────────────────────────────────────────────────────────────
+class ParentHomePage extends StatelessWidget {
   const ParentHomePage({super.key});
 
   @override
-  State<ParentHomePage> createState() => _ParentHomePageState();
-}
-
-class _ParentHomePageState extends State<ParentHomePage> {
-  String? _fullName;
-  List<String> _childrenUids = [];
-
-  bool _isVisibleToParent(Map<String, dynamic> data) {
-    final targetRole = (data['targetRole'] ?? '').toString().trim();
-    final source = (data['source'] ?? '').toString().trim();
-    return (targetRole.isEmpty || targetRole == 'parent') &&
-        source != 'secretariat';
-  }
-
-  bool _isPendingParentRequest(Map<String, dynamic> data) {
-    final targetRole = (data['targetRole'] ?? '').toString().trim();
-    final status = (data['status'] ?? '').toString().trim();
-    final source = (data['source'] ?? '').toString().trim();
-    final viewedByParent = data['viewedByParent'] == true;
-    return targetRole == 'parent' &&
-        status == 'pending' &&
-        source != 'secretariat' &&
-        !viewedByParent;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadParentName();
-  }
-
-  Future<void> _loadParentName() async {
-    final uid = AppSession.uid;
-    if (uid == null || uid.isEmpty) return;
-    try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (doc.exists && mounted) {
-        final data = doc.data() as Map<String, dynamic>;
-        setState(() => _fullName = data['fullName'] as String?);
-        final children = data['children'];
-        if (children is List) {
-          setState(() => _childrenUids = List<String>.from(children));
-        }
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _signOut() async {
-    final shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: _kHeaderGreen,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text(
-            'Deconectare',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          content: const Text(
-            'Esti sigur ca vrei sa te deconectezi?',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white),
-          ),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: [
-            SizedBox(
-              width: double.maxFinite,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _BouncingButton(
-                      onTap: () => Navigator.pop(context, false),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'Anuleaza',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _BouncingButton(
-                      onTap: () => Navigator.pop(context, true),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD83838),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'Deconectare',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldLogout == true) {
-      await FirebaseAuth.instance.signOut();
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginPageFirestore()),
-        (route) => false,
-      );
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final displayName = (_fullName ?? AppSession.username ?? 'Parinte').trim();
+    final uid = AppSession.uid;
+    if (uid == null || uid.isEmpty) return const SizedBox();
 
     return Scaffold(
-      backgroundColor: _kPageBg,
+      backgroundColor: _surface,
       body: SafeArea(
-        bottom: false,
-        child: StreamBuilder<DocumentSnapshot>(
-          stream: AppSession.uid != null
-              ? FirebaseFirestore.instance.collection('users').doc(AppSession.uid).snapshots()
-              : null,
-          builder: (context, userSnap) {
-            final userData = userSnap.data?.data() as Map<String, dynamic>? ?? {};
-            final inboxLastOpened = (userData['inboxLastOpenedAt'] as Timestamp?)?.toDate();
+        top: false,
+        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid)
+              .snapshots(),
+          builder: (context, snap) {
+            final data = snap.data?.data() ?? <String, dynamic>{};
+            final fullName = (data['fullName'] ?? '').toString().trim();
+            final displayName = fullName.isNotEmpty
+                ? fullName
+                : (AppSession.username ?? 'Parinte');
+            final rawChildren = data['children'];
+            final childrenUids = rawChildren is List
+                ? List<String>.from(
+                    rawChildren,
+                  ).where((s) => s.trim().isNotEmpty).toList()
+                : <String>[];
+            final inboxLastOpened = (data['inboxLastOpenedAt'] as Timestamp?)
+                ?.toDate();
 
-            return SingleChildScrollView(
-              padding: EdgeInsets.zero,
-              child: Column(
-                children: [
-                  _ParentHeader(
-                    name: displayName,
-                    onAvatarTap: _signOut,
-                  ),
-                  Transform.translate(
-                    offset: const Offset(0, -42),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: _ActivityCard(childrenUids: _childrenUids),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-                    child: Column(
-                      children: [
-                        _BouncingButton(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const ParentStudentsPage()),
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxHeight < 760;
+                final topSectionH = compact ? 460.0 : 495.0;
+                const activityTop = 188.0;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: topSectionH,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          _TopHeroHeader(
+                            displayName: displayName,
+                            onSettings: () => _showSettingsSheet(context),
                           ),
-                          borderRadius: BorderRadius.circular(24),
-                          child: _ChildrenCard(),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
+                          Positioned(
+                            top: activityTop,
+                            left: 20,
+                            right: 20,
+                            child: _ActivityCard(childrenUids: childrenUids),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                        child: Column(
                           children: [
-                            Expanded(
-                              child: _BouncingButton(
-                                onTap: () {
-                                  if (AppSession.uid != null) {
-                                    FirebaseFirestore.instance
-                                        .collection('users')
-                                        .doc(AppSession.uid)
-                                        .update({
-                                          'requestsLastOpenedAt': FieldValue.serverTimestamp(),
-                                        });
-                                  }
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => const ParentRequestsPage()),
-                                  );
-                                },
-                                borderRadius: BorderRadius.circular(26),
-                                child: _RequestsCard(
-                                  badgeStream: _childrenUids.isNotEmpty
-                                      ? FirebaseFirestore.instance
-                                            .collection('leaveRequests')
-                                            .where('studentUid', whereIn: _childrenUids)
-                                            .snapshots()
-                                      : null,
-                                  countPredicate: _isPendingParentRequest,
+                            SizedBox(height: compact ? 0 : 2),
+                            _CopiiMeiCard(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ParentStudentsPage(),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 14),
+                            const SizedBox(height: 14),
                             Expanded(
-                              child: _BouncingButton(
-                                onTap: () {
-                                  if (AppSession.uid != null) {
-                                    FirebaseFirestore.instance
-                                        .collection('users')
-                                        .doc(AppSession.uid)
-                                        .update({
-                                          'inboxLastOpenedAt': FieldValue.serverTimestamp(),
-                                        });
-                                  }
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => const ParentInboxPage()),
-                                  );
-                                },
-                                borderRadius: BorderRadius.circular(26),
-                                child: _MessagesCard(
-                                  badgeStream: _childrenUids.isNotEmpty
-                                      ? FirebaseFirestore.instance
-                                            .collection('leaveRequests')
-                                            .where('studentUid', whereIn: _childrenUids)
-                                            .snapshots()
-                                      : null,
-                                  lastViewed: inboxLastOpened,
-                                  timestampField: 'reviewedAt',
-                                  statusWhitelist: const ['approved', 'rejected'],
-                                  countPredicate: _isVisibleToParent,
-                                ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    child: _CereriCard(
+                                      childrenUids: childrenUids,
+                                      onTap: () {
+                                        _markOpened(
+                                          uid,
+                                          'requestsLastOpenedAt',
+                                        );
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const ParentRequestsPage(),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: _MesajeCard(
+                                      childrenUids: childrenUids,
+                                      inboxLastOpened: inboxLastOpened,
+                                      onTap: () {
+                                        _markOpened(uid, 'inboxLastOpenedAt');
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const ParentInboxPage(),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                );
+              },
             );
           },
         ),
       ),
     );
   }
+
+  static void _markOpened(String uid, String field) {
+    FirebaseFirestore.instance.collection('users').doc(uid).update({
+      field: FieldValue.serverTimestamp(),
+    });
+  }
+
+  static void _showSettingsSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _SettingsSheet(),
+    );
+  }
 }
 
-class _ParentHeader extends StatelessWidget {
-  final String name;
-  final VoidCallback onAvatarTap;
+// ─────────────────────────────────────────────────────────────────────────────
+// HERO HEADER
+// ─────────────────────────────────────────────────────────────────────────────
+class _TopHeroHeader extends StatelessWidget {
+  final String displayName;
+  final VoidCallback onSettings;
 
-  const _ParentHeader({required this.name, required this.onAvatarTap});
+  const _TopHeroHeader({required this.displayName, required this.onSettings});
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
-      child: SizedBox(
-        width: double.infinity,
-        height: 360,
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(52),
+        bottomRight: Radius.circular(52),
+      ),
+      child: Container(
+        height: 220 + topPadding,
+        color: _primary,
         child: Stack(
-          fit: StackFit.expand,
+          clipBehavior: Clip.none,
           children: [
-            Container(color: _kHeaderGreen),
-            CustomPaint(painter: _HeaderDotsPainter()),
             Positioned(
-              right: -58,
-              top: -22,
-              child: Container(
-                width: 265,
-                height: 265,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
-                  shape: BoxShape.circle,
-                ),
-              ),
+              right: -80,
+              top: -90,
+              child: _Circle(size: 290, opacity: 0.08),
             ),
             Positioned(
-              left: -46,
-              bottom: -72,
-              child: Container(
-                width: 210,
-                height: 210,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.11),
-                  shape: BoxShape.circle,
-                ),
-              ),
+              right: 38,
+              top: 54 + topPadding,
+              child: _Circle(size: 78, opacity: 0.07),
             ),
             Positioned(
-              top: 72,
-              left: 26,
-              right: 24,
+              left: -60,
+              bottom: -44,
+              child: _Circle(size: 186, opacity: 0.08),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(28, 8 + topPadding, 18, 0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Text(
-                      'Bine ai venit,\n$name',
+                      'Bine ai venit,\n$displayName',
                       style: const TextStyle(
-                        fontSize: 62,
-                        height: 1.04,
-                        fontWeight: FontWeight.w800,
                         color: Colors.white,
-                        letterSpacing: -1.0,
+                        fontSize: 34,
+                        height: 1.20,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
-                  _BouncingButton(
-                    onTap: onAvatarTap,
-                    borderRadius: BorderRadius.circular(18),
-                    child: Container(
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.16),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withOpacity(0.16)),
-                      ),
-                      child: const Icon(
-                        Icons.person_rounded,
-                        color: Colors.white,
-                        size: 42,
+                  const SizedBox(width: 12),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: onSettings,
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: const Icon(
+                          Icons.person_outline_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                       ),
                     ),
                   ),
@@ -359,6 +250,28 @@ class _ParentHeader extends StatelessWidget {
   }
 }
 
+class _Circle extends StatelessWidget {
+  final double size;
+  final double opacity;
+
+  const _Circle({required this.size, required this.opacity});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: opacity),
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVITY CARD
+// ─────────────────────────────────────────────────────────────────────────────
 class _ActivityCard extends StatelessWidget {
   final List<String> childrenUids;
 
@@ -367,155 +280,140 @@ class _ActivityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        borderRadius: BorderRadius.circular(42),
+        color: _surfaceLowest,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x140D631B),
+            blurRadius: 24,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'Activitate Recenta',
-            style: TextStyle(
-              fontSize: 27,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF121712),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+            child: Row(
+              children: const [
+                Text(
+                  'Activitate Recenta',
+                  style: TextStyle(
+                    color: _onSurface,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 10),
-          Container(
-            width: 86,
-            height: 8,
-            decoration: BoxDecoration(
-              color: const Color(0xFFD2D7D1),
-              borderRadius: BorderRadius.circular(16),
-            ),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: _outlineVariant.withValues(alpha: 0.35),
+            indent: 20,
+            endIndent: 20,
           ),
-          const SizedBox(height: 20),
-          _ActivityStream(childrenUids: childrenUids),
+          if (childrenUids.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+              child: Center(
+                child: Text(
+                  'Nu sunt copii adaugati.',
+                  style: TextStyle(color: _outline),
+                ),
+              ),
+            )
+          else
+            _ActivityFeed(childrenUids: childrenUids),
+          const SizedBox(height: 4),
         ],
       ),
     );
   }
 }
 
-class _ActivityStream extends StatelessWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVITY FEED
+// ─────────────────────────────────────────────────────────────────────────────
+class _ActivityItem {
+  final String title;
+  final DateTime? time;
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+
+  const _ActivityItem({
+    required this.title,
+    required this.time,
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+  });
+}
+
+class _ActivityFeed extends StatefulWidget {
   final List<String> childrenUids;
 
-  const _ActivityStream({required this.childrenUids});
+  const _ActivityFeed({required this.childrenUids});
 
   @override
-  Widget build(BuildContext context) {
-    if (childrenUids.isEmpty) {
-      return const Column(
-        children: [
-          _ActivityRow(
-            icon: Icons.login_rounded,
-            title: 'Andrei Popescu a intrat',
-            subtitle: '25 OCT, 15:45',
-            iconBg: Color(0xFFD6DED6),
-            iconColor: Color(0xFF0A741F),
-          ),
-          SizedBox(height: 12),
-          _ActivityRow(
-            icon: Icons.check_circle,
-            title: 'Cerere aprobata',
-            subtitle: '25 OCT, 15:45',
-            iconBg: Color(0xFFD6DED6),
-            iconColor: Color(0xFF0A741F),
-          ),
-          SizedBox(height: 12),
-          _ActivityRow(
-            icon: Icons.notifications_active,
-            title: 'Anunt Scolar Nou',
-            subtitle: '25 OCT, 15:45',
-            iconBg: Color(0xFFD6DED6),
-            iconColor: Color(0xFF4F8456),
-          ),
-        ],
-      );
-    }
+  State<_ActivityFeed> createState() => _ActivityFeedState();
+}
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('leaveRequests')
-          .where('studentUid', whereIn: childrenUids)
-          .snapshots(),
-      builder: (context, snap) {
-        if (!snap.hasData || snap.data!.docs.isEmpty) {
-          return const Column(
-            children: [
-              _ActivityRow(
-                icon: Icons.notifications_active,
-                title: 'Nu exista activitate recenta',
-                subtitle: 'Verifica mai tarziu',
-                iconBg: Color(0xFFD6DED6),
-                iconColor: Color(0xFF4F8456),
-              ),
-            ],
-          );
-        }
+class _ActivityFeedState extends State<_ActivityFeed> {
+  final Map<String, String> _names = {};
 
-        final docs = snap.data!.docs;
-        docs.sort((a, b) {
-          final aData = a.data() as Map<String, dynamic>;
-          final bData = b.data() as Map<String, dynamic>;
-          final aTs = (aData['reviewedAt'] ?? aData['createdAt'] ?? aData['requestedAt']) as Timestamp?;
-          final bTs = (bData['reviewedAt'] ?? bData['createdAt'] ?? bData['requestedAt']) as Timestamp?;
-          final ad = aTs?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final bd = bTs?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
-          return bd.compareTo(ad);
-        });
-
-        final items = docs.take(3).map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final status = (data['status'] ?? '').toString();
-          final studentName = (data['studentName'] ?? 'Elev').toString();
-          final ts = (data['reviewedAt'] ?? data['createdAt'] ?? data['requestedAt']) as Timestamp?;
-          final subtitle = _fmt(ts?.toDate());
-
-          if (status == 'approved') {
-            return _ActivityRow(
-              icon: Icons.check_circle,
-              title: 'Cerere aprobata pentru $studentName',
-              subtitle: subtitle,
-              iconBg: const Color(0xFFD6DED6),
-              iconColor: const Color(0xFF0A741F),
-            );
-          }
-          if (status == 'rejected') {
-            return _ActivityRow(
-              icon: Icons.cancel,
-              title: 'Cerere respinsa pentru $studentName',
-              subtitle: subtitle,
-              iconBg: const Color(0xFFE6D6D6),
-              iconColor: const Color(0xFF9B2E2E),
-            );
-          }
-          return _ActivityRow(
-            icon: Icons.mail_rounded,
-            title: 'Cerere noua de la $studentName',
-            subtitle: subtitle,
-            iconBg: const Color(0xFFD6DED6),
-            iconColor: const Color(0xFF0A741F),
-          );
-        }).toList();
-
-        return Column(
-          children: [
-            for (int i = 0; i < items.length; i++) ...[
-              items[i],
-              if (i != items.length - 1) const SizedBox(height: 12),
-            ],
-          ],
-        );
-      },
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadNames();
   }
 
-  static String _fmt(DateTime? dt) {
+  @override
+  void didUpdateWidget(_ActivityFeed old) {
+    super.didUpdateWidget(old);
+    if (old.childrenUids.join() != widget.childrenUids.join()) _loadNames();
+  }
+
+  Future<void> _loadNames() async {
+    for (final uid in widget.childrenUids) {
+      if (_names.containsKey(uid)) continue;
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get();
+        final d = doc.data() ?? {};
+        final name = (d['fullName'] ?? d['username'] ?? '').toString().trim();
+        if (name.isNotEmpty && mounted) {
+          setState(() => _names[uid] = name);
+        }
+      } catch (_) {}
+    }
+  }
+
+  String _resolveName(String uid, Map<String, dynamic> eventData) {
+    if (_names.containsKey(uid)) return _names[uid]!;
+    for (final key in ['studentName', 'fullName', 'userName', 'username']) {
+      final v = (eventData[key] ?? '').toString().trim();
+      if (v.isNotEmpty) return v;
+    }
+    return 'Elev';
+  }
+
+  static String _formatTime(DateTime? dt) {
     if (dt == null) return '--';
+    final day = dt.day.toString().padLeft(2, '0');
+    final month = _monthShort(dt.month);
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final min = dt.minute.toString().padLeft(2, '0');
+    return '$day $month, $hour:$min';
+  }
+
+  static String _monthShort(int m) {
     const months = [
       'IAN',
       'FEB',
@@ -530,48 +428,140 @@ class _ActivityStream extends StatelessWidget {
       'NOV',
       'DEC',
     ];
-    final day = dt.day.toString().padLeft(2, '0');
-    final month = months[dt.month - 1];
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final mm = dt.minute.toString().padLeft(2, '0');
-    return '$day $month, $hh:$mm';
+    return months[m - 1];
   }
-}
-
-class _ActivityRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color iconBg;
-  final Color iconColor;
-
-  const _ActivityRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.iconBg,
-    required this.iconColor,
-  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF1EC),
-        borderRadius: BorderRadius.circular(22),
-      ),
+    final uids = widget.childrenUids;
+
+    final accessStream = FirebaseFirestore.instance
+        .collection('accessEvents')
+        .where('userId', whereIn: uids)
+        .orderBy('timestamp', descending: true)
+        .limit(5)
+        .snapshots();
+
+    final requestStream = FirebaseFirestore.instance
+        .collection('leaveRequests')
+        .where('studentUid', whereIn: uids)
+        .where('status', whereIn: ['approved', 'rejected'])
+        .orderBy('reviewedAt', descending: true)
+        .limit(5)
+        .snapshots();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: accessStream,
+      builder: (context, accessSnap) {
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: requestStream,
+          builder: (context, reqSnap) {
+            final List<_ActivityItem> items = [];
+
+            for (final doc in accessSnap.data?.docs ?? []) {
+              final d = doc.data();
+              final typStr = (d['type'] ?? '').toString().trim();
+              final isExit = typStr == 'exit';
+              final uid = (d['userId'] ?? '').toString();
+              final name = _resolveName(uid, d);
+              final ts = (d['timestamp'] as Timestamp?)?.toDate();
+              items.add(
+                _ActivityItem(
+                  title: isExit ? '$name a iesit' : '$name a intrat',
+                  time: ts,
+                  icon: isExit
+                      ? Icons.arrow_forward_rounded
+                      : Icons.arrow_back_rounded,
+                  iconBg: isExit
+                      ? const Color(0xFFFFF0F5)
+                      : const Color(0xFFF0F4EA),
+                  iconColor: isExit ? _danger : _primary,
+                ),
+              );
+            }
+
+            for (final doc in reqSnap.data?.docs ?? []) {
+              final d = doc.data();
+              final status = (d['status'] ?? '').toString();
+              final ts =
+                  ((d['reviewedAt'] ?? d['updatedAt'] ?? d['createdAt'])
+                          as Timestamp?)
+                      ?.toDate();
+              final approved = status == 'approved';
+              items.add(
+                _ActivityItem(
+                  title: approved ? 'Cerere aprobata' : 'Cerere respinsa',
+                  time: ts,
+                  icon: approved
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.cancel_outlined,
+                  iconBg: approved
+                      ? const Color(0xFFF0F4EA)
+                      : const Color(0xFFFFF0F5),
+                  iconColor: approved ? _primary : _danger,
+                ),
+              );
+            }
+
+            items.sort((a, b) {
+              if (a.time == null && b.time == null) return 0;
+              if (a.time == null) return 1;
+              if (b.time == null) return -1;
+              return b.time!.compareTo(a.time!);
+            });
+
+            final shown = items.take(3).toList();
+
+            if (shown.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+                child: Center(
+                  child: Text(
+                    'Nicio activitate recenta.',
+                    style: TextStyle(color: _outline, fontSize: 14),
+                  ),
+                ),
+              );
+            }
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: shown
+                  .map(
+                    (item) => _ActivityTile(
+                      item: item,
+                      formattedTime: _formatTime(item.time),
+                    ),
+                  )
+                  .toList(),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ActivityTile extends StatelessWidget {
+  final _ActivityItem item;
+  final String formattedTime;
+
+  const _ActivityTile({required this.item, required this.formattedTime});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       child: Row(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(18),
+              color: item.iconBg,
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(icon, color: iconColor, size: 31),
+            child: Icon(item.icon, color: item.iconColor, size: 24),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -579,335 +569,468 @@ class _ActivityRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  item.title,
                   style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF151A15),
-                    height: 1.15,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
+                    color: _onSurface,
                     fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF707970),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChildrenCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFAFC7B1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: const Color(0xFFD3DDD4),
-              borderRadius: BorderRadius.circular(19),
-            ),
-            child: const Icon(
-              Icons.groups_rounded,
-              color: Color(0xFF0A741F),
-              size: 41,
-            ),
-          ),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Copiii Mei',
-                  style: TextStyle(
-                    fontSize: 22,
-                    color: Color(0xFF0A741F),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
-                  'Vezi detaliile elevilor tai',
-                  style: TextStyle(
-                    fontSize: 17,
-                    color: Color(0xFF32465B),
+                  formattedTime,
+                  style: const TextStyle(
+                    color: _outline,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: Color(0xFF95BB98),
-            size: 38,
-          ),
         ],
       ),
     );
   }
 }
 
-class _RequestsCard extends StatelessWidget {
-  final Stream<QuerySnapshot>? badgeStream;
-  final bool Function(Map<String, dynamic>) countPredicate;
+// ─────────────────────────────────────────────────────────────────────────────
+// COPIII MEI CARD
+// ─────────────────────────────────────────────────────────────────────────────
+class _CopiiMeiCard extends StatelessWidget {
+  final VoidCallback onTap;
 
-  const _RequestsCard({required this.badgeStream, required this.countPredicate});
+  const _CopiiMeiCard({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 292,
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
-      decoration: BoxDecoration(
-        color: _kHeaderGreen,
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0A741F).withOpacity(0.22),
-            blurRadius: 16,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.22),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(Icons.article_rounded, size: 42, color: Colors.white),
-          ),
-          const Spacer(),
-          const Text(
-            'Cererile de\ninvoire',
-            style: TextStyle(
-              fontSize: 44,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-              height: 1.06,
-              letterSpacing: -0.4,
-            ),
-          ),
-          const SizedBox(height: 10),
-          StreamBuilder<QuerySnapshot>(
-            stream: badgeStream,
-            builder: (context, snapshot) {
-              int count = 0;
-              if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-                count = snapshot.data!.docs
-                    .where((doc) => countPredicate(doc.data() as Map<String, dynamic>))
-                    .length;
-              }
-              return Text(
-                count > 0 ? '$count cereri noi' : 'Vezi cererile primite',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: count > 0 ? FontWeight.w700 : FontWeight.w500,
-                  color: Colors.white.withOpacity(0.86),
+    return Material(
+      color: _surfaceLowest,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              );
-            },
+                child: const Icon(
+                  Icons.group_rounded,
+                  color: _primary,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Copiii Mei',
+                      style: TextStyle(
+                        color: _primary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Vezi detaliile elevilor tai',
+                      style: TextStyle(
+                        color: _outline,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: _outline,
+                size: 24,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _MessagesCard extends StatelessWidget {
-  final Stream<QuerySnapshot>? badgeStream;
-  final DateTime? lastViewed;
-  final String? timestampField;
-  final List<String>? statusWhitelist;
-  final bool Function(Map<String, dynamic>)? countPredicate;
+// ─────────────────────────────────────────────────────────────────────────────
+// CERERI CARD (dark green)
+// ─────────────────────────────────────────────────────────────────────────────
+class _CereriCard extends StatelessWidget {
+  final List<String> childrenUids;
+  final VoidCallback onTap;
 
-  const _MessagesCard({
-    required this.badgeStream,
-    required this.lastViewed,
-    required this.timestampField,
-    required this.statusWhitelist,
-    required this.countPredicate,
+  const _CereriCard({required this.childrenUids, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final badgeStream = childrenUids.isNotEmpty
+        ? FirebaseFirestore.instance
+              .collection('leaveRequests')
+              .where('studentUid', whereIn: childrenUids)
+              .where('status', isEqualTo: 'pending')
+              .snapshots()
+        : null;
+
+    return Material(
+      color: _primary,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        splashColor: Colors.white.withValues(alpha: 0.1),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.description_outlined,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ),
+                  if (badgeStream != null)
+                    Positioned(
+                      top: -4,
+                      right: -4,
+                      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: badgeStream,
+                        builder: (context, snap) {
+                          final count = snap.data?.docs.length ?? 0;
+                          if (count == 0) return const SizedBox();
+                          return Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF4444),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: _primary, width: 2),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '$count',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+              const Spacer(),
+              const Text(
+                'Cererile de\ninvoire',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Vezi cererile primite',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MESAJE CARD (light)
+// ─────────────────────────────────────────────────────────────────────────────
+class _MesajeCard extends StatelessWidget {
+  final List<String> childrenUids;
+  final DateTime? inboxLastOpened;
+  final VoidCallback onTap;
+
+  const _MesajeCard({
+    required this.childrenUids,
+    required this.inboxLastOpened,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 292,
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFD7DDD3),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: const Color(0xFFD0D6CB)),
+    final msgStream = childrenUids.isNotEmpty
+        ? FirebaseFirestore.instance
+              .collection('leaveRequests')
+              .where('studentUid', whereIn: childrenUids)
+              .where('status', whereIn: ['approved', 'rejected'])
+              .snapshots()
+        : null;
+
+    return Material(
+      color: _surfaceContainerLow,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: _primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  color: _primary,
+                  size: 26,
+                ),
+              ),
+              const Spacer(),
+              const Text(
+                'Mesaje',
+                style: TextStyle(
+                  color: _onSurface,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              if (msgStream != null)
+                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: msgStream,
+                  builder: (context, snap) {
+                    int unread = 0;
+                    if (snap.hasData) {
+                      for (final doc in snap.data!.docs) {
+                        final d = doc.data();
+                        if (d['viewedByParent'] != true) {
+                          final ts =
+                              ((d['reviewedAt'] ?? d['updatedAt'])
+                                      as Timestamp?)
+                                  ?.toDate();
+                          if (inboxLastOpened == null ||
+                              (ts != null && ts.isAfter(inboxLastOpened!))) {
+                            unread++;
+                          }
+                        }
+                      }
+                    }
+                    return Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: unread > 0 ? _primary : _outline,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          unread > 0
+                              ? '$unread mesaje noi'
+                              : 'Niciun mesaj nou',
+                          style: TextStyle(
+                            color: unread > 0 ? _primary : _outline,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                )
+              else
+                const Text(
+                  'Niciun mesaj nou',
+                  style: TextStyle(
+                    color: _outline,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SETTINGS SHEET
+// ─────────────────────────────────────────────────────────────────────────────
+class _SettingsSheet extends StatelessWidget {
+  const _SettingsSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: _surfaceLowest,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
-              color: const Color(0xFFC6D1C8),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(Icons.chat_bubble_rounded, size: 38, color: _kHeaderGreen),
-          ),
-          const Spacer(),
-          const Text(
-            'Mesaje',
-            style: TextStyle(
-              fontSize: 44,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF121712),
-              height: 1,
+              color: _outlineVariant,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(height: 8),
-          StreamBuilder<QuerySnapshot>(
-            stream: badgeStream,
-            builder: (context, snapshot) {
-              int count = 0;
-
-              if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-                var docs = snapshot.data!.docs;
-                if (statusWhitelist != null) {
-                  docs = docs.where((d) => statusWhitelist!.contains(d['status'])).toList();
-                }
-
-                count = docs.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  if (countPredicate != null && !countPredicate!(data)) return false;
-                  if (lastViewed == null) return true;
-                  final ts = (data[timestampField] as Timestamp?)?.toDate();
-                  return ts != null && ts.isAfter(lastViewed!);
-                }).length;
-              }
-
-              return Row(
-                children: [
-                  const Icon(Icons.circle, size: 13, color: _kHeaderGreen),
-                  const SizedBox(width: 10),
-                  Text(
-                    count > 0 ? '$count mesaje noi' : 'Nu ai mesaje noi',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF657165),
-                    ),
-                  ),
-                ],
-              );
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Setari cont',
+              style: TextStyle(
+                color: _onSurface,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          _SettingsTile(
+            icon: Icons.lock_outline,
+            label: 'Schimba parola',
+            onTap: () {
+              Navigator.pop(context);
+              _sendPasswordReset(context);
+            },
+          ),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.logout,
+            label: 'Deconecteaza-te',
+            danger: true,
+            onTap: () {
+              Navigator.pop(context);
+              _logout(context);
             },
           ),
         ],
       ),
     );
   }
-}
 
-class _HeaderDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.14);
-    const spacing = 36.0;
-    for (double y = 18; y < size.height; y += spacing) {
-      for (double x = 16; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), 2.0, paint);
+  void _sendPasswordReset(BuildContext context) async {
+    final email = FirebaseAuth.instance.currentUser?.email;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nu exista o adresa de email asociata contului.'),
+        ),
+      );
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Email de resetare trimis la $email.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Eroare la trimiterea emailului de resetare.'),
+          ),
+        );
       }
     }
   }
 
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  void _logout(BuildContext context) async {
+    await FirebaseAuth.instance.signOut();
+    AppSession.clear();
+    if (context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginPageFirestore()),
+        (_) => false,
+      );
+    }
+  }
 }
 
-class _BouncingButton extends StatefulWidget {
-  final Widget child;
+class _SettingsTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
   final VoidCallback onTap;
-  final BorderRadius borderRadius;
+  final bool danger;
 
-  const _BouncingButton({
-    required this.child,
+  const _SettingsTile({
+    required this.icon,
+    required this.label,
     required this.onTap,
-    required this.borderRadius,
+    this.danger = false,
   });
 
   @override
-  State<_BouncingButton> createState() => _BouncingButtonState();
-}
-
-class _BouncingButtonState extends State<_BouncingButton> {
-  double _scale = 1.0;
-  bool _isPressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() {
-        _scale = 0.96;
-        _isPressed = true;
-      }),
-      onTapUp: (_) {
-        setState(() {
-          _scale = 1.0;
-          _isPressed = false;
-        });
-        Future.delayed(const Duration(milliseconds: 90), widget.onTap);
-      },
-      onTapCancel: () => setState(() {
-        _scale = 1.0;
-        _isPressed = false;
-      }),
-      child: AnimatedScale(
-        scale: _scale,
-        duration: const Duration(milliseconds: 90),
-        curve: Curves.easeOut,
-        child: Stack(
-          children: [
-            widget.child,
-            Positioned.fill(
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 90),
-                opacity: _isPressed ? 0.10 : 0.0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: widget.borderRadius,
-                  ),
+    final color = danger ? _danger : _primary;
+    return Material(
+      color: danger ? _danger.withValues(alpha: 0.07) : _surfaceContainerLow,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(width: 14),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
