@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../Auth/login_page_firestore.dart';
-import '../session.dart';
+import '../core/session.dart';
 
 class ParentHomePage extends StatefulWidget {
   const ParentHomePage({super.key});

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../session.dart';
+import '../core/session.dart';
 
 // Data model similar to _OrarViewData from orar.dart
 class _StudentProfileData {

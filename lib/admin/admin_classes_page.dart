@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../session.dart';
-import 'admin_api.dart';
-import 'admin_store.dart';
+import '../core/session.dart';
+import 'services/admin_api.dart';
+import 'services/admin_store.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
 class AdminClassesPage extends StatefulWidget {

@@ -1,11 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firster/StudentInterface/cereri.dart';
-import 'package:firster/StudentInterface/meniu.dart';
-import 'package:firster/session.dart';
+import 'package:firster/student/cereri.dart';
+import 'package:firster/student/meniu.dart';
+import 'package:firster/core/session.dart';
 import 'package:flutter/material.dart';
 
-const _primary = Color(0xFF0B741D);
+const _primary = Color(0xFF0D631B);
 const _surface = Color(0xFFECEFE6);
 const _card = Color(0xFFF7F8F3);
 const _textDark = Color(0xFF131A14);
@@ -170,7 +170,7 @@ class _InboxScreenState extends State<InboxScreen> {
       default:
         return _InboxCardData(
           title: 'Cerere Învoire - ${_formatRequestDate(requestedForDate)}',
-            topLabel: _formatSentLabel(requestedAt),
+          topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty
               ? 'Cererea este în așteptarea aprobării.'
               : message,
@@ -214,6 +214,7 @@ class _InboxScreenState extends State<InboxScreen> {
     return Scaffold(
       backgroundColor: _surface,
       body: SafeArea(
+        top: false,
         bottom: false,
         child: Column(
           children: [
@@ -270,8 +271,9 @@ class _InboxScreenState extends State<InboxScreen> {
             final items = <_InboxCardData>[...leaveItems, ...secretariatItems]
               ..sort((a, b) => b.sortAt.compareTo(a.sortAt));
 
-            final horizontalPadding =
-                MediaQuery.sizeOf(context).width < 390 ? 14.0 : 18.0;
+            final horizontalPadding = MediaQuery.sizeOf(context).width < 390
+                ? 14.0
+                : 18.0;
 
             return ListView(
               physics: const BouncingScrollPhysics(),
@@ -371,17 +373,15 @@ class _InboxHeader extends StatelessWidget {
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
-                      'Mesaje',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: titleSize,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.8,
+                        'Mesaje',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: titleSize,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.8,
+                        ),
                       ),
                     ),
-                    ),
-                    const SizedBox(width: 16),
-                    _HeaderMenuButton(onLogout: onLogout, onProfil: onProfile),
                   ],
                 ),
               ),
@@ -419,7 +419,7 @@ class _InboxRequestTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(26),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x140B741D),
+            color: Color(0x140D631B),
             blurRadius: 24,
             offset: Offset(0, 10),
           ),
@@ -553,12 +553,12 @@ class _CreateRequestButton extends StatelessWidget {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0B741D), Color(0xFF2C983E)],
+            colors: [Color(0xFF0D631B), Color(0xFF19802E)],
           ),
           borderRadius: BorderRadius.circular(22),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x260B741D),
+              color: Color(0x260D631B),
               blurRadius: 26,
               offset: Offset(0, 12),
             ),
@@ -607,108 +607,7 @@ class _HeaderIconButton extends StatelessWidget {
       child: SizedBox(
         width: 34,
         height: 34,
-        child: Center(
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 32,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeaderMenuButton extends StatelessWidget {
-  final Future<void> Function() onLogout;
-  final VoidCallback onProfil;
-
-  const _HeaderMenuButton({required this.onLogout, required this.onProfil});
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      tooltip: '',
-      offset: const Offset(0, 64),
-      elevation: 12,
-      color: const Color(0xFFD8EED9),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      onSelected: (value) async {
-        if (value == 'profil') {
-          onProfil();
-        }
-        if (value == 'logout') {
-          await onLogout();
-        }
-      },
-      itemBuilder: (_) => [
-        PopupMenuItem<String>(
-          value: 'profil',
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFB9DEBC),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0x660B741D)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.person_outline_rounded, color: _primary, size: 20),
-                SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    'Profil',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const PopupMenuDivider(height: 6),
-        PopupMenuItem<String>(
-          value: 'logout',
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1CDD8),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0x668E3557)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.logout_rounded, color: Color(0xFF8E3557), size: 20),
-                SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    'Deconecteaza-te',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Color(0xFF8E3557),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: const Color(0x337DE38D),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0x6DC7F4CE), width: 1.3),
-        ),
-        child: const Icon(Icons.person, color: Colors.white, size: 22),
+        child: Center(child: Icon(icon, color: Colors.white, size: 32)),
       ),
     );
   }

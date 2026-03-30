@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-import '../session.dart';
+import '../core/session.dart';
 
 class SecretariatGlobalMessagesPage extends StatefulWidget {
   const SecretariatGlobalMessagesPage({super.key});
@@ -313,15 +313,13 @@ class _SecretariatMessageDraft {
   final String studentName;
   final String classId;
   final String message;
-  final String recipientName;
-  final String recipientUsername;
   final Timestamp createdAt;
   final String senderUid;
   final String senderName;
   final String broadcastId;
   final String audienceLabel;
 
-  String get docId => '${broadcastId}_${recipientRole}';
+  String get docId => '${broadcastId}_$recipientRole';
 
   const _SecretariatMessageDraft({
     required this.recipientRole,
@@ -336,8 +334,6 @@ class _SecretariatMessageDraft {
     required this.senderName,
     required this.broadcastId,
     required this.audienceLabel,
-    this.recipientName = '',
-    this.recipientUsername = '',
   });
 
   Map<String, dynamic> toMap() {

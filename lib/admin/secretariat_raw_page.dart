@@ -8,8 +8,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:firster/utils/csv_download.dart';
-import 'admin_api.dart';
-import 'admin_store.dart';
+import 'services/admin_api.dart';
+import 'services/admin_store.dart';
 import 'admin_classes_page.dart';
 import 'admin_students_page.dart';
 import 'admin_teachers_page.dart';
@@ -19,7 +19,7 @@ import 'admin_turnstiles_page.dart';
 import 'admin_schedules_page.dart';
 import 'secretariat_global_messages_page.dart';
 import '../services/security_flags_service.dart';
-import '../session.dart';
+import '../core/session.dart';
 
 class SecretariatRawPage extends StatefulWidget {
   const SecretariatRawPage({super.key});

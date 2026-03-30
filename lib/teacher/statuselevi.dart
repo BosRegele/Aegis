@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../session.dart';
+import '../core/session.dart';
 
 /// Placeholder status page for teachers. Currently mirrors the dashboard UI.
 class StatusEleviPage extends StatefulWidget {

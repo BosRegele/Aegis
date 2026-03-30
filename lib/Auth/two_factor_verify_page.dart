@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/security_flags_service.dart';
-import '../session.dart';
+import '../core/session.dart';
 
 class TwoFactorVerifyPage extends StatefulWidget {
   final String uid;
