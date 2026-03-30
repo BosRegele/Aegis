@@ -4,7 +4,7 @@ import 'package:firster/StudentInterface/logout_dialog.dart';
 import 'package:firster/session.dart';
 import 'package:flutter/material.dart';
 
-const _primary = Color(0xFF0B7A20);
+const _primary = Color(0xFF0D631B);
 const _surface = Color(0xFFF7F9F0);
 const _surfaceLowest = Color(0xFFFFFFFF);
 const _surfaceContainerLow = Color(0xFFF0F4E9);
@@ -38,11 +38,11 @@ class _OrarScreenState extends State<OrarScreen> {
         .doc(uid)
         .snapshots();
     _lastScanStream = FirebaseFirestore.instance
-      .collection('accessEvents')
-      .where('userId', isEqualTo: uid)
-      .orderBy('timestamp', descending: true)
-      .limit(1)
-      .snapshots();
+        .collection('accessEvents')
+        .where('userId', isEqualTo: uid)
+        .orderBy('timestamp', descending: true)
+        .limit(1)
+        .snapshots();
   }
 
   Future<void> _logout() async {
@@ -121,24 +121,23 @@ class _OrarScreenState extends State<OrarScreen> {
             return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: classStream,
               builder: (context, classSnapshot) {
-                final classData = classSnapshot.data?.data() ??
-                    const <String, dynamic>{};
+                final classData =
+                    classSnapshot.data?.data() ?? const <String, dynamic>{};
 
                 final scheduleRows = _buildScheduleRows(classData);
-                final teacherUid =
-                  (classData['teacherUid'] ?? '').toString().trim();
-                final teacherUsername =
-                    (classData['teacherUsername'] ?? '').toString().trim();
+                final teacherUid = (classData['teacherUid'] ?? '')
+                    .toString()
+                    .trim();
+                final teacherUsername = (classData['teacherUsername'] ?? '')
+                    .toString()
+                    .trim();
 
                 return SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _OrarHeroHeader(
-                        onBack: _goBack,
-                        onLogout: _logout,
-                      ),
+                      _OrarHeroHeader(onBack: _goBack, onLogout: _logout),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
                         child: _ProfileIdentityCard(
@@ -153,60 +152,62 @@ class _OrarScreenState extends State<OrarScreen> {
                           horizontal: 38,
                           vertical: 8,
                         ),
-                        child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                          stream: _lastScanStream,
-                          builder: (context, lastScanSnapshot) {
-                            final lastScanData =
-                                lastScanSnapshot.data?.docs.isNotEmpty == true
-                                ? lastScanSnapshot.data!.docs.first.data()
-                                : null;
-                            final lastScanDisplay = _formatLastScan(
-                              lastScanData?['timestamp'],
-                            );
+                        child:
+                            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                              stream: _lastScanStream,
+                              builder: (context, lastScanSnapshot) {
+                                final lastScanData =
+                                    lastScanSnapshot.data?.docs.isNotEmpty ==
+                                        true
+                                    ? lastScanSnapshot.data!.docs.first.data()
+                                    : null;
+                                final lastScanDisplay = _formatLastScan(
+                                  lastScanData?['timestamp'],
+                                );
 
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.qr_code_2_rounded,
-                                    color: _primary,
-                                    size: 22,
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 16,
                                   ),
-                                  const SizedBox(width: 12),
-                                  const Text(
-                                    'Ultima Scanare',
-                                    style: TextStyle(
-                                      color: _outline,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                  decoration: BoxDecoration(
+                                    color: _surfaceContainerLow,
+                                    borderRadius: BorderRadius.circular(18),
                                   ),
-                                  const SizedBox(width: 10),
-                                  Flexible(
-                                    child: Text(
-                                      lastScanDisplay,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: _onSurface,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.qr_code_2_rounded,
+                                        color: _primary,
+                                        size: 22,
                                       ),
-                                    ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        'Ultima Scanare',
+                                        style: TextStyle(
+                                          color: _outline,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Flexible(
+                                        child: Text(
+                                          lastScanDisplay,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: _onSurface,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                                );
+                              },
+                            ),
                       ),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -276,10 +277,7 @@ class _OrarHeroHeader extends StatelessWidget {
   final VoidCallback onBack;
   final Future<void> Function() onLogout;
 
-  const _OrarHeroHeader({
-    required this.onBack,
-    required this.onLogout,
-  });
+  const _OrarHeroHeader({required this.onBack, required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
@@ -325,22 +323,19 @@ class _OrarHeroHeader extends StatelessWidget {
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
-                      'Profil',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: titleSize,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.6,
+                        'Profil',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: titleSize,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.6,
+                        ),
                       ),
                     ),
-                    ),
                     const SizedBox(width: 16),
-                    _HeaderMenuButton(
-                      onLogout: onLogout,
-                      onProfil: () {},
-                    ),
+                    _HeaderMenuButton(onLogout: onLogout, onProfil: () {}),
                   ],
                 ),
               ),
@@ -383,7 +378,7 @@ class _HeaderMenuButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFFB9DEBC),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0x660B7A20)),
+              border: Border.all(color: const Color(0x660D631B)),
             ),
             child: const Row(
               children: [
@@ -439,10 +434,7 @@ class _HeaderMenuButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0x337DE38D),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0x6DC7F4CE),
-            width: 1,
-          ),
+          border: Border.all(color: const Color(0x6DC7F4CE), width: 1),
         ),
         child: const Icon(Icons.person, color: Colors.white, size: 22),
       ),
@@ -464,13 +456,7 @@ class _HeaderIconButton extends StatelessWidget {
       child: SizedBox(
         width: 34,
         height: 34,
-        child: Center(
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 32,
-          ),
-        ),
+        child: Center(child: Icon(icon, color: Colors.white, size: 32)),
       ),
     );
   }
@@ -518,7 +504,7 @@ class _ProfileIdentityCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(38),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x120B7A20),
+              color: Color(0x120D631B),
               blurRadius: 28,
               offset: Offset(0, 12),
             ),
@@ -573,10 +559,7 @@ class _ProfileIdentityCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 26),
-                  Container(
-                    height: 1,
-                    color: const Color(0xFFF0F1EA),
-                  ),
+                  Container(height: 1, color: const Color(0xFFF0F1EA)),
                   const SizedBox(height: 22),
                   _PersonInfoBox(
                     label: 'DIRIGINTE',
@@ -670,11 +653,7 @@ class _PersonInfoBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (teacherUid.isEmpty && teacherUsername.isEmpty) {
-      return _ProfileDetailRow(
-        label: label,
-        value: 'Nedefinit',
-        icon: icon,
-      );
+      return _ProfileDetailRow(label: label, value: 'Nedefinit', icon: icon);
     }
 
     if (teacherUid.isNotEmpty) {
@@ -720,11 +699,7 @@ class _PersonInfoBox extends StatelessWidget {
   Widget _buildInfoCard(String name) {
     final displayName = name.trim().isEmpty ? 'Nedefinit' : name.trim();
 
-    return _ProfileDetailRow(
-      label: label,
-      value: displayName,
-      icon: icon,
-    );
+    return _ProfileDetailRow(label: label, value: displayName, icon: icon);
   }
 }
 
@@ -744,16 +719,22 @@ class _ParentInfoBox extends StatelessWidget {
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots(),
       builder: (context, snapshot) {
         final userData = snapshot.data?.data() ?? <String, dynamic>{};
         final parentIds = List<String>.from(
           userData['parents'] ?? const <String>[],
         ).where((id) => id.trim().isNotEmpty).toList();
-        final legacyParentId = (userData['parentUid'] ?? userData['parentId'] ?? '')
-            .toString()
-            .trim();
-        final parentId = parentIds.isNotEmpty ? parentIds.first : legacyParentId;
+        final legacyParentId =
+            (userData['parentUid'] ?? userData['parentId'] ?? '')
+                .toString()
+                .trim();
+        final parentId = parentIds.isNotEmpty
+            ? parentIds.first
+            : legacyParentId;
 
         if (parentId.isEmpty) {
           return const _ProfileDetailRow(
@@ -871,13 +852,7 @@ List<_ScheduleRowData> _buildScheduleRows(Map<String, dynamic> classData) {
     return const [];
   }
 
-  const dayMap = {
-    1: 'Luni',
-    2: 'Marți',
-    3: 'Miercuri',
-    4: 'Joi',
-    5: 'Vineri',
-  };
+  const dayMap = {1: 'Luni', 2: 'Marți', 3: 'Miercuri', 4: 'Joi', 5: 'Vineri'};
 
   final normalizedDays = oldDays.whereType<int>().toList()..sort();
   return normalizedDays
