@@ -1,14 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../session.dart';
+import '../core/session.dart';
+import '../student/logout_dialog.dart';
 import 'orardir.dart';
 import 'cereriasteptare.dart';
 import 'statuselevi.dart';
 import 'mesajedir.dart';
 
 const _kGreen = Color(0xFF1D5C2B);
-const _kBg = Color(0xFFF2F4F0);
+const _kBg = Color(0xFFFFFFFF);
 
 class TeacherDashboardPage extends StatefulWidget {
   const TeacherDashboardPage({super.key});
@@ -52,82 +53,16 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
   }
 
   Future<void> _logout() async {
-    final shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-        backgroundColor: const Color(0xFFE6EBEE),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          'Confirmare logout',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Color(0xFF223127),
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: const [
-            SizedBox(height: 4),
-            Text(
-              'Ești sigur că vrei să ieși din cont?',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF3A4A3F),
-                fontSize: 18,
-                fontWeight: FontWeight.w400,
-                height: 1.2,
-              ),
-            ),
-            SizedBox(height: 12),
-          ],
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          SizedBox(
-            width: 120,
-            height: 44,
-            child: TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF7AAF5B),
-                textStyle: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              child: const Text('Anulează'),
-            ),
-          ),
-          SizedBox(
-            width: 120,
-            height: 44,
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7AAF5B),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                textStyle: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              child: const Text('Logout'),
-            ),
-          ),
-        ],
-      ),
+    final shouldLogout = await showStudentLogoutDialog(
+      context,
+      accentColor: _kGreen,
+      surfaceColor: Colors.white,
+      softSurfaceColor: const Color(0xFFEAF2EC),
+      titleColor: const Color(0xFF1D5C2B),
+      messageColor: const Color(0xFF3A4A3F),
     );
 
-    if (shouldLogout != true) return;
+    if (!shouldLogout) return;
     try {
       await FirebaseAuth.instance.signOut();
       AppSession.clear();
@@ -151,6 +86,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
     return Scaffold(
       backgroundColor: _kBg,
       body: SafeArea(
+        top: false,
         child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           stream: _teacherStream,
           builder: (context, snap) {
@@ -160,19 +96,36 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 ? fullName
                 : (AppSession.username ?? 'Diriginte');
 
+            final topPadding = MediaQuery.of(context).padding.top;
+            final activityTop = topPadding + 150.0;
+            final topSectionH = activityTop + 200.0;
+
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildHeader(displayName),
+                SizedBox(
+                  height: topSectionH,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: _buildHeader(displayName),
+                      ),
+                      Positioned(
+                        top: activityTop,
+                        left: 16,
+                        right: 16,
+                        child: _buildActivityCard(),
+                      ),
+                    ],
+                  ),
+                ),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    child: Column(
-                      children: [
-                        _buildActivityCard(),
-                        const SizedBox(height: 20),
-                        _buildGrid(context),
-                      ],
-                    ),
+                    child: _buildGrid(context),
                   ),
                 ),
               ],
@@ -183,94 +136,81 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
     );
   }
 
-  // ─── Header verde cu dots + salut + buton profil ────────────────────────────
+  // ─── Header verde cu cercuri + salut + buton profil ─────────────────────────
   Widget _buildHeader(String name) {
-    return Stack(
-      children: [
-        Container(
-          width: double.infinity,
-          color: _kGreen,
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
+    final topPadding = MediaQuery.of(context).padding.top;
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(52),
+        bottomRight: Radius.circular(52),
+      ),
+      child: Container(
+        color: _kGreen,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(right: -80, top: -90, child: _headerCircle(290, 0.08)),
+            Positioned(
+              right: 38,
+              top: 54 + topPadding,
+              child: _headerCircle(78, 0.07),
+            ),
+            Positioned(left: -60, bottom: -44, child: _headerCircle(186, 0.08)),
+            Padding(
+              padding: EdgeInsets.fromLTRB(28, 8 + topPadding, 18, 110),
+              child: Text(
+                'Bine ai venit,\n$name',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 34,
+                  height: 1.20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            Positioned(
+              top: topPadding,
+              right: 14,
+              child: Hero(
+                tag: 'teacher-profile-btn',
                 child: GestureDetector(
                   onTap: _logout,
                   child: Container(
-                    width: 46,
-                    height: 46,
+                    width: 50,
+                    height: 50,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.18),
-                      borderRadius: BorderRadius.circular(13),
+                      color: const Color(0x337DE38D),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0x6DC7F4CE),
+                        width: 1,
+                      ),
                     ),
                     child: const Icon(
-                      Icons.person_rounded,
+                      Icons.person,
                       color: Colors.white,
-                      size: 26,
+                      size: 21,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
-              const Text(
-                'Bine ai venit,',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w500,
-                  height: 1.2,
-                ),
-              ),
-              Text(
-                name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  height: 1.2,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Dots decorative pattern
-        Positioned.fill(
-          child: IgnorePointer(
-            child: CustomPaint(painter: _DotPatternPainter()),
-          ),
-        ),
-        // Cercuri decorative stânga-jos
-        Positioned(
-          left: -55,
-          bottom: -15,
-          child: IgnorePointer(
-            child: Container(
-              width: 170,
-              height: 170,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.07),
-                shape: BoxShape.circle,
-              ),
             ),
-          ),
+          ],
         ),
-        Positioned(
-          left: -20,
-          bottom: 35,
-          child: IgnorePointer(
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.07),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
+      ),
+    );
+  }
+
+  Widget _headerCircle(double size, double opacity) {
+    return IgnorePointer(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(opacity),
+          shape: BoxShape.circle,
         ),
-      ],
+      ),
     );
   }
 
@@ -287,30 +227,36 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         for (final doc in pendingDocs.take(1)) {
           final d = doc.data() as Map<String, dynamic>;
           final classId = (d['classId'] ?? '').toString();
-          items.add(_ActivityData(
-            icon: Icons.warning_amber_rounded,
-            iconColor: const Color(0xFFF5A623),
-            title: 'Cerere în așteptare - $classId',
-            time: 'ACUM',
-          ));
+          items.add(
+            _ActivityData(
+              icon: Icons.warning_amber_rounded,
+              iconColor: const Color(0xFFF5A623),
+              title: 'Cerere în așteptare - $classId',
+              time: 'ACUM',
+            ),
+          );
         }
 
-        items.add(const _ActivityData(
-          icon: Icons.campaign_rounded,
-          iconColor: _kGreen,
-          title: 'Anunț școlar nou',
-          time: 'ASTĂZI',
-        ));
+        items.add(
+          const _ActivityData(
+            icon: Icons.campaign_rounded,
+            iconColor: _kGreen,
+            title: 'Anunț școlar nou',
+            time: 'ASTĂZI',
+          ),
+        );
 
         if (pendingDocs.length > 1) {
           final d = pendingDocs[1].data() as Map<String, dynamic>;
           final studentName = (d['studentName'] ?? '').toString();
-          items.add(_ActivityData(
-            icon: Icons.cancel_rounded,
-            iconColor: _kGreen,
-            title: 'Cerere respinsă - $studentName',
-            time: 'ASTĂZI',
-          ));
+          items.add(
+            _ActivityData(
+              icon: Icons.cancel_rounded,
+              iconColor: _kGreen,
+              title: 'Cerere respinsă - $studentName',
+              time: 'ASTĂZI',
+            ),
+          );
         }
 
         return Container(
@@ -379,8 +325,10 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                     isDark: true,
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const StatusEleviPage(),
+                      PageRouteBuilder(
+                        pageBuilder: (_, __, ___) => const StatusEleviPage(),
+                        transitionDuration: Duration.zero,
+                        reverseTransitionDuration: Duration.zero,
                       ),
                     ),
                   ),
@@ -392,8 +340,11 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                     isDark: true,
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const CereriAsteptarePage(),
+                      PageRouteBuilder(
+                        pageBuilder: (_, __, ___) =>
+                            const CereriAsteptarePage(),
+                        transitionDuration: Duration.zero,
+                        reverseTransitionDuration: Duration.zero,
                       ),
                     ),
                   ),
@@ -411,7 +362,11 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                     isDark: false,
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const OrarDirPage()),
+                      PageRouteBuilder(
+                        pageBuilder: (_, __, ___) => const OrarDirPage(),
+                        transitionDuration: Duration.zero,
+                        reverseTransitionDuration: Duration.zero,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -422,7 +377,11 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                     isDark: false,
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const MesajeDirPage()),
+                      PageRouteBuilder(
+                        pageBuilder: (_, __, ___) => const MesajeDirPage(),
+                        transitionDuration: Duration.zero,
+                        reverseTransitionDuration: Duration.zero,
+                      ),
                     ),
                   ),
                 ],
@@ -433,27 +392,6 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
       },
     );
   }
-}
-
-// ─── Dot pattern painter ──────────────────────────────────────────────────────
-
-class _DotPatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.14)
-      ..style = PaintingStyle.fill;
-    const spacing = 20.0;
-    const radius = 1.8;
-    for (double x = spacing / 2; x < size.width; x += spacing) {
-      for (double y = spacing / 2; y < size.height; y += spacing) {
-        canvas.drawCircle(Offset(x, y), radius, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ─── Model date activitate ────────────────────────────────────────────────────
@@ -589,10 +527,7 @@ class _GridCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: TextStyle(
-                color: subtitleColor,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: subtitleColor, fontSize: 13),
             ),
           ],
         ),

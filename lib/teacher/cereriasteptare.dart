@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../session.dart';
+import '../core/session.dart';
 
-const _kHeaderGreen = Color(0xFF0D6F1C);
-const _kPageBg = Color(0xFFF1F5EC);
+const _kHeaderGreen = Color(0xFF1D5C2B);
+const _kPageBg = Color(0xFFFFFFFF);
 const _kCardBg = Color(0xFFF8F8F8);
 
 class CereriAsteptarePage extends StatefulWidget {
@@ -64,7 +64,10 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
   }
 
   // --- Funcție nouă pentru aprobare/respingere în masă ---
-  Future<void> _reviewAllRequests(List<QueryDocumentSnapshot> docs, String status) async {
+  Future<void> _reviewAllRequests(
+    List<QueryDocumentSnapshot> docs,
+    String status,
+  ) async {
     final teacherUid = AppSession.uid;
     if (teacherUid == null || teacherUid.isEmpty) return;
 
@@ -87,7 +90,9 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            status == 'approved' ? 'Toate cererile au fost aprobate' : 'Toate cererile au fost respinse',
+            status == 'approved'
+                ? 'Toate cererile au fost aprobate'
+                : 'Toate cererile au fost respinse',
           ),
           backgroundColor: status == 'approved' ? Colors.green : Colors.red,
         ),
@@ -378,17 +383,18 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
     return Scaffold(
       backgroundColor: _kPageBg,
       body: SafeArea(
+        top: false,
         bottom: false,
         child: Column(
           children: [
             _TopHeader(
               title: 'Cereri de învoire',
               onBack: () => Navigator.of(context).maybePop(),
+              onProfile: () => Navigator.of(context).popUntil((r) => r.isFirst),
             ),
             Expanded(
               child: Stack(
                 children: [
-                  Positioned.fill(child: CustomPaint(painter: _BgDotsPainter())),
                   _classId.isEmpty
                       ? const Center(child: CircularProgressIndicator())
                       : StreamBuilder<QuerySnapshot>(
@@ -424,17 +430,26 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                             }
 
                             return ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-                              separatorBuilder: (_, __) => const SizedBox(height: 14),
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                16,
+                                16,
+                                18,
+                              ),
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 14),
                               itemCount: docs.length,
                               itemBuilder: (context, index) {
                                 final doc = docs[index];
                                 final d = doc.data() as Map<String, dynamic>;
                                 final requestId = doc.id;
-                                final studentName =
-                                    (d['studentName'] ?? '').toString().trim();
-                                final dateText = (d['dateText'] ?? '').toString();
-                                final timeText = (d['timeText'] ?? '').toString();
+                                final studentName = (d['studentName'] ?? '')
+                                    .toString()
+                                    .trim();
+                                final dateText = (d['dateText'] ?? '')
+                                    .toString();
+                                final timeText = (d['timeText'] ?? '')
+                                    .toString();
                                 final message = (d['message'] ?? '').toString();
 
                                 final initials = studentName
@@ -481,35 +496,62 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
 class _TopHeader extends StatelessWidget {
   final String title;
   final VoidCallback onBack;
+  final VoidCallback? onProfile;
 
-  const _TopHeader({required this.title, required this.onBack});
+  const _TopHeader({required this.title, required this.onBack, this.onProfile});
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
       child: SizedBox(
         width: double.infinity,
-        height: 176,
+        height: 90 + topPadding,
         child: Stack(
           fit: StackFit.expand,
+          clipBehavior: Clip.none,
           children: [
             Container(color: _kHeaderGreen),
-            CustomPaint(painter: _HeaderDotsPainter()),
+            Positioned(right: -60, top: -60, child: _decorCircle(180)),
             Positioned(
-              right: 80,
-              top: -44,
-              child: _decorCircle(112),
+              right: 120,
+              top: topPadding + 15,
+              child: _decorCircle(55),
             ),
-            Positioned(
-              left: 185,
-              bottom: -36,
-              child: _decorCircle(82),
-            ),
+            Positioned(left: -40, bottom: -30, child: _decorCircle(130)),
+            if (onProfile != null)
+              Positioned(
+                top: topPadding,
+                right: 14,
+                child: Hero(
+                  tag: 'teacher-profile-btn',
+                  child: GestureDetector(
+                    onTap: onProfile,
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: const Color(0x337DE38D),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0x6DC7F4CE),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 21,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 22, 18, 0),
+              padding: EdgeInsets.fromLTRB(4, topPadding - 6, 18, 0),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   IconButton(
                     onPressed: onBack,
@@ -517,20 +559,17 @@ class _TopHeader extends StatelessWidget {
                     icon: const Icon(
                       Icons.arrow_back_rounded,
                       color: Colors.white,
-                      size: 34,
+                      size: 26,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.3,
-                      ),
+                  const SizedBox(width: 4),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
                     ),
                   ),
                 ],
@@ -758,7 +797,10 @@ class _RequestCard extends StatelessWidget {
                         height: 62,
                         child: ElevatedButton.icon(
                           onPressed: onAccept,
-                          icon: const Icon(Icons.check_circle_rounded, size: 30),
+                          icon: const Icon(
+                            Icons.check_circle_rounded,
+                            size: 30,
+                          ),
                           label: const Text('Acceptă'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF09731F),
