@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'admin/admin_api.dart';
-import 'session.dart';
+import '../admin/services/admin_api.dart';
+import '../core/session.dart';
 
 class OnboardingPage extends StatefulWidget {
   final User user;

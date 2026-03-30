@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../session.dart';
-import 'admin_store.dart';
+import '../core/session.dart';
+import 'services/admin_store.dart';
 
 class AdminStudentsPage extends StatefulWidget {
   const AdminStudentsPage({super.key});

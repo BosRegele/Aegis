@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../session.dart';
+import '../core/session.dart';
 
 class LoginPageFirestore extends StatefulWidget {
   const LoginPageFirestore({super.key});
@@ -141,9 +141,9 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
 
   Future<String> _resolveUsernameFromInput(String input) async {
     final resolveRes = await _withAuthTimeout(
-      FirebaseFunctions.instance
-          .httpsCallable('authResolveLoginInput')
-          .call({'input': input}),
+      FirebaseFunctions.instance.httpsCallable('authResolveLoginInput').call({
+        'input': input,
+      }),
       'authResolveLoginInput',
     );
     final resolveData = Map<String, dynamic>.from(resolveRes.data as Map);
@@ -487,9 +487,10 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       }
 
       final precheck = await _withAuthTimeout(
-        FirebaseFunctions.instance
-            .httpsCallable('authPrecheckLogin')
-            .call({'username': username, 'actorKey': _actorKey}),
+        FirebaseFunctions.instance.httpsCallable('authPrecheckLogin').call({
+          'username': username,
+          'actorKey': _actorKey,
+        }),
         'authPrecheckLogin',
       );
       final preData = Map<String, dynamic>.from(precheck.data as Map);
@@ -559,7 +560,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
 
       // Authentication succeeded. The StreamBuilder in main.dart detects the
       // auth-state change and routes to OnboardingPage, TwoFactorVerifyPage,
-      // or the role dashboard — no Navigator.push needed here.
+      // or the role dashboard ÔÇö no Navigator.push needed here.
     } on FirebaseAuthException catch (e) {
       String msg = "Date de autentificare invalide.";
       if (e.code == "wrong-password" ||
@@ -619,7 +620,9 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Autentificarea a expirat. Verifica internetul si incearca din nou.'),
+            content: Text(
+              'Autentificarea a expirat. Verifica internetul si incearca din nou.',
+            ),
           ),
         );
       }
@@ -628,9 +631,9 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
           ? 'Autentificarea a expirat. Verifica internetul si incearca din nou.'
           : 'Autentificare esuata. Incearca din nou.';
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
     } finally {
       if (mounted) setState(() => loading = false);
@@ -645,39 +648,45 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
     super.dispose();
   }
 
-  // ── Colors ──
+  // ÔöÇÔöÇ Colors ÔöÇÔöÇ
   static const _darkBg = Color(0xFF0A2E11);
   static const _greenAccent = Color(0xFF0B741D);
   static const _cardBg = Color(0xFFF5F7F2);
   static const _inputBorder = Color(0xFFD6D9D0);
   static const _hintColor = Color(0xFF8A8F84);
 
-  // ── Dot pattern painter ──
-  Widget _buildDotPattern({int alpha = 10, double spacing = 20, double radius = 1.5}) {
+  // ÔöÇÔöÇ Dot pattern painter ÔöÇÔöÇ
+  Widget _buildDotPattern({
+    int alpha = 10,
+    double spacing = 20,
+    double radius = 1.5,
+  }) {
     return CustomPaint(
-      painter: _DotPatternPainter(alpha: alpha, spacing: spacing, radius: radius),
+      painter: _DotPatternPainter(
+        alpha: alpha,
+        spacing: spacing,
+        radius: radius,
+      ),
       size: Size.infinite,
     );
   }
 
-  // ── Branding panel (left side on landscape) ──
+  // ÔöÇÔöÇ Branding panel (left side on landscape) ÔöÇÔöÇ
   Widget _buildBrandingPanel() {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF145A1E),
-            Color(0xFF0D3B15),
-            Color(0xFF0A2E11),
-          ],
+          colors: [Color(0xFF145A1E), Color(0xFF0D3B15), Color(0xFF0A2E11)],
           stops: [0.0, 0.5, 1.0],
         ),
       ),
       child: Stack(
         children: [
-          Positioned.fill(child: _buildDotPattern(alpha: 22, spacing: 20, radius: 1.5)),
+          Positioned.fill(
+            child: _buildDotPattern(alpha: 22, spacing: 20, radius: 1.5),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 56),
             child: Column(
@@ -723,7 +732,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
     );
   }
 
-  // ── Login form card ──
+  // ÔöÇÔöÇ Login form card ÔöÇÔöÇ
   Widget _buildLoginForm({required bool compact}) {
     final radius = BorderRadius.circular(12);
 
@@ -786,20 +795,27 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
               hintStyle: const TextStyle(color: _hintColor, fontSize: 14),
               filled: true,
               fillColor: Colors.white,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               border: OutlineInputBorder(
-                  borderRadius: radius,
-                  borderSide: const BorderSide(color: _inputBorder)),
+                borderRadius: radius,
+                borderSide: const BorderSide(color: _inputBorder),
+              ),
               enabledBorder: OutlineInputBorder(
-                  borderRadius: radius,
-                  borderSide: const BorderSide(color: _inputBorder)),
+                borderRadius: radius,
+                borderSide: const BorderSide(color: _inputBorder),
+              ),
               focusedBorder: OutlineInputBorder(
-                  borderRadius: radius,
-                  borderSide:
-                      const BorderSide(color: _greenAccent, width: 1.5)),
-              suffixIcon:
-                  const Icon(Icons.alternate_email, color: _hintColor, size: 20),
+                borderRadius: radius,
+                borderSide: const BorderSide(color: _greenAccent, width: 1.5),
+              ),
+              suffixIcon: const Icon(
+                Icons.alternate_email,
+                color: _hintColor,
+                size: 20,
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -838,18 +854,22 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
               hintStyle: const TextStyle(color: _hintColor, fontSize: 14),
               filled: true,
               fillColor: Colors.white,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               border: OutlineInputBorder(
-                  borderRadius: radius,
-                  borderSide: const BorderSide(color: _inputBorder)),
+                borderRadius: radius,
+                borderSide: const BorderSide(color: _inputBorder),
+              ),
               enabledBorder: OutlineInputBorder(
-                  borderRadius: radius,
-                  borderSide: const BorderSide(color: _inputBorder)),
+                borderRadius: radius,
+                borderSide: const BorderSide(color: _inputBorder),
+              ),
               focusedBorder: OutlineInputBorder(
-                  borderRadius: radius,
-                  borderSide:
-                      const BorderSide(color: _greenAccent, width: 1.5)),
+                borderRadius: radius,
+                borderSide: const BorderSide(color: _greenAccent, width: 1.5),
+              ),
               suffixIcon: IconButton(
                 icon: Icon(
                   passwordVisible
@@ -875,17 +895,22 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                 backgroundColor: _greenAccent,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 elevation: 0,
                 textStyle: const TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w700),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               child: loading
                   ? const SizedBox(
                       width: 22,
                       height: 22,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2.5, color: Colors.white),
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
                     )
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -937,15 +962,13 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
       body: Stack(
         children: [
           Positioned.fill(child: _buildDotPattern(alpha: 8, radius: 1.0)),
-          SafeArea(
-            child: isWide ? _buildLandscape() : _buildPortrait(),
-          ),
+          SafeArea(child: isWide ? _buildLandscape() : _buildPortrait()),
         ],
       ),
     );
   }
 
-  // ── LANDSCAPE: split view ──
+  // ÔöÇÔöÇ LANDSCAPE: split view ÔöÇÔöÇ
   Widget _buildLandscape() {
     return Center(
       child: Material(
@@ -978,7 +1001,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
     );
   }
 
-  // ── PORTRAIT: card over dark background ──
+  // ÔöÇÔöÇ PORTRAIT: card over dark background ÔöÇÔöÇ
   Widget _buildPortrait() {
     return Center(
       child: SingleChildScrollView(
@@ -998,7 +1021,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
   }
 }
 
-// ── Dot pattern painter ──
+// ÔöÇÔöÇ Dot pattern painter ÔöÇÔöÇ
 class _DotPatternPainter extends CustomPainter {
   final int alpha;
   final double spacing;

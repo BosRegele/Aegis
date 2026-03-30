@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firster/StudentInterface/logout_dialog.dart';
-import 'package:firster/session.dart';
+import 'package:firster/student/logout_dialog.dart';
+import 'package:firster/core/session.dart';
 import 'package:flutter/material.dart';
 
-const _primary = Color(0xFF0B7A20);
+const _primary = Color(0xFF0D631B);
 const _surface = Color(0xFFF7F9F0);
 const _surfaceLowest = Color(0xFFFFFFFF);
 const _surfaceContainerLow = Color(0xFFF0F4E9);
@@ -38,11 +38,11 @@ class _OrarScreenState extends State<OrarScreen> {
         .doc(uid)
         .snapshots();
     _lastScanStream = FirebaseFirestore.instance
-      .collection('accessEvents')
-      .where('userId', isEqualTo: uid)
-      .orderBy('timestamp', descending: true)
-      .limit(1)
-      .snapshots();
+        .collection('accessEvents')
+        .where('userId', isEqualTo: uid)
+        .orderBy('timestamp', descending: true)
+        .limit(1)
+        .snapshots();
   }
 
   Future<void> _logout() async {
@@ -98,6 +98,7 @@ class _OrarScreenState extends State<OrarScreen> {
     return Scaffold(
       backgroundColor: _surface,
       body: SafeArea(
+        top: false,
         child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           stream: _userDocStream,
           builder: (context, userSnapshot) {
@@ -121,24 +122,23 @@ class _OrarScreenState extends State<OrarScreen> {
             return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: classStream,
               builder: (context, classSnapshot) {
-                final classData = classSnapshot.data?.data() ??
-                    const <String, dynamic>{};
+                final classData =
+                    classSnapshot.data?.data() ?? const <String, dynamic>{};
 
                 final scheduleRows = _buildScheduleRows(classData);
-                final teacherUid =
-                  (classData['teacherUid'] ?? '').toString().trim();
-                final teacherUsername =
-                    (classData['teacherUsername'] ?? '').toString().trim();
+                final teacherUid = (classData['teacherUid'] ?? '')
+                    .toString()
+                    .trim();
+                final teacherUsername = (classData['teacherUsername'] ?? '')
+                    .toString()
+                    .trim();
 
                 return SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _OrarHeroHeader(
-                        onBack: _goBack,
-                        onLogout: _logout,
-                      ),
+                      _OrarHeroHeader(onBack: _goBack, onLogout: _logout),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
                         child: _ProfileIdentityCard(
@@ -146,6 +146,7 @@ class _OrarScreenState extends State<OrarScreen> {
                           className: resolvedClassName,
                           teacherUid: teacherUid,
                           teacherUsername: teacherUsername,
+                          onLogout: _logout,
                         ),
                       ),
                       Padding(
@@ -153,60 +154,62 @@ class _OrarScreenState extends State<OrarScreen> {
                           horizontal: 38,
                           vertical: 8,
                         ),
-                        child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                          stream: _lastScanStream,
-                          builder: (context, lastScanSnapshot) {
-                            final lastScanData =
-                                lastScanSnapshot.data?.docs.isNotEmpty == true
-                                ? lastScanSnapshot.data!.docs.first.data()
-                                : null;
-                            final lastScanDisplay = _formatLastScan(
-                              lastScanData?['timestamp'],
-                            );
+                        child:
+                            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                              stream: _lastScanStream,
+                              builder: (context, lastScanSnapshot) {
+                                final lastScanData =
+                                    lastScanSnapshot.data?.docs.isNotEmpty ==
+                                        true
+                                    ? lastScanSnapshot.data!.docs.first.data()
+                                    : null;
+                                final lastScanDisplay = _formatLastScan(
+                                  lastScanData?['timestamp'],
+                                );
 
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.qr_code_2_rounded,
-                                    color: _primary,
-                                    size: 22,
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 16,
                                   ),
-                                  const SizedBox(width: 12),
-                                  const Text(
-                                    'Ultima Scanare',
-                                    style: TextStyle(
-                                      color: _outline,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                  decoration: BoxDecoration(
+                                    color: _surfaceContainerLow,
+                                    borderRadius: BorderRadius.circular(18),
                                   ),
-                                  const SizedBox(width: 10),
-                                  Flexible(
-                                    child: Text(
-                                      lastScanDisplay,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: _onSurface,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.qr_code_2_rounded,
+                                        color: _primary,
+                                        size: 22,
                                       ),
-                                    ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        'Ultima Scanare',
+                                        style: TextStyle(
+                                          color: _outline,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Flexible(
+                                        child: Text(
+                                          lastScanDisplay,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: _onSurface,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                                );
+                              },
+                            ),
                       ),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -276,10 +279,7 @@ class _OrarHeroHeader extends StatelessWidget {
   final VoidCallback onBack;
   final Future<void> Function() onLogout;
 
-  const _OrarHeroHeader({
-    required this.onBack,
-    required this.onLogout,
-  });
+  const _OrarHeroHeader({required this.onBack, required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
@@ -325,21 +325,16 @@ class _OrarHeroHeader extends StatelessWidget {
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
-                      'Profil',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: titleSize,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.6,
+                        'Profil',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: titleSize,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.6,
+                        ),
                       ),
-                    ),
-                    ),
-                    const SizedBox(width: 16),
-                    _HeaderMenuButton(
-                      onLogout: onLogout,
-                      onProfil: () {},
                     ),
                   ],
                 ),
@@ -347,104 +342,6 @@ class _OrarHeroHeader extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _HeaderMenuButton extends StatelessWidget {
-  final Future<void> Function() onLogout;
-  final VoidCallback onProfil;
-
-  const _HeaderMenuButton({required this.onLogout, required this.onProfil});
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      tooltip: '',
-      offset: const Offset(0, 64),
-      elevation: 12,
-      color: const Color(0xFFD8EED9),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      onSelected: (value) async {
-        if (value == 'profil') {
-          onProfil();
-        }
-        if (value == 'logout') {
-          await onLogout();
-        }
-      },
-      itemBuilder: (_) => [
-        PopupMenuItem<String>(
-          value: 'profil',
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFB9DEBC),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0x660B7A20)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.person_outline_rounded, color: _primary, size: 20),
-                SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    'Profil',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const PopupMenuDivider(height: 6),
-        PopupMenuItem<String>(
-          value: 'logout',
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1CDD8),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0x668E3557)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.logout_rounded, color: Color(0xFF8E3557), size: 20),
-                SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    'Deconecteaza-te',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Color(0xFF8E3557),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: const Color(0x337DE38D),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0x6DC7F4CE),
-            width: 1,
-          ),
-        ),
-        child: const Icon(Icons.person, color: Colors.white, size: 22),
       ),
     );
   }
@@ -464,13 +361,7 @@ class _HeaderIconButton extends StatelessWidget {
       child: SizedBox(
         width: 34,
         height: 34,
-        child: Center(
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 32,
-          ),
-        ),
+        child: Center(child: Icon(icon, color: Colors.white, size: 32)),
       ),
     );
   }
@@ -500,12 +391,14 @@ class _ProfileIdentityCard extends StatelessWidget {
   final String className;
   final String teacherUid;
   final String teacherUsername;
+  final VoidCallback onLogout;
 
   const _ProfileIdentityCard({
     required this.displayName,
     required this.className,
     required this.teacherUid,
     required this.teacherUsername,
+    required this.onLogout,
   });
 
   @override
@@ -518,7 +411,7 @@ class _ProfileIdentityCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(38),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x120B7A20),
+              color: Color(0x120D631B),
               blurRadius: 28,
               offset: Offset(0, 12),
             ),
@@ -537,6 +430,54 @@ class _ProfileIdentityCard extends StatelessWidget {
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(38),
                     bottomLeft: Radius.circular(78),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => _showSettingsSheet(context),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      color: _primary,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => _showSettingsSheet(context),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      color: _primary,
+                      size: 22,
+                    ),
                   ),
                 ),
               ),
@@ -573,10 +514,7 @@ class _ProfileIdentityCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 26),
-                  Container(
-                    height: 1,
-                    color: const Color(0xFFF0F1EA),
-                  ),
+                  Container(height: 1, color: const Color(0xFFF0F1EA)),
                   const SizedBox(height: 22),
                   _PersonInfoBox(
                     label: 'DIRIGINTE',
@@ -590,6 +528,148 @@ class _ProfileIdentityCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showSettingsSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SettingsSheet(onLogout: onLogout),
+    );
+  }
+}
+
+class _SettingsSheet extends StatelessWidget {
+  final VoidCallback onLogout;
+  const _SettingsSheet({required this.onLogout});
+
+  @override
+  Widget build(BuildContext ctx) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: _surfaceLowest,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: _outlineVariant,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Setări cont',
+              style: TextStyle(
+                color: _onSurface,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          _SettingsTile(
+            icon: Icons.lock_outline,
+            label: 'Schimbă parola',
+            onTap: () {
+              Navigator.pop(ctx);
+              _sendPasswordReset(ctx);
+            },
+          ),
+          const SizedBox(height: 10),
+          _SettingsTile(
+            icon: Icons.logout,
+            label: 'Deconectează-te',
+            danger: true,
+            onTap: () {
+              Navigator.pop(ctx);
+              onLogout();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _sendPasswordReset(BuildContext context) async {
+    final email = FirebaseAuth.instance.currentUser?.email;
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nu există o adresă de email asociată contului.'),
+        ),
+      );
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Email de resetare trimis la $email.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Eroare la trimiterea emailului de resetare.'),
+          ),
+        );
+      }
+    }
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool danger;
+
+  const _SettingsTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.danger = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = danger ? const Color(0xFF8E3557) : _primary;
+    return Material(
+      color: danger
+          ? const Color(0xFF8E3557).withValues(alpha: 0.07)
+          : _surfaceContainerLow,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(width: 14),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -670,11 +750,7 @@ class _PersonInfoBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (teacherUid.isEmpty && teacherUsername.isEmpty) {
-      return _ProfileDetailRow(
-        label: label,
-        value: 'Nedefinit',
-        icon: icon,
-      );
+      return _ProfileDetailRow(label: label, value: 'Nedefinit', icon: icon);
     }
 
     if (teacherUid.isNotEmpty) {
@@ -720,11 +796,7 @@ class _PersonInfoBox extends StatelessWidget {
   Widget _buildInfoCard(String name) {
     final displayName = name.trim().isEmpty ? 'Nedefinit' : name.trim();
 
-    return _ProfileDetailRow(
-      label: label,
-      value: displayName,
-      icon: icon,
-    );
+    return _ProfileDetailRow(label: label, value: displayName, icon: icon);
   }
 }
 
@@ -744,16 +816,22 @@ class _ParentInfoBox extends StatelessWidget {
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots(),
       builder: (context, snapshot) {
         final userData = snapshot.data?.data() ?? <String, dynamic>{};
         final parentIds = List<String>.from(
           userData['parents'] ?? const <String>[],
         ).where((id) => id.trim().isNotEmpty).toList();
-        final legacyParentId = (userData['parentUid'] ?? userData['parentId'] ?? '')
-            .toString()
-            .trim();
-        final parentId = parentIds.isNotEmpty ? parentIds.first : legacyParentId;
+        final legacyParentId =
+            (userData['parentUid'] ?? userData['parentId'] ?? '')
+                .toString()
+                .trim();
+        final parentId = parentIds.isNotEmpty
+            ? parentIds.first
+            : legacyParentId;
 
         if (parentId.isEmpty) {
           return const _ProfileDetailRow(
@@ -871,13 +949,7 @@ List<_ScheduleRowData> _buildScheduleRows(Map<String, dynamic> classData) {
     return const [];
   }
 
-  const dayMap = {
-    1: 'Luni',
-    2: 'Marți',
-    3: 'Miercuri',
-    4: 'Joi',
-    5: 'Vineri',
-  };
+  const dayMap = {1: 'Luni', 2: 'Marți', 3: 'Miercuri', 4: 'Joi', 5: 'Vineri'};
 
   final normalizedDays = oldDays.whereType<int>().toList()..sort();
   return normalizedDays

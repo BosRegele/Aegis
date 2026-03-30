@@ -5,7 +5,7 @@ import '../Auth/login_page_firestore.dart';
 import 'parent_students_page.dart';
 import 'parent_requests_page.dart';
 import 'parent_inbox_page.dart';
-import '../session.dart';
+import '../core/session.dart';
 
 class ParentHomePage extends StatefulWidget {
   const ParentHomePage({super.key});

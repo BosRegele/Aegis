@@ -3,14 +3,13 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firster/StudentInterface/cereri.dart';
-import 'package:firster/StudentInterface/inbox.dart';
-import 'package:firster/StudentInterface/logout_dialog.dart';
-import 'package:firster/session.dart';
+import 'package:firster/student/cereri.dart';
+import 'package:firster/student/inbox.dart';
+import 'package:firster/core/session.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-const _primary = Color(0xFF0B7A20);
+const _primary = Color(0xFF0D631B);
 const _surface = Color(0xFFF7F9F0);
 const _surfaceContainerLow = Color(0xFFF0F4E9);
 const _surfaceContainerHigh = Color(0xFFE7EDE1);
@@ -119,9 +118,9 @@ class _MeniuScreenState extends State<MeniuScreen> {
       widget.onNavigateTab!(2);
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CereriScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const CereriScreen()));
   }
 
   Future<void> _openMesaje(BuildContext context) async {
@@ -132,47 +131,16 @@ class _MeniuScreenState extends State<MeniuScreen> {
 
     final uid = AppSession.uid;
     if (uid != null && uid.isNotEmpty) {
-      await FirebaseFirestore.instance.collection('users').doc(uid).set(
-        {
-          'inboxLastOpenedAt': FieldValue.serverTimestamp(),
-          'unreadCount': 0,
-        },
-        SetOptions(merge: true),
-      );
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'inboxLastOpenedAt': FieldValue.serverTimestamp(),
+        'unreadCount': 0,
+      }, SetOptions(merge: true));
     }
 
     if (!context.mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const InboxScreen()),
-    );
-  }
-
-  Future<void> _logout() async {
-    final shouldLogout = await showStudentLogoutDialog(
+    Navigator.of(
       context,
-      accentColor: _primary,
-      surfaceColor: _surface,
-      softSurfaceColor: _surfaceContainerHigh,
-      titleColor: _onSurface,
-      messageColor: _outline,
-      dangerColor: _tertiary,
-    );
-    if (!shouldLogout) return;
-    await FirebaseAuth.instance.signOut();
-  }
-
-  void _openProfil(BuildContext context) {
-    // Dacă ai o pagină de profil/orar, navighezi către ea
-    if (widget.onNavigateTab != null) {
-      widget.onNavigateTab!(1);
-      return;
-    }
-    // Fallback: poți înlocui cu pagina ta de profil
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const _ProfilPlaceholderScreen(),
-      ),
-    );
+    ).push(MaterialPageRoute(builder: (_) => const InboxScreen()));
   }
 
   @override
@@ -184,22 +152,24 @@ class _MeniuScreenState extends State<MeniuScreen> {
     return Scaffold(
       backgroundColor: _surface,
       body: SafeArea(
+        top: false,
         child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           stream: _userDocStream,
           builder: (context, snapshot) {
             final data = snapshot.data?.data() ?? const <String, dynamic>{};
             final fullName = (data['fullName'] ?? '').toString().trim();
             final resolvedName = fullName.isNotEmpty ? fullName : fallbackName;
-            final classId =
-                (data['classId'] ?? AppSession.classId ?? '').toString().trim();
+            final classId = (data['classId'] ?? AppSession.classId ?? '')
+                .toString()
+                .trim();
             final className = (data['className'] ?? '').toString().trim();
-            final inboxLastOpenedAt =
-              (data['inboxLastOpenedAt'] as Timestamp?)?.toDate();
+            final inboxLastOpenedAt = (data['inboxLastOpenedAt'] as Timestamp?)
+                ?.toDate();
             final classStream = classId.isNotEmpty
                 ? FirebaseFirestore.instance
-                    .collection('classes')
-                    .doc(classId)
-                    .snapshots()
+                      .collection('classes')
+                      .doc(classId)
+                      .snapshots()
                 : _classDocStream;
 
             return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -207,8 +177,9 @@ class _MeniuScreenState extends State<MeniuScreen> {
               builder: (context, classSnapshot) {
                 final classData =
                     classSnapshot.data?.data() ?? const <String, dynamic>{};
-                final classDocName =
-                    (classData['name'] ?? '').toString().trim();
+                final classDocName = (classData['name'] ?? '')
+                    .toString()
+                    .trim();
                 final rawClassName = className.isNotEmpty
                     ? className
                     : (classDocName.isNotEmpty
@@ -219,8 +190,8 @@ class _MeniuScreenState extends State<MeniuScreen> {
                 return LayoutBuilder(
                   builder: (context, constraints) {
                     final compactHeight = constraints.maxHeight < 760;
-                    final topSectionHeight = compactHeight ? 512.0 : 548.0;
-                    final accessTop = compactHeight ? 136.0 : 146.0;
+                    final topSectionHeight = compactHeight ? 544.0 : 580.0;
+                    final accessTop = compactHeight ? 180.0 : 190.0;
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -233,15 +204,14 @@ class _MeniuScreenState extends State<MeniuScreen> {
                               _TopHeroHeader(
                                 displayName: resolvedName,
                                 className: resolvedClassName,
-                                onLogout: _logout,
-                                onProfil: () => _openProfil(context),
                               ),
                               Positioned(
                                 top: accessTop,
                                 left: 20,
                                 right: 20,
                                 child: _AccessHubCard(
-                                  inSchool: (data['inSchool'] as bool?) ?? false,
+                                  inSchool:
+                                      (data['inSchool'] as bool?) ?? false,
                                   lastInAt: data['lastInAt'],
                                   lastScanStream: _lastScanStream,
                                 ),
@@ -255,10 +225,11 @@ class _MeniuScreenState extends State<MeniuScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.start,
                               children: [
-                                SizedBox(height: compactHeight ? 6 : 10),
+                                SizedBox(height: compactHeight ? 0 : 2),
                                 IntrinsicHeight(
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
                                       Expanded(
                                         child: _CereriCard(
@@ -274,8 +245,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                                   .currentUser
                                                   ?.uid ??
                                               '',
-                                          inboxLastOpenedAt:
-                                              inboxLastOpenedAt,
+                                          inboxLastOpenedAt: inboxLastOpenedAt,
                                           onTap: () => _openMesaje(context),
                                         ),
                                       ),
@@ -312,25 +282,22 @@ class _MeniuScreenState extends State<MeniuScreen> {
 class _TopHeroHeader extends StatelessWidget {
   final String displayName;
   final String className;
-  final Future<void> Function() onLogout;
-  final VoidCallback onProfil;
 
   const _TopHeroHeader({
     required this.displayName,
     required this.className,
-    required this.onLogout,
-    required this.onProfil,
   });
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return ClipRRect(
       borderRadius: const BorderRadius.only(
         bottomLeft: Radius.circular(52),
         bottomRight: Radius.circular(52),
       ),
       child: Container(
-        height: 220,
+        height: 220 + topPadding,
         color: _primary,
         child: Stack(
           clipBehavior: Clip.none,
@@ -351,9 +318,9 @@ class _TopHeroHeader extends StatelessWidget {
               child: _Circle(size: 186, opacity: 0.08),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 20, 14, 0),
+              padding: EdgeInsets.fromLTRB(28, 8 + topPadding, 14, 0),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
@@ -363,29 +330,23 @@ class _TopHeroHeader extends StatelessWidget {
                           'Bine ai venit,\n$displayName',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 31,
-                            height: 1.10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
+                            fontSize: 34,
+                            height: 1.20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.0,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 0),
                         Text(
                           className,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.84),
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  Transform.translate(
-                    offset: const Offset(0, -38),
-                    child: _ProfileMenuButton(
-                      onLogout: onLogout,
-                      onProfil: onProfil,
                     ),
                   ),
                 ],
@@ -411,106 +372,6 @@ class _Circle extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: opacity),
         shape: BoxShape.circle,
-      ),
-    );
-  }
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// PROFILE MENU BUTTON — cu Profil + Log out
-// ────────────────────────────────────────────────────────────────────────────
-class _ProfileMenuButton extends StatelessWidget {
-  final Future<void> Function() onLogout;
-  final VoidCallback onProfil;
-
-  const _ProfileMenuButton({
-    required this.onLogout,
-    required this.onProfil,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      tooltip: '',
-      offset: const Offset(0, 64),
-      elevation: 12,
-      color: const Color(0xFFD8EED9),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      onSelected: (value) async {
-        if (value == 'logout') await onLogout();
-        if (value == 'profil') onProfil();
-      },
-      itemBuilder: (_) => [
-        PopupMenuItem<String>(
-          value: 'profil',
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFB9DEBC),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0x660B7A20)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.person_outline_rounded, color: _primary, size: 20),
-                SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    'Profil',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const PopupMenuDivider(height: 6),
-        PopupMenuItem<String>(
-          value: 'logout',
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1CDD8),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0x668E3557)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.logout_rounded, color: Color(0xFF8E3557), size: 20),
-                SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    'Deconecteaza-te',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Color(0xFF8E3557),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: const Color(0x337DE38D),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0x6DC7F4CE),
-            width: 1,
-          ),
-        ),
-        child: const Icon(Icons.person, color: Colors.white, size: 21),
       ),
     );
   }
@@ -628,7 +489,7 @@ class _AccessHubCardState extends State<_AccessHubCard> {
         borderRadius: BorderRadius.circular(34),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x180B7A20),
+            color: Color(0x180D631B),
             blurRadius: 32,
             offset: Offset(0, 14),
           ),
@@ -683,7 +544,7 @@ class _AccessHubCardState extends State<_AccessHubCard> {
                           ),
                         )
                       else
-                         const Icon(
+                        const Icon(
                           Icons.qr_code_2_rounded,
                           color: _primary,
                           size: 96,
@@ -706,10 +567,12 @@ class _AccessHubCardState extends State<_AccessHubCard> {
                 ),
               ),
               Positioned(
-                    bottom: -10,
+                bottom: -10,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 8),
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: _primary,
                     borderRadius: BorderRadius.circular(999),
@@ -749,7 +612,7 @@ class _AccessHubCardState extends State<_AccessHubCard> {
             ],
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 28),
 
           // ── STATUS + INTRARE centrate ────────────────────────────
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -762,9 +625,12 @@ class _AccessHubCardState extends State<_AccessHubCard> {
               final lastInAt = _readDateTime(widget.lastInAt);
 
               final statusFromUser = widget.inSchool;
-              final fallbackStatusFromEvent = latestType == 'exit' ? false : true;
-              final resolvedInSchool =
-                  lastInAt != null || latestDoc == null ? statusFromUser : fallbackStatusFromEvent;
+              final fallbackStatusFromEvent = latestType == 'exit'
+                  ? false
+                  : true;
+              final resolvedInSchool = lastInAt != null || latestDoc == null
+                  ? statusFromUser
+                  : fallbackStatusFromEvent;
 
               final statusText = resolvedInSchool ? 'Intrat' : 'Ieșit';
               final statusColor = resolvedInSchool ? _primary : _tertiary;
@@ -864,12 +730,12 @@ class _CereriCard extends StatelessWidget {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0B7A20), Color(0xFF2D9640)],
+            colors: [Color(0xFF0D631B), Color(0xFF19802E)],
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x350B7A20),
+              color: Color(0x350D631B),
               blurRadius: 20,
               offset: Offset(0, 10),
             ),
@@ -944,7 +810,8 @@ class _MesajeCard extends StatelessWidget {
   }
 
   DateTime? _leaveMessageTime(Map<String, dynamic> data) {
-    return _readDateTime(data['reviewedAt']) ?? _readDateTime(data['requestedAt']);
+    return _readDateTime(data['reviewedAt']) ??
+        _readDateTime(data['requestedAt']);
   }
 
   bool _isVisibleLeaveMessage(Map<String, dynamic> data) {
@@ -958,7 +825,9 @@ class _MesajeCard extends StatelessWidget {
   ) {
     final lastViewed = inboxLastOpenedAt;
     if (lastViewed == null) {
-      return leaveDocs.where((doc) => _isVisibleLeaveMessage(doc.data())).length +
+      return leaveDocs
+              .where((doc) => _isVisibleLeaveMessage(doc.data()))
+              .length +
           secretariatDocs.length;
     }
 
@@ -987,21 +856,21 @@ class _MesajeCard extends StatelessWidget {
         stream: studentUid.isEmpty
             ? null
             : FirebaseFirestore.instance
-                .collection('leaveRequests')
-                .where('studentUid', isEqualTo: studentUid)
-                .orderBy('requestedAt', descending: true)
-                .limit(50)
-                .snapshots(),
+                  .collection('leaveRequests')
+                  .where('studentUid', isEqualTo: studentUid)
+                  .orderBy('requestedAt', descending: true)
+                  .limit(50)
+                  .snapshots(),
         builder: (context, leaveSnapshot) {
           return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: studentUid.isEmpty
                 ? null
                 : FirebaseFirestore.instance
-                    .collection('secretariatMessages')
-                    .where('recipientUid', isEqualTo: studentUid)
-                    .where('recipientRole', isEqualTo: 'student')
-                    .limit(50)
-                    .snapshots(),
+                      .collection('secretariatMessages')
+                      .where('recipientUid', isEqualTo: studentUid)
+                      .where('recipientRole', isEqualTo: 'student')
+                      .limit(50)
+                      .snapshots(),
             builder: (context, secretariatSnapshot) {
               final unreadCount = _countUnread(
                 leaveSnapshot.data?.docs ?? const [],
@@ -1103,7 +972,8 @@ class _LeaveStatusCard extends StatelessWidget {
           builder: (context, snapshot) {
             final docs = snapshot.data?.docs ?? [];
 
-            final hasActive = inSchedule &&
+            final hasActive =
+                inSchedule &&
                 docs.any((doc) => doc.data()['status'] == 'approved');
             final hasPending = docs.any(
               (doc) => ['active', 'pending'].contains(doc.data()['status']),
@@ -1112,10 +982,9 @@ class _LeaveStatusCard extends StatelessWidget {
             final statusText = hasActive
                 ? 'Activă'
                 : hasPending
-                    ? 'În așteptare'
-                    : 'Inactivă';
-            final statusColor =
-                (hasActive || hasPending) ? _primary : _outline;
+                ? 'În așteptare'
+                : 'Inactivă';
+            final statusColor = (hasActive || hasPending) ? _primary : _outline;
 
             return GestureDetector(
               onTap: onTap,
@@ -1208,93 +1077,3 @@ class _LeaveStatusCard extends StatelessWidget {
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// PROFIL PLACEHOLDER — înlocuiește cu pagina ta reală de profil/orar
-// ────────────────────────────────────────────────────────────────────────────
-class _ProfilPlaceholderScreen extends StatelessWidget {
-  const _ProfilPlaceholderScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _surface,
-      appBar: AppBar(
-        backgroundColor: _primary,
-        foregroundColor: Colors.white,
-        title: const Text(
-          'Profil & Orar',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        actions: [
-          PopupMenuButton<String>(
-            tooltip: 'Profil / Logout',
-            offset: const Offset(0, 64),
-            icon: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: const Color(0x337DE38D),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0x6DC7F4CE),
-                  width: 1,
-                ),
-              ),
-              child: const Icon(
-                Icons.person,
-                color: Colors.white,
-                size: 21,
-              ),
-            ),
-            onSelected: (value) async {
-              if (value == 'logout') {
-                final shouldLogout = await showStudentLogoutDialog(
-                  context,
-                  accentColor: _primary,
-                  surfaceColor: _surface,
-                  softSurfaceColor: _surfaceContainerHigh,
-                  titleColor: _onSurface,
-                  messageColor: _outline,
-                  dangerColor: _tertiary,
-                );
-                if (!shouldLogout) return;
-                await FirebaseAuth.instance.signOut();
-                return;
-              }
-
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Ești deja în pagina de profil.')),
-              );
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem<String>(
-                value: 'profile',
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.person_outline_rounded),
-                  title: Text('Profil'),
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'logout',
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.logout_rounded),
-                  title: Text('Deconecteaza-te'),
-                ),
-              ),
-            ],
-          ),
-        ],
-        elevation: 0,
-      ),
-      body: const Center(
-        child: Text(
-          'Pagina de profil',
-          style: TextStyle(color: _outline, fontSize: 16),
-        ),
-      ),
-    );
-  }
-}

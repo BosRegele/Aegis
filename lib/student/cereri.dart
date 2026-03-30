@@ -1,12 +1,10 @@
-import 'package:firster/StudentInterface/meniu.dart';
-import 'package:firster/StudentInterface/logout_dialog.dart';
-import 'package:firster/StudentInterface/orar.dart';
-import 'package:firster/session.dart';
+import 'package:firster/student/meniu.dart';
+import 'package:firster/student/orar.dart';
+import 'package:firster/core/session.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-const _primary = Color(0xFF0B741D);
+const _primary = Color(0xFF0D631B);
 const _surface = Color(0xFFECEFE6);
 const _card = Color(0xFFF7F8F3);
 const _cardMuted = Color(0xFFE8ECE3);
@@ -45,21 +43,6 @@ class _CereriScreenState extends State<CereriScreen> {
     super.dispose();
   }
 
-  Future<void> _logout() async {
-    final shouldLogout = await showStudentLogoutDialog(
-      context,
-      accentColor: _primary,
-      surfaceColor: _card,
-      softSurfaceColor: _cardMuted,
-      titleColor: _textDark,
-      messageColor: _textMuted,
-      dangerColor: const Color(0xFF8E3557),
-    );
-    if (!shouldLogout) return;
-    await FirebaseAuth.instance.signOut();
-    AppSession.clear();
-  }
-
   Future<void> _pickDate() async {
     final now = DateTime.now();
 
@@ -94,13 +77,9 @@ class _CereriScreenState extends State<CereriScreen> {
               onSurface: _textDark,
             ),
             textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: _primary,
-              ),
+              style: TextButton.styleFrom(foregroundColor: _primary),
             ),
-            dialogTheme: const DialogThemeData(
-              backgroundColor: _card,
-            ),
+            dialogTheme: const DialogThemeData(backgroundColor: _card),
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: _cardMuted,
@@ -288,9 +267,7 @@ class _CereriScreenState extends State<CereriScreen> {
                 onSurface: _textDark,
               ),
               textButtonTheme: TextButtonThemeData(
-                style: TextButton.styleFrom(
-                  foregroundColor: _primary,
-                ),
+                style: TextButton.styleFrom(foregroundColor: _primary),
               ),
               timePickerTheme: TimePickerThemeData(
                 backgroundColor: _card,
@@ -358,7 +335,9 @@ class _CereriScreenState extends State<CereriScreen> {
     final userData = await _loadCurrentUserData();
 
     if (_targetRole == 'parent') {
-      final parents = List<String>.from(userData['parents'] ?? const <String>[]);
+      final parents = List<String>.from(
+        userData['parents'] ?? const <String>[],
+      );
       if (parents.isEmpty) {
         return const <String, String>{};
       }
@@ -379,7 +358,9 @@ class _CereriScreenState extends State<CereriScreen> {
       };
     }
 
-    final classId = (userData['classId'] ?? AppSession.classId ?? '').toString().trim();
+    final classId = (userData['classId'] ?? AppSession.classId ?? '')
+        .toString()
+        .trim();
     if (classId.isEmpty) {
       return const <String, String>{};
     }
@@ -391,7 +372,9 @@ class _CereriScreenState extends State<CereriScreen> {
     final classData = classSnap.data() ?? const <String, dynamic>{};
 
     String teacherUid = (classData['teacherUid'] ?? '').toString().trim();
-    String teacherUsername = (classData['teacherUsername'] ?? '').toString().trim();
+    String teacherUsername = (classData['teacherUsername'] ?? '')
+        .toString()
+        .trim();
     String teacherName = '';
 
     if (teacherUid.isNotEmpty) {
@@ -400,8 +383,12 @@ class _CereriScreenState extends State<CereriScreen> {
           .doc(teacherUid)
           .get();
       final teacherData = teacherSnap.data() ?? const <String, dynamic>{};
-      teacherUsername = (teacherData['username'] ?? teacherUsername).toString().trim();
-      teacherName = (teacherData['fullName'] ?? teacherUsername).toString().trim();
+      teacherUsername = (teacherData['username'] ?? teacherUsername)
+          .toString()
+          .trim();
+      teacherName = (teacherData['fullName'] ?? teacherUsername)
+          .toString()
+          .trim();
     } else if (teacherUsername.isNotEmpty) {
       final teacherQuery = await FirebaseFirestore.instance
           .collection('users')
@@ -413,8 +400,12 @@ class _CereriScreenState extends State<CereriScreen> {
         final doc = teacherQuery.docs.first;
         final teacherData = doc.data();
         teacherUid = doc.id;
-        teacherUsername = (teacherData['username'] ?? teacherUsername).toString().trim();
-        teacherName = (teacherData['fullName'] ?? teacherUsername).toString().trim();
+        teacherUsername = (teacherData['username'] ?? teacherUsername)
+            .toString()
+            .trim();
+        teacherName = (teacherData['fullName'] ?? teacherUsername)
+            .toString()
+            .trim();
       }
     }
 
@@ -478,8 +469,9 @@ class _CereriScreenState extends State<CereriScreen> {
         throw Exception('Nu a fost gasit destinatarul selectat.');
       }
 
-      final classId =
-          (userData['classId'] ?? AppSession.classId ?? '').toString().trim();
+      final classId = (userData['classId'] ?? AppSession.classId ?? '')
+          .toString()
+          .trim();
       final studentUsername =
           (userData['username'] ?? AppSession.username ?? '').toString().trim();
       final studentName =
@@ -501,9 +493,9 @@ class _CereriScreenState extends State<CereriScreen> {
         'message': message,
         'targetRole': _targetRole,
         'targetUid': targetUid,
-        'targetName': (recipient['name'] ??
-            (_targetRole == 'teacher' ? 'Diriginte' : ''))
-          .trim(),
+        'targetName':
+            (recipient['name'] ?? (_targetRole == 'teacher' ? 'Diriginte' : ''))
+                .trim(),
         'targetUsername': (recipient['username'] ?? '').trim(),
         'status': 'pending',
         'requestedAt': Timestamp.now(),
@@ -581,9 +573,9 @@ class _CereriScreenState extends State<CereriScreen> {
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const OrarScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const OrarScreen()));
   }
 
   @override
@@ -595,73 +587,69 @@ class _CereriScreenState extends State<CereriScreen> {
     return Scaffold(
       backgroundColor: _surface,
       body: SafeArea(
+        top: false,
         child: Stack(
           children: [
             Column(
               children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(54),
-                bottomRight: Radius.circular(54),
-              ),
-              child: Container(
-                height: headerHeight,
-                width: double.infinity,
-                color: _primary,
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: -72,
-                      right: -52,
-                      child: _HeaderCircle(size: 220, opacity: 0.08),
-                    ),
-                    Positioned(
-                      top: 44,
-                      right: 34,
-                      child: _HeaderCircle(size: 72, opacity: 0.07),
-                    ),
-                    Positioned(
-                      left: 156,
-                      bottom: -28,
-                      child: _HeaderCircle(size: 82, opacity: 0.08),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Center(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            _HeaderIconButton(
-                              icon: Icons.arrow_back_rounded,
-                              onTap: _goBack,
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Text(
-                              'Cereri de invoire',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: titleSize,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.6,
-                              ),
-                            ),
-                            ),
-                            const SizedBox(width: 16),
-                            _HeaderMenuButton(
-                              onLogout: _logout,
-                              onProfil: _openProfil,
-                            ),
-                          ],
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(54),
+                    bottomRight: Radius.circular(54),
+                  ),
+                  child: Container(
+                    height: headerHeight,
+                    width: double.infinity,
+                    color: _primary,
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: -72,
+                          right: -52,
+                          child: _HeaderCircle(size: 220, opacity: 0.08),
                         ),
-                      ),
+                        Positioned(
+                          top: 44,
+                          right: 34,
+                          child: _HeaderCircle(size: 72, opacity: 0.07),
+                        ),
+                        Positioned(
+                          left: 156,
+                          bottom: -28,
+                          child: _HeaderCircle(size: 82, opacity: 0.08),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          child: Center(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                _HeaderIconButton(
+                                  icon: Icons.arrow_back_rounded,
+                                  onTap: _goBack,
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Text(
+                                    'Cereri de invoire',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: titleSize,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: -0.6,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -669,94 +657,96 @@ class _CereriScreenState extends State<CereriScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _RecipientCard(
-                            selected: _targetRole == 'teacher',
-                            icon: Icons.school_rounded,
-                            title: 'Diriginte',
-                            onTap: () => setState(() => _targetRole = 'teacher'),
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _RecipientCard(
+                                selected: _targetRole == 'teacher',
+                                icon: Icons.school_rounded,
+                                title: 'Diriginte',
+                                onTap: () =>
+                                    setState(() => _targetRole = 'teacher'),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: _RecipientCard(
+                                selected: _targetRole == 'parent',
+                                icon: Icons.family_restroom,
+                                title: 'Parinte',
+                                onTap: () =>
+                                    setState(() => _targetRole = 'parent'),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: _RecipientCard(
-                            selected: _targetRole == 'parent',
-                            icon: Icons.family_restroom,
-                            title: 'Parinte',
-                            onTap: () => setState(() => _targetRole = 'parent'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 34),
-                    const Text(
-                      'DATA',
-                      style: TextStyle(
-                        color: _primary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 2.2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _LabeledInputBox(
-                      controller: _dateController,
-                      hintText: 'MM/DD/YYYY',
-                      icon: Icons.calendar_month_rounded,
-                      onTap: _pickDate,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'ORA DE INCEPUT',
-                      style: TextStyle(
-                        color: _primary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 2.2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _LabeledInputBox(
-                      controller: _timeController,
-                      hintText: '08:00 AM',
-                      icon: Icons.access_time_filled_rounded,
-                      onTap: _loadingSchedule ? null : _pickTime,
-                    ),
-                    if (_loadingSchedule)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 8),
-                        child: LinearProgressIndicator(color: _primary),
-                      )
-                    else if (_scheduleStart != null && _scheduleEnd != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          'Interval valid: '
-                          '${_scheduleStart!.hour.toString().padLeft(2, '0')}:${_scheduleStart!.minute.toString().padLeft(2, '0')}'
-                          ' - '
-                          '${_scheduleEnd!.hour.toString().padLeft(2, '0')}:${_scheduleEnd!.minute.toString().padLeft(2, '0')}',
-                          style: const TextStyle(
+                        const SizedBox(height: 34),
+                        const Text(
+                          'DATA',
+                          style: TextStyle(
                             color: _primary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2.2,
                           ),
                         ),
-                      ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'MOTIVUL ABSENTEI',
-                      style: TextStyle(
-                        color: _primary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 2.2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _ReasonBox(controller: _messageController),
-                    const SizedBox(height: 16),
+                        const SizedBox(height: 8),
+                        _LabeledInputBox(
+                          controller: _dateController,
+                          hintText: 'MM/DD/YYYY',
+                          icon: Icons.calendar_month_rounded,
+                          onTap: _pickDate,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'ORA DE INCEPUT',
+                          style: TextStyle(
+                            color: _primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2.2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _LabeledInputBox(
+                          controller: _timeController,
+                          hintText: '08:00 AM',
+                          icon: Icons.access_time_filled_rounded,
+                          onTap: _loadingSchedule ? null : _pickTime,
+                        ),
+                        if (_loadingSchedule)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: LinearProgressIndicator(color: _primary),
+                          )
+                        else if (_scheduleStart != null && _scheduleEnd != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              'Interval valid: '
+                              '${_scheduleStart!.hour.toString().padLeft(2, '0')}:${_scheduleStart!.minute.toString().padLeft(2, '0')}'
+                              ' - '
+                              '${_scheduleEnd!.hour.toString().padLeft(2, '0')}:${_scheduleEnd!.minute.toString().padLeft(2, '0')}',
+                              style: const TextStyle(
+                                color: _primary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'MOTIVUL ABSENTEI',
+                          style: TextStyle(
+                            color: _primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2.2,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _ReasonBox(controller: _messageController),
+                        const SizedBox(height: 16),
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -785,49 +775,49 @@ class _CereriScreenState extends State<CereriScreen> {
                               disabledForegroundColor: Colors.white,
                               minimumSize: const Size.fromHeight(74),
                               elevation: 6,
-                              shadowColor: const Color(0x660B741D),
+                              shadowColor: const Color(0x660D631B),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(22),
                               ),
                             ),
                           ),
                         ),
-                    const SizedBox(height: 34),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                      decoration: BoxDecoration(
-                        color: _card,
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: const Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(width: 6),
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: Color(0xFFF3D0DD),
-                            child: Icon(
-                              Icons.alarm_rounded,
-                              color: Color(0xFF8A2D52),
-                              size: 24,
-                            ),
+                        const SizedBox(height: 34),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                          decoration: BoxDecoration(
+                            color: _card,
+                            borderRadius: BorderRadius.circular(22),
                           ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Cererile trimise expira automat dupa ora 00:00 in ziua respectiva.',
-                              style: TextStyle(
-                                color: Color(0xFF283028),
-                                fontSize: 17,
-                                fontWeight: FontWeight.w500,
-                                height: 1.38,
+                          child: const Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(width: 6),
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: Color(0xFFF3D0DD),
+                                child: Icon(
+                                  Icons.alarm_rounded,
+                                  color: Color(0xFF8A2D52),
+                                  size: 24,
+                                ),
                               ),
-                            ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Cererile trimise expira automat dupa ora 00:00 in ziua respectiva.',
+                                  style: TextStyle(
+                                    color: Color(0xFF283028),
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.38,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
                       ],
                     ),
                   ),
@@ -1041,118 +1031,13 @@ class _ReasonBox extends StatelessWidget {
         controller: controller,
         minLines: 4,
         maxLines: 4,
-        style: const TextStyle(
-          fontSize: 18,
-          color: _textDark,
-          height: 1.2,
-        ),
+        style: const TextStyle(fontSize: 18, color: _textDark, height: 1.2),
         decoration: const InputDecoration(
           hintText: 'Introduceti motivul cererii de invoire...',
-          hintStyle: TextStyle(
-            fontSize: 18,
-            color: Color(0xFFA2AAA0),
-          ),
+          hintStyle: TextStyle(fontSize: 18, color: Color(0xFFA2AAA0)),
           border: InputBorder.none,
           contentPadding: EdgeInsets.fromLTRB(14, 14, 14, 14),
         ),
-      ),
-    );
-  }
-}
-
-class _HeaderMenuButton extends StatelessWidget {
-  final Future<void> Function() onLogout;
-  final VoidCallback onProfil;
-
-  const _HeaderMenuButton({required this.onLogout, required this.onProfil});
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      tooltip: '',
-      offset: const Offset(0, 64),
-      elevation: 12,
-      color: const Color(0xFFD8EED9),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      onSelected: (value) async {
-        if (value == 'profil') {
-          onProfil();
-        }
-        if (value == 'logout') {
-          await onLogout();
-        }
-      },
-      itemBuilder: (_) => [
-        PopupMenuItem<String>(
-          value: 'profil',
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFB9DEBC),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0x660B741D)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.person_outline_rounded, color: _primary, size: 20),
-                SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    'Profil',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const PopupMenuDivider(height: 6),
-        PopupMenuItem<String>(
-          value: 'logout',
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1CDD8),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0x668E3557)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.logout_rounded, color: Color(0xFF8E3557), size: 20),
-                SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    'Deconecteaza-te',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Color(0xFF8E3557),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: const Color(0x337DE38D),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0x6DC7F4CE),
-            width: 1,
-          ),
-        ),
-        child: const Icon(Icons.person, color: Colors.white, size: 22),
       ),
     );
   }
@@ -1172,13 +1057,7 @@ class _HeaderIconButton extends StatelessWidget {
       child: SizedBox(
         width: 34,
         height: 34,
-        child: Center(
-          child: Icon(
-            icon,
-            color: Colors.white,
-            size: 32,
-          ),
-        ),
+        child: Center(child: Icon(icon, color: Colors.white, size: 32)),
       ),
     );
   }

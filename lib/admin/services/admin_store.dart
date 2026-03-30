@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import '../utils/password_hash.dart';
+import '../../utils/password_hash.dart';
 
 class AdminStore {
   final _db = FirebaseFirestore.instance;

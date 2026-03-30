@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firster/session.dart';
-import 'package:firster/StudentInterface/meniu.dart';
-import 'package:firster/StudentInterface/orar.dart';
-import 'package:firster/StudentInterface/cereri.dart';
-import 'package:firster/StudentInterface/inbox.dart';
+import 'package:firster/core/session.dart';
+import 'package:firster/student/meniu.dart';
+import 'package:firster/student/orar.dart';
+import 'package:firster/student/cereri.dart';
+import 'package:firster/student/inbox.dart';
 import 'package:flutter/material.dart';
 
 class AppShell extends StatefulWidget {
@@ -50,14 +50,39 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
+      body: Stack(
         children: [
-          MeniuScreen(onNavigateTab: _setTab),
-          OrarScreen(onBackToHome: () => _setTab(0)),
-          CereriScreen(onNavigateTab: _setTab),
-          InboxScreen(onNavigateTab: _setTab),
+          IndexedStack(
+            index: _currentIndex,
+            children: [
+              MeniuScreen(onNavigateTab: _setTab),
+              OrarScreen(onBackToHome: () => _setTab(0)),
+              CereriScreen(onNavigateTab: _setTab),
+              InboxScreen(onNavigateTab: _setTab),
+            ],
+          ),
+          Positioned(
+            top: topPadding - 2,
+            right: 14,
+            child: GestureDetector(
+              onTap: () => _setTab(1),
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0x337DE38D),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0x6DC7F4CE),
+                    width: 1,
+                  ),
+                ),
+                child: const Icon(Icons.person, color: Colors.white, size: 21),
+              ),
+            ),
+          ),
         ],
       ),
     );

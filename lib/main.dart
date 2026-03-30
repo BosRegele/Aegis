@@ -2,15 +2,15 @@ import 'dart:async';
 
 import 'package:firster/Auth/login_page_firestore.dart';
 import 'package:firster/Auth/two_factor_verify_page.dart';
-import 'package:firster/StudentInterface/mainnavigation.dart';
+import 'package:firster/student/mainnavigation.dart';
 import 'package:firster/admin/secretariat_raw_page.dart'
     show SecretariatRawPage;
-import 'package:firster/gate_scan_page.dart';
+import 'package:firster/gate/gate_scan_page.dart';
 import 'package:firster/teacher/teacher_dashboard_page.dart';
 import 'package:firster/parent/parent_home_page.dart';
 import 'package:firster/services/security_flags_service.dart';
-import 'package:firster/session.dart';
-import 'package:firster/onboarding_page.dart';
+import 'package:firster/core/session.dart';
+import 'package:firster/auth/onboarding_page.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -20,7 +20,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'firebase_options.dart';
+import 'core/firebase_options.dart';
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();

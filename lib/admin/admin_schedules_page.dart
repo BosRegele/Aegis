@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../session.dart';
+import '../core/session.dart';
 
 class AdminSchedulesPage extends StatefulWidget {
   const AdminSchedulesPage({super.key});

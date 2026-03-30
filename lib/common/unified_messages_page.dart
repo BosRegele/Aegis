@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-import '../session.dart';
+import '../core/session.dart';
 
 enum UnifiedInboxRole { student, parent, teacher }
 
