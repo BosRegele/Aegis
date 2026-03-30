@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 
+const _kHeaderGreen = Color(0xFF0D6F1C);
+const _kPageBg = Color(0xFFF1F5EC);
+
 // Data model similar to _OrarViewData from orar.dart
 class _StudentProfileData {
   final String uid;
@@ -162,82 +165,147 @@ class _ParentStudentsPageState extends State<ParentStudentsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF7AAF5B),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF7AAF5B),
-        toolbarHeight: 68,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'Elevi',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 34,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
+      backgroundColor: _kPageBg,
       body: SafeArea(
-        top: false,
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          clipBehavior: Clip.antiAlias,
-          decoration: const BoxDecoration(
-            color: Color(0xFFF5F7FA), // Background nou
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(28),
-              topRight: Radius.circular(28),
-            ),
-          ),
-          child: FutureBuilder<List<_StudentProfileData>>(
-            future: _childrenDataFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Center(
-                    child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text('Eroare: ${snapshot.error}',
-                      textAlign: TextAlign.center),
-                ));
-              }
-              final childrenData = snapshot.data;
-              if (childrenData == null || childrenData.isEmpty) {
-                return const Center(
-                    child: Text('Nu este atribuit niciun elev.', style: TextStyle(fontSize: 18, color: Colors.grey)));
-              }
-
-              return ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: childrenData.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 24),
-                itemBuilder: (context, index) {
-                  return _StudentSummaryButton(
-                    data: childrenData[index],
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => StudentDetailsPage(data: childrenData[index]),
+        bottom: false,
+        child: Column(
+          children: [
+            _TopHeader(onBack: () => Navigator.of(context).pop()),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                child: FutureBuilder<List<_StudentProfileData>>(
+                  future: _childrenDataFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text('Eroare: ${snapshot.error}', textAlign: TextAlign.center),
                         ),
                       );
-                    },
-                  );
-                },
-              );
-            },
-          ),
+                    }
+
+                    final childrenData = snapshot.data;
+                    if (childrenData == null || childrenData.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'Nu este atribuit niciun elev.',
+                          style: TextStyle(fontSize: 16, color: Color(0xFF7A8077)),
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.only(top: 6, bottom: 24),
+                      itemCount: childrenData.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 14),
+                      itemBuilder: (context, index) {
+                        return _StudentSummaryButton(
+                          data: childrenData[index],
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StudentDetailsPage(data: childrenData[index]),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _TopHeader extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const _TopHeader({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
+      child: SizedBox(
+        width: double.infinity,
+        height: 182,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(color: _kHeaderGreen),
+            CustomPaint(painter: _HeaderDotsPainter()),
+            Positioned(right: 198, top: -40, child: _circle(150)),
+            Positioned(left: 230, bottom: -42, child: _circle(96)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 24, 18, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconButton(
+                    onPressed: onBack,
+                    splashRadius: 22,
+                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 34),
+                  ),
+                  const SizedBox(width: 8),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 10),
+                    child: Text(
+                      'Elevii Mei',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _circle(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.11),
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+class _HeaderDotsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withOpacity(0.14);
+    const spacing = 28.0;
+    for (double y = 14; y < size.height; y += spacing) {
+      for (double x = 14; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), 2, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _StudentSummaryButton extends StatelessWidget {
@@ -248,138 +316,161 @@ class _StudentSummaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayName =
-        data.fullName.isNotEmpty ? data.fullName : data.username;
+    final displayName = data.fullName.isNotEmpty ? data.fullName : data.username;
 
     return _BouncingButton(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(22),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF2E3B4E).withOpacity(0.09),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          color: const Color(0xFFF7F7F7),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFE3E8DF)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Header: Icon + Name + Class
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDCEED5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.person, size: 32, color: Color(0xFF6C7D62)),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayName,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1F252B),
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance.collection('users').doc(data.uid).snapshots(),
+              builder: (context, snapshot) {
+                bool isInSchool = data.inSchool;
+                if (snapshot.hasData && snapshot.data!.exists) {
+                  final d = snapshot.data!.data() as Map<String, dynamic>;
+                  isInSchool = d['inSchool'] == true;
+                }
+
+                final avatarBg = isInSchool ? const Color(0xFF258635) : const Color(0xFFB84777);
+                final statusText = isInSchool ? 'IN INCINTA' : 'IN AFARA INCINTEI';
+                final statusColor = isInSchool ? const Color(0xFF0C6F1D) : const Color(0xFF952E5C);
+                final statusBg = isInSchool ? const Color(0xFFDBEBDD) : const Color(0xFFF0E1E8);
+                final statusBorder = isInSchool ? const Color(0xFFA9CCAE) : const Color(0xFFD2A9BF);
+
+                return Row(
+                  children: [
+                    Container(
+                      width: 116,
+                      height: 116,
+                      decoration: BoxDecoration(
+                        color: avatarBg,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          _initials(displayName),
+                          style: const TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFAEE8AF),
+                            height: 1,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Clasa: ${data.classId.isNotEmpty ? data.classId : 'N/A'}",
-                        style: const TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-              ],
-            ),
-
-            Divider(
-              color: const Color(0xFF2E3B4E).withOpacity(0.18),
-              thickness: 2,
-              height: 32,
-            ),
-
-            // Statusul elevului
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Text(
-                  'Statusul elevului:',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF2E3B4E),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: StreamBuilder<DocumentSnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(data.uid)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        bool isInSchool = false;
-                        if (snapshot.hasData && snapshot.data!.exists) {
-                          final d = snapshot.data!.data() as Map<String, dynamic>;
-                          isInSchool = d['inSchool'] == true;
-                        }
-
-                        final color = isInSchool ? const Color(0xFF4B78D2) : Colors.red;
-                        final text = isInSchool ? 'În incintă' : 'În afara incintei';
-                        final icon = isInSchool ? Icons.school_rounded : Icons.logout_rounded;
-
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: color, width: 1.2),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(icon, color: color, size: 15),
-                              const SizedBox(width: 5),
-                              Text(
-                                text,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: color,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
                     ),
-                  ),
-                ),
-              ],
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            displayName,
+                            style: const TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111811),
+                              height: 1,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _classLabel(data.classId),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF2A352A),
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: statusBg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: statusBorder, width: 1.4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 14,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    color: statusColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 9),
+                                Text(
+                                  statusText,
+                                  style: TextStyle(
+                                    color: statusColor,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-
+            const SizedBox(width: 12),
+            Container(
+              width: 74,
+              height: 74,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD5DBD1),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Icon(
+                Icons.chevron_right_rounded,
+                size: 44,
+                color: Color(0xFF111811),
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  String _classLabel(String classId) {
+    final c = classId.trim();
+    if (c.isEmpty) return 'Clasa N/A';
+    final parts = c.split('-');
+    if (parts.length >= 2) {
+      return 'Clasa a ${parts.first}-a ${parts.sublist(1).join('-')}';
+    }
+    return 'Clasa $c';
+  }
+
+  String _initials(String name) {
+    final parts = name
+        .split(' ')
+        .where((p) => p.trim().isNotEmpty)
+        .map((p) => p.trim())
+        .toList();
+    if (parts.isEmpty) return 'E';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
   }
 }
 
