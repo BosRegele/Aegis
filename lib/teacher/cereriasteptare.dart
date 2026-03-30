@@ -1,6 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../core/session.dart';
+import '../session.dart';
+
+const _kHeaderGreen = Color(0xFF0D6F1C);
+const _kPageBg = Color(0xFFF1F5EC);
+const _kCardBg = Color(0xFFF8F8F8);
 
 class CereriAsteptarePage extends StatefulWidget {
   const CereriAsteptarePage({super.key});
@@ -60,10 +64,7 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
   }
 
   // --- Funcție nouă pentru aprobare/respingere în masă ---
-  Future<void> _reviewAllRequests(
-    List<QueryDocumentSnapshot> docs,
-    String status,
-  ) async {
+  Future<void> _reviewAllRequests(List<QueryDocumentSnapshot> docs, String status) async {
     final teacherUid = AppSession.uid;
     if (teacherUid == null || teacherUid.isEmpty) return;
 
@@ -86,9 +87,7 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            status == 'approved'
-                ? 'Toate cererile au fost aprobate'
-                : 'Toate cererile au fost respinse',
+            status == 'approved' ? 'Toate cererile au fost aprobate' : 'Toate cererile au fost respinse',
           ),
           backgroundColor: status == 'approved' ? Colors.green : Colors.red,
         ),
@@ -377,392 +376,466 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF7AAF5B),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF7AAF5B),
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text('Învoiri', style: TextStyle(color: Colors.white)),
-        elevation: 0,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFE6EBEE),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      backgroundColor: _kPageBg,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _TopHeader(
+              title: 'Cereri de învoire',
+              onBack: () => Navigator.of(context).maybePop(),
+            ),
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(child: CustomPaint(painter: _BgDotsPainter())),
+                  _classId.isEmpty
+                      ? const Center(child: CircularProgressIndicator())
+                      : StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('leaveRequests')
+                              .where('classId', isEqualTo: _classId)
+                              .where('status', isEqualTo: 'pending')
+                              .orderBy('requestedAt', descending: true)
+                              .snapshots(),
+                          builder: (context, snap) {
+                            if (snap.hasError) {
+                              return Center(
+                                child: Text('Eroare: ${snap.error}'),
+                              );
+                            }
+                            if (!snap.hasData) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+                            final docs = snap.data!.docs;
+                            if (docs.isEmpty) {
+                              return const Center(
+                                child: Text(
+                                  'Nicio cerere în așteptare',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Color(0xFF5D655A),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+                              separatorBuilder: (_, __) => const SizedBox(height: 14),
+                              itemCount: docs.length,
+                              itemBuilder: (context, index) {
+                                final doc = docs[index];
+                                final d = doc.data() as Map<String, dynamic>;
+                                final requestId = doc.id;
+                                final studentName =
+                                    (d['studentName'] ?? '').toString().trim();
+                                final dateText = (d['dateText'] ?? '').toString();
+                                final timeText = (d['timeText'] ?? '').toString();
+                                final message = (d['message'] ?? '').toString();
+
+                                final initials = studentName
+                                    .split(' ')
+                                    .where((part) => part.isNotEmpty)
+                                    .take(2)
+                                    .map((part) => part[0].toUpperCase())
+                                    .join();
+
+                                return _RequestCard(
+                                  initials: initials.isEmpty ? '??' : initials,
+                                  name: studentName.isEmpty
+                                      ? 'Elev fără nume'
+                                      : studentName,
+                                  classLabel: 'ELEV • CLASA A $_classId',
+                                  dateText: dateText,
+                                  timeText: timeText,
+                                  message: message,
+                                  onTap: () =>
+                                      _showRequestDialog(context, requestId, d),
+                                  onAccept: () => _reviewRequest(
+                                    requestId: requestId,
+                                    status: 'approved',
+                                  ),
+                                  onReject: () => _reviewRequest(
+                                    requestId: requestId,
+                                    status: 'rejected',
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                ],
+              ),
+            ),
+          ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: _classId.isEmpty
-            ? const Center(child: CircularProgressIndicator())
-            : StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('leaveRequests')
-                    .where('classId', isEqualTo: _classId)
-                    .snapshots(),
-                builder: (context, snap) {
-                  if (snap.hasError) {
-                    return Center(child: Text('Eroare: ${snap.error}'));
-                  }
-                  if (!snap.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final docs =
-                      snap.data!.docs.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        final targetRole = (data['targetRole'] ?? '')
-                            .toString();
-                        final status = (data['status'] ?? '').toString();
-                        return targetRole == 'teacher' && status == 'pending';
-                      }).toList()..sort((a, b) {
-                        final aTs =
-                            (a.data() as Map<String, dynamic>)['requestedAt']
-                                as Timestamp?;
-                        final bTs =
-                            (b.data() as Map<String, dynamic>)['requestedAt']
-                                as Timestamp?;
-                        final aMs = aTs?.millisecondsSinceEpoch ?? 0;
-                        final bMs = bTs?.millisecondsSinceEpoch ?? 0;
-                        return bMs.compareTo(aMs);
-                      });
-                  if (docs.isEmpty) {
-                    return Center(
+      ),
+    );
+  }
+}
+
+class _TopHeader extends StatelessWidget {
+  final String title;
+  final VoidCallback onBack;
+
+  const _TopHeader({required this.title, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
+      child: SizedBox(
+        width: double.infinity,
+        height: 176,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(color: _kHeaderGreen),
+            CustomPaint(painter: _HeaderDotsPainter()),
+            Positioned(
+              right: 80,
+              top: -44,
+              child: _decorCircle(112),
+            ),
+            Positioned(
+              left: 185,
+              bottom: -36,
+              child: _decorCircle(82),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 22, 18, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconButton(
+                    onPressed: onBack,
+                    splashRadius: 22,
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: Colors.white,
+                      size: 34,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _decorCircle(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.10),
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+class _HeaderDotsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withOpacity(0.14);
+    const spacing = 18.0;
+    for (double y = 14; y < size.height; y += spacing) {
+      for (double x = 16; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), 1.3, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _BgDotsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = const Color(0xFFC8D8C4);
+    const spacing = 32.0;
+    for (double y = 16; y < 72; y += spacing) {
+      for (double x = 16; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), 2.1, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _RequestCard extends StatelessWidget {
+  final String initials;
+  final String name;
+  final String classLabel;
+  final String dateText;
+  final String timeText;
+  final String message;
+  final VoidCallback onTap;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+
+  const _RequestCard({
+    required this.initials,
+    required this.name,
+    required this.classLabel,
+    required this.dateText,
+    required this.timeText,
+    required this.message,
+    required this.onTap,
+    required this.onAccept,
+    required this.onReject,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _kCardBg,
+        borderRadius: BorderRadius.circular(34),
+        border: Border.all(color: const Color(0xFFE3E7DD)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(34),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(34),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 76,
+                      height: 76,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFD0DFD0),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        initials,
+                        style: const TextStyle(
+                          fontSize: 38,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF07731F),
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.check_circle_outline_rounded,
-                            size: 64,
-                            color: const Color(0xFF7AAF5B).withOpacity(0.5),
+                          Text(
+                            name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 26,
+                              color: Color(0xFF111512),
+                              fontWeight: FontWeight.w700,
+                              height: 1.2,
+                            ),
                           ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Nicio cerere în așteptare',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFF5F6771),
-                              fontWeight: FontWeight.w500,
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDDE9DE),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Text(
+                              classLabel,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                letterSpacing: 1.3,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF126D24),
+                                height: 1,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    );
-                  }
-
-                  // Aici am adăugat Stack-ul cu lista și butonul bulk persistent
-                  return Stack(
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _InfoLine(
+                  icon: Icons.calendar_today_rounded,
+                  text: dateText.isEmpty ? '-' : dateText,
+                ),
+                const SizedBox(height: 14),
+                _InfoLine(
+                  icon: Icons.access_time_filled_rounded,
+                  text: timeText.isEmpty ? '-' : timeText,
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F4EA),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ListView.separated(
-                        // Am adăugat padding la final (90) pentru ca ultimul element să nu fie ascuns sub butonul plutitor
-                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 90),
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemCount: docs.length,
-                        itemBuilder: (context, index) {
-                          final doc = docs[index];
-                          final d = doc.data() as Map<String, dynamic>;
-                          final requestId = doc.id;
-                          final studentName = (d['studentName'] ?? '')
-                              .toString();
-                          final dateText = (d['dateText'] ?? '').toString();
-                          final timeText = (d['timeText'] ?? '').toString();
-                          final message = (d['message'] ?? '').toString();
-
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFF2E3B4E,
-                                  ).withOpacity(0.07),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(18),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(18),
-                                onTap: () =>
-                                    _showRequestDialog(context, requestId, d),
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    14,
-                                    14,
-                                    10,
-                                    14,
-                                  ),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      // Avatar
-                                      Container(
-                                        width: 46,
-                                        height: 46,
-                                        decoration: BoxDecoration(
-                                          color: const Color(
-                                            0xFF4B78D2,
-                                          ).withOpacity(0.10),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.person_rounded,
-                                          color: Color(0xFF4B78D2),
-                                          size: 26,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      // Content
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              studentName,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 15,
-                                                color: Color(0xFF2E3B4E),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 5),
-                                            Row(
-                                              children: [
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 3,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(
-                                                      0xFF4B78D2,
-                                                    ).withOpacity(0.10),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          20,
-                                                        ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      const Icon(
-                                                        Icons
-                                                            .calendar_today_rounded,
-                                                        size: 11,
-                                                        color: Color(
-                                                          0xFF4B78D2,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        '$dateText${timeText.isNotEmpty ? ' · $timeText' : ''}',
-                                                        style: const TextStyle(
-                                                          fontSize: 12,
-                                                          color: Color(
-                                                            0xFF4B78D2,
-                                                          ),
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            if (message.isNotEmpty) ...[
-                                              const SizedBox(height: 5),
-                                              Text(
-                                                message,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  color: Color(0xFF5F6771),
-                                                ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      // Action buttons
-                                      Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          SizedBox(
-                                            width: 90,
-                                            child: ElevatedButton.icon(
-                                              onPressed: () => _reviewRequest(
-                                                requestId: requestId,
-                                                status: 'approved',
-                                              ),
-                                              icon: const Icon(
-                                                Icons.check_rounded,
-                                                size: 16,
-                                              ),
-                                              label: const Text('Aprobă'),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: const Color(
-                                                  0xFF4CAF50,
-                                                ),
-                                                foregroundColor: Colors.white,
-                                                elevation: 0,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 8,
-                                                    ),
-                                                textStyle: const TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          SizedBox(
-                                            width: 90,
-                                            child: ElevatedButton.icon(
-                                              onPressed: () => _reviewRequest(
-                                                requestId: requestId,
-                                                status: 'rejected',
-                                              ),
-                                              icon: const Icon(
-                                                Icons.close_rounded,
-                                                size: 16,
-                                              ),
-                                              label: const Text('Respinge'),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: const Color(
-                                                  0xFFE53935,
-                                                ),
-                                                foregroundColor: Colors.white,
-                                                elevation: 0,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 8,
-                                                    ),
-                                                textStyle: const TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                      const Padding(
+                        padding: EdgeInsets.only(top: 2),
+                        child: Icon(
+                          Icons.description_rounded,
+                          size: 28,
+                          color: Color(0xFF0C6A20),
+                        ),
                       ),
-
-                      // Butonul oval persistente pentru aprobare/respingere în masă
-                      Positioned(
-                        bottom: 20,
-                        left: 20,
-                        right: 20,
-                        child: Container(
-                          height: 56,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(28),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
-                                blurRadius: 15,
-                                offset: const Offset(0, 5),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'MOTIV SOLICITARE',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF364037),
+                                letterSpacing: 0.3,
                               ),
-                            ],
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Material(
-                                  color: const Color(0xFFE53935), // Roșu
-                                  child: InkWell(
-                                    onTap: () =>
-                                        _reviewAllRequests(docs, 'rejected'),
-                                    child: const Center(
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.close_rounded,
-                                            color: Colors.white,
-                                            size: 20,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Respinge Toate',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              message.isEmpty ? '-' : '"$message"',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontStyle: FontStyle.italic,
+                                color: Color(0xFF1D231D),
+                                height: 1.2,
                               ),
-                              Expanded(
-                                child: Material(
-                                  color: const Color(0xFF4CAF50), // Verde
-                                  child: InkWell(
-                                    onTap: () =>
-                                        _reviewAllRequests(docs, 'approved'),
-                                    child: const Center(
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.check_rounded,
-                                            color: Colors.white,
-                                            size: 20,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Aprobă Toate',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  );
-                },
-              ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 62,
+                        child: ElevatedButton.icon(
+                          onPressed: onAccept,
+                          icon: const Icon(Icons.check_circle_rounded, size: 30),
+                          label: const Text('Acceptă'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF09731F),
+                            foregroundColor: Colors.white,
+                            elevation: 6,
+                            shadowColor: const Color(0x5509731F),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.w700,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SizedBox(
+                        height: 62,
+                        child: ElevatedButton.icon(
+                          onPressed: onReject,
+                          icon: const Icon(Icons.cancel_rounded, size: 30),
+                          label: const Text('Respinge'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF2E8EE),
+                            foregroundColor: const Color(0xFF9C2D62),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 38,
+                              fontWeight: FontWeight.w700,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _InfoLine extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _InfoLine({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 34, color: const Color(0xFF0A7221)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 34,
+              color: Color(0xFF303730),
+              fontWeight: FontWeight.w500,
+              height: 1,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

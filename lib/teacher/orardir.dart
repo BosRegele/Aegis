@@ -1,6 +1,9 @@
 ﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../core/session.dart';
+import '../session.dart';
+
+const _kOrarHeaderGreen = Color(0xFF0E6A1E);
+const _kOrarPageBg = Color(0xFFF1F5E8);
 
 class OrarDirPage extends StatefulWidget {
   const OrarDirPage({super.key});
@@ -26,261 +29,326 @@ class _OrarDirPageState extends State<OrarDirPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF7AAF5B),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF7AAF5B),
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text('Orar', style: TextStyle(color: Colors.white)),
-        elevation: 0,
-      ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          color: Color(0xFFE6EBEE),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: FutureBuilder<DocumentSnapshot>(
-          future: FirebaseFirestore.instance
-              .collection('users')
-              .doc(teacherUid)
-              .get(),
-          builder: (context, userSnap) {
-            if (userSnap.hasError) {
-              return Center(child: Text('Eroare: ${userSnap.error}'));
-            }
-            if (!userSnap.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
+      backgroundColor: _kOrarPageBg,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _OrarTopHeader(onBack: () => Navigator.of(context).maybePop()),
+            Expanded(
+              child: FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(teacherUid)
+                    .get(),
+                builder: (context, userSnap) {
+                  if (userSnap.hasError) {
+                    return Center(child: Text('Eroare: ${userSnap.error}'));
+                  }
+                  if (!userSnap.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-            final userData =
-                userSnap.data!.data() as Map<String, dynamic>? ?? {};
-            final classId = (userData['classId'] ?? '').toString().trim();
+                  final userData =
+                      userSnap.data!.data() as Map<String, dynamic>? ?? {};
+                  final classId = (userData['classId'] ?? '').toString().trim();
 
-            if (classId.isEmpty) {
-              return const Center(child: Text('Nu ai clasa asignată.'));
-            }
+                  if (classId.isEmpty) {
+                    return const Center(
+                      child: Text('Nu ai clasa asignată.'),
+                    );
+                  }
 
-            return FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance
-                  .collection('classes')
-                  .doc(classId)
-                  .get(),
-              builder: (context, classSnap) {
-                if (classSnap.hasError) {
-                  return Center(child: Text('Eroare: ${classSnap.error}'));
-                }
-                if (!classSnap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+                  return FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance
+                        .collection('classes')
+                        .doc(classId)
+                        .get(),
+                    builder: (context, classSnap) {
+                      if (classSnap.hasError) {
+                        return Center(
+                          child: Text('Eroare: ${classSnap.error}'),
+                        );
+                      }
+                      if (!classSnap.hasData) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
 
-                final classData =
-                    classSnap.data!.data() as Map<String, dynamic>? ?? {};
-                final scheduleRaw = classData['schedule'];
+                      final classData =
+                          classSnap.data!.data() as Map<String, dynamic>? ??
+                          {};
+                      final className =
+                          (classData['name'] ?? classId).toString().trim();
+                      final modul =
+                          (classData['modul'] ??
+                                  classData['module'] ??
+                                  '')
+                              .toString()
+                              .trim();
+                      final scheduleRaw = classData['schedule'];
 
-                final Map<int, Map<String, String>> schedule = {};
-                if (scheduleRaw is Map) {
-                  for (final entry in scheduleRaw.entries) {
-                    final dayNum = int.tryParse(entry.key.toString());
-                    if (dayNum != null && dayNum >= 1 && dayNum <= 5) {
-                      final times = entry.value;
-                      if (times is Map) {
-                        final start = (times['start'] ?? '').toString();
-                        final end = (times['end'] ?? '').toString();
-                        if (start.isNotEmpty && end.isNotEmpty) {
-                          schedule[dayNum] = {'start': start, 'end': end};
+                      final Map<int, Map<String, String>> schedule = {};
+                      if (scheduleRaw is Map) {
+                        for (final entry in scheduleRaw.entries) {
+                          final dayNum = int.tryParse(entry.key.toString());
+                          if (dayNum != null &&
+                              dayNum >= 1 &&
+                              dayNum <= 5) {
+                            final times = entry.value;
+                            if (times is Map) {
+                              final start = (times['start'] ?? '').toString();
+                              final end = (times['end'] ?? '').toString();
+                              if (start.isNotEmpty && end.isNotEmpty) {
+                                schedule[dayNum] = {
+                                  'start': start,
+                                  'end': end,
+                                };
+                              }
+                            }
+                          }
                         }
                       }
-                    }
-                  }
-                }
 
-                final sortedDays = schedule.keys.toList()..sort();
-                final today = DateTime.now().weekday; // 1=Mon..7=Sun
-                final todaySchedule = schedule[today];
-                final now = DateTime.now();
-                final dayNames = {
-                  1: 'Luni',
-                  2: 'Marți',
-                  3: 'Miercuri',
-                  4: 'Joi',
-                  5: 'Vineri',
-                  6: 'Sâmbătă',
-                  7: 'Duminică',
-                };
-                final todayName = dayNames[today] ?? '';
-                final dateStr =
-                    '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}';
+                      final sortedDays = schedule.keys.toList()..sort();
 
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-                  child: Column(
-                    children: [
-                      // "Azi" card
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 18,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF7AAF5B), Color(0xFF4E8A3A)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(22),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF7AAF5B).withOpacity(0.30),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Row(
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(18, 22, 18, 28),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // ── Card clasă ──────────────────────────────
                             Container(
-                              width: 48,
-                              height: 48,
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 22,
+                              ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.20),
-                                shape: BoxShape.circle,
+                                color: const Color(0xFFF5F7F1),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: const Color(0xFFDDE3D6),
+                                ),
                               ),
-                              child: const Icon(
-                                Icons.today_rounded,
-                                color: Colors.white,
-                                size: 26,
+                              child: Text(
+                                className.isEmpty ? classId : className,
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF0E6A1E),
+                                  height: 1,
+                                ),
                               ),
                             ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Azi — $todayName, $dateStr',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
+                            const SizedBox(height: 28),
+                            // ── Titlu secțiune + badge modul ────────────
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'Orar Săptămânal',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF111811),
+                                    height: 1,
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (modul.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFDAEDD9),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      modul,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF1A601F),
+                                        height: 1,
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    todaySchedule != null
-                                        ? '${todaySchedule['start']} – ${todaySchedule['end']}'
-                                        : 'Fără orar azi',
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            // ── Rânduri zile ────────────────────────────
+                            if (sortedDays.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 24),
+                                child: Center(
+                                  child: Text(
+                                    'Nu există orar definit pentru clasa ta.',
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.90),
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
+                                      color: Color(0xFF5F6771),
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
+                                ),
+                              )
+                            else
+                              for (final dayNum in sortedDays) ...[
+                                _OrarRow(
+                                  day: _dayMap[dayNum] ?? 'Ziua $dayNum',
+                                  interval:
+                                      '${schedule[dayNum]!['start']} - ${schedule[dayNum]!['end']}',
+                                ),
+                                const SizedBox(height: 12),
+                              ],
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Orar ${(classData['name'] ?? classId).toString()}',
-                        style: const TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF2E3B4E),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      if (sortedDays.isEmpty)
-                        const Text(
-                          'Nu există orar definit pentru clasa ta.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF5F6771),
-                          ),
-                        )
-                      else
-                        for (final dayNum in sortedDays) ...[
-                          _OrarRow(
-                            day: _dayMap[dayNum] ?? 'Ziua $dayNum',
-                            interval:
-                                '${schedule[dayNum]!['start']} - ${schedule[dayNum]!['end']}',
-                            isToday: dayNum == today,
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                    ],
-                  ),
-                );
-              },
-            );
-          },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _OrarRow extends StatelessWidget {
-  final String day;
-  final String interval;
-  final bool isToday;
+// ─── Header ──────────────────────────────────────────────────────────────────
 
-  const _OrarRow({
-    required this.day,
-    required this.interval,
-    this.isToday = false,
-  });
+class _OrarTopHeader extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const _OrarTopHeader({required this.onBack});
 
   @override
   Widget build(BuildContext context) {
-    final bg = isToday ? const Color(0xFF7AAF5B) : Colors.white;
-    final textColor = isToday ? Colors.white : const Color(0xFF2E3B4E);
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(38)),
+      child: SizedBox(
+        width: double.infinity,
+        height: 158,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(color: _kOrarHeaderGreen),
+            CustomPaint(painter: _OrarDotsPainter()),
+            // cerc mare dreapta-sus
+            Positioned(
+              right: 64,
+              top: -40,
+              child: _circle(122),
+            ),
+            // cerc mic centru-jos
+            Positioned(
+              left: 168,
+              bottom: -30,
+              child: _circle(78),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 20, 18, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconButton(
+                    onPressed: onBack,
+                    splashRadius: 22,
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: Text(
+                      'Orar',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _circle(double size) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.10),
+          shape: BoxShape.circle,
+        ),
+      );
+}
+
+class _OrarDotsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withOpacity(0.14);
+    const spacing = 18.0;
+    for (double y = 14; y < size.height; y += spacing) {
+      for (double x = 16; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), 1.3, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ─── Rând zi ──────────────────────────────────────────────────────────────────
+
+class _OrarRow extends StatelessWidget {
+  final String day;
+  final String interval;
+
+  const _OrarRow({required this.day, required this.interval});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: isToday
-                ? const Color(0xFF7AAF5B).withOpacity(0.35)
-                : Colors.black.withOpacity(0.06),
-            blurRadius: isToday ? 12 : 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE4E8DF)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Row(
         children: [
-          if (isToday) ...[
-            const Icon(
-              Icons.arrow_right_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-            const SizedBox(width: 2),
-          ],
           Text(
             day,
-            style: TextStyle(
-              fontSize: 22,
+            style: const TextStyle(
+              fontSize: 19,
               fontWeight: FontWeight.w500,
-              color: textColor,
+              color: Color(0xFF111811),
+              height: 1,
             ),
           ),
           const Spacer(),
           Text(
             interval,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: textColor,
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF4A7A52),
+              height: 1,
             ),
           ),
         ],
