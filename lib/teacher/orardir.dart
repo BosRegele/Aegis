@@ -1,6 +1,6 @@
 ﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../session.dart';
+import '../core/session.dart';
 
 const _kOrarHeaderGreen = Color(0xFF0E6A1E);
 const _kOrarPageBg = Color(0xFFF1F5E8);
@@ -54,9 +54,7 @@ class _OrarDirPageState extends State<OrarDirPage> {
                   final classId = (userData['classId'] ?? '').toString().trim();
 
                   if (classId.isEmpty) {
-                    return const Center(
-                      child: Text('Nu ai clasa asignată.'),
-                    );
+                    return const Center(child: Text('Nu ai clasa asignată.'));
                   }
 
                   return FutureBuilder<DocumentSnapshot>(
@@ -71,20 +69,16 @@ class _OrarDirPageState extends State<OrarDirPage> {
                         );
                       }
                       if (!classSnap.hasData) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
+                        return const Center(child: CircularProgressIndicator());
                       }
 
                       final classData =
-                          classSnap.data!.data() as Map<String, dynamic>? ??
-                          {};
-                      final className =
-                          (classData['name'] ?? classId).toString().trim();
+                          classSnap.data!.data() as Map<String, dynamic>? ?? {};
+                      final className = (classData['name'] ?? classId)
+                          .toString()
+                          .trim();
                       final modul =
-                          (classData['modul'] ??
-                                  classData['module'] ??
-                                  '')
+                          (classData['modul'] ?? classData['module'] ?? '')
                               .toString()
                               .trim();
                       final scheduleRaw = classData['schedule'];
@@ -93,18 +87,13 @@ class _OrarDirPageState extends State<OrarDirPage> {
                       if (scheduleRaw is Map) {
                         for (final entry in scheduleRaw.entries) {
                           final dayNum = int.tryParse(entry.key.toString());
-                          if (dayNum != null &&
-                              dayNum >= 1 &&
-                              dayNum <= 5) {
+                          if (dayNum != null && dayNum >= 1 && dayNum <= 5) {
                             final times = entry.value;
                             if (times is Map) {
                               final start = (times['start'] ?? '').toString();
                               final end = (times['end'] ?? '').toString();
                               if (start.isNotEmpty && end.isNotEmpty) {
-                                schedule[dayNum] = {
-                                  'start': start,
-                                  'end': end,
-                                };
+                                schedule[dayNum] = {'start': start, 'end': end};
                               }
                             }
                           }
@@ -239,17 +228,9 @@ class _OrarTopHeader extends StatelessWidget {
             Container(color: _kOrarHeaderGreen),
             CustomPaint(painter: _OrarDotsPainter()),
             // cerc mare dreapta-sus
-            Positioned(
-              right: 64,
-              top: -40,
-              child: _circle(122),
-            ),
+            Positioned(right: 64, top: -40, child: _circle(122)),
             // cerc mic centru-jos
-            Positioned(
-              left: 168,
-              bottom: -30,
-              child: _circle(78),
-            ),
+            Positioned(left: 168, bottom: -30, child: _circle(78)),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 20, 18, 0),
               child: Row(
@@ -287,13 +268,13 @@ class _OrarTopHeader extends StatelessWidget {
   }
 
   Widget _circle(double size) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.10),
-          shape: BoxShape.circle,
-        ),
-      );
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.10),
+      shape: BoxShape.circle,
+    ),
+  );
 }
 
 class _OrarDotsPainter extends CustomPainter {

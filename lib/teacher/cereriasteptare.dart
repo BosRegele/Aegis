@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../session.dart';
+import '../core/session.dart';
 
 const _kHeaderGreen = Color(0xFF0D6F1C);
 const _kPageBg = Color(0xFFF1F5EC);
@@ -64,7 +64,10 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
   }
 
   // --- Funcție nouă pentru aprobare/respingere în masă ---
-  Future<void> _reviewAllRequests(List<QueryDocumentSnapshot> docs, String status) async {
+  Future<void> _reviewAllRequests(
+    List<QueryDocumentSnapshot> docs,
+    String status,
+  ) async {
     final teacherUid = AppSession.uid;
     if (teacherUid == null || teacherUid.isEmpty) return;
 
@@ -87,7 +90,9 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            status == 'approved' ? 'Toate cererile au fost aprobate' : 'Toate cererile au fost respinse',
+            status == 'approved'
+                ? 'Toate cererile au fost aprobate'
+                : 'Toate cererile au fost respinse',
           ),
           backgroundColor: status == 'approved' ? Colors.green : Colors.red,
         ),
@@ -388,7 +393,9 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
             Expanded(
               child: Stack(
                 children: [
-                  Positioned.fill(child: CustomPaint(painter: _BgDotsPainter())),
+                  Positioned.fill(
+                    child: CustomPaint(painter: _BgDotsPainter()),
+                  ),
                   _classId.isEmpty
                       ? const Center(child: CircularProgressIndicator())
                       : StreamBuilder<QuerySnapshot>(
@@ -424,17 +431,26 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                             }
 
                             return ListView.separated(
-                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-                              separatorBuilder: (_, __) => const SizedBox(height: 14),
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                16,
+                                16,
+                                18,
+                              ),
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 14),
                               itemCount: docs.length,
                               itemBuilder: (context, index) {
                                 final doc = docs[index];
                                 final d = doc.data() as Map<String, dynamic>;
                                 final requestId = doc.id;
-                                final studentName =
-                                    (d['studentName'] ?? '').toString().trim();
-                                final dateText = (d['dateText'] ?? '').toString();
-                                final timeText = (d['timeText'] ?? '').toString();
+                                final studentName = (d['studentName'] ?? '')
+                                    .toString()
+                                    .trim();
+                                final dateText = (d['dateText'] ?? '')
+                                    .toString();
+                                final timeText = (d['timeText'] ?? '')
+                                    .toString();
                                 final message = (d['message'] ?? '').toString();
 
                                 final initials = studentName
@@ -496,16 +512,8 @@ class _TopHeader extends StatelessWidget {
           children: [
             Container(color: _kHeaderGreen),
             CustomPaint(painter: _HeaderDotsPainter()),
-            Positioned(
-              right: 80,
-              top: -44,
-              child: _decorCircle(112),
-            ),
-            Positioned(
-              left: 185,
-              bottom: -36,
-              child: _decorCircle(82),
-            ),
+            Positioned(right: 80, top: -44, child: _decorCircle(112)),
+            Positioned(left: 185, bottom: -36, child: _decorCircle(82)),
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 22, 18, 0),
               child: Row(
@@ -758,7 +766,10 @@ class _RequestCard extends StatelessWidget {
                         height: 62,
                         child: ElevatedButton.icon(
                           onPressed: onAccept,
-                          icon: const Icon(Icons.check_circle_rounded, size: 30),
+                          icon: const Icon(
+                            Icons.check_circle_rounded,
+                            size: 30,
+                          ),
                           label: const Text('Acceptă'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF09731F),

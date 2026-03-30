@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -19,7 +19,6 @@ import 'admin_turnstiles_page.dart';
 import 'admin_schedules_page.dart';
 import 'secretariat_global_messages_page.dart';
 import '../services/security_flags_service.dart';
-import '../core/session.dart';
 
 class SecretariatRawPage extends StatefulWidget {
   const SecretariatRawPage({super.key});
@@ -31,8 +30,7 @@ class SecretariatRawPage extends StatefulWidget {
 class _SecretariatRawPageState extends State<SecretariatRawPage> {
   final api = AdminApi();
   final store = AdminStore();
-  String activeSidebarLabel = "";
-  bool _sidebarNavigationBusy = false;
+  String activeSidebarLabel = "Meniu";
 
   // create user
   final fullNameC = TextEditingController();
@@ -349,22 +347,6 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
     return '$hour:$minute';
   }
 
-  Future<void> _openSidebarPage(Widget page) async {
-    if (_sidebarNavigationBusy || !mounted) return;
-    _sidebarNavigationBusy = true;
-    try {
-      await Navigator.of(context).push(
-        PageRouteBuilder<void>(
-          transitionDuration: Duration.zero,
-          reverseTransitionDuration: Duration.zero,
-          pageBuilder: (context, animation, secondaryAnimation) => page,
-        ),
-      );
-    } finally {
-      _sidebarNavigationBusy = false;
-    }
-  }
-
   void _generateCreds() {
     final full = fullNameC.text.trim();
     if (full.isEmpty) {
@@ -503,1417 +485,1208 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
   Widget build(BuildContext context) {
     const Color primaryGreen = Color(0xFF7AAF5B);
     const Color surfaceColor = Color(0xFFF8FFF5);
-    final displayName = (AppSession.fullName?.trim().isNotEmpty == true)
-        ? AppSession.fullName!.trim()
-        : ((AppSession.username?.trim().isNotEmpty == true)
-              ? AppSession.username!.trim()
-              : "Secretariat");
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF7AAF5B), Color(0xFF5A9641)],
-                ),
+          Container(
+            width: 270,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF5C8B42), Color(0xFF40632D)],
               ),
             ),
-          ),
-          Positioned(
-            top: -140,
-            right: -100,
-            child: Container(
-              width: 360,
-              height: 360,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    Colors.white.withValues(alpha: 0.14),
-                    Colors.white.withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -220,
-            left: -130,
-            child: Container(
-              width: 420,
-              height: 420,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    Colors.black.withValues(alpha: 0.10),
-                    Colors.black.withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 304,
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(34),
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF5C8B42), Color(0xFF40632D)],
-                      ),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.12),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.22),
-                          blurRadius: 40,
-                          offset: const Offset(0, 22),
-                        ),
-                      ],
-                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(18),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(24),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.08,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          Container(
-                                            width: 56,
-                                            height: 56,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.20,
-                                              ),
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                          const Icon(
-                                            Icons.shield_rounded,
-                                            color: Colors.white,
-                                            size: 42,
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: const [
-                                            Text(
-                                              "Secretariat",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 22,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 28),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  child: Text(
-                                    "ADMINISTRARE",
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.60,
-                                      ),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 1.6,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.06),
-                                    borderRadius: BorderRadius.circular(26),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.05,
-                                      ),
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 10,
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      _buildSidebarItem(
-                                        icon: Icons.table_chart,
-                                        label: "Clase",
-                                        onTap: () => _openSidebarPage(
-                                          const AdminClassesPage(),
-                                        ),
-                                      ),
-                                      _buildSidebarItem(
-                                        icon: Icons.people,
-                                        label: "Elevi",
-                                        onTap: () => _openSidebarPage(
-                                          const AdminStudentsPage(),
-                                        ),
-                                      ),
-                                      _buildSidebarItem(
-                                        icon: Icons.family_restroom,
-                                        label: "Parinti",
-                                        onTap: () => _openSidebarPage(
-                                          const AdminParentsPage(),
-                                        ),
-                                      ),
-                                      _buildSidebarItem(
-                                        icon: Icons.person,
-                                        label: "Profesori",
-                                        onTap: () => _openSidebarPage(
-                                          const AdminTeachersPage(),
-                                        ),
-                                      ),
-                                      _buildSidebarItem(
-                                        icon: Icons.admin_panel_settings,
-                                        label: "Administratori",
-                                        onTap: () => _openSidebarPage(
-                                          const AdminAdminsPage(),
-                                        ),
-                                      ),
-                                      _buildSidebarItem(
-                                        icon: Icons.door_front_door,
-                                        label: "Turnichete",
-                                        onTap: () => _openSidebarPage(
-                                          const AdminTurnstilesPage(),
-                                        ),
-                                      ),
-                                      _buildSidebarItem(
-                                        icon: Icons.schedule,
-                                        label: "Orare",
-                                        onTap: () => _openSidebarPage(
-                                          const AdminSchedulesPage(),
-                                        ),
-                                      ),
-                                      _buildSidebarItem(
-                                        icon: Icons.campaign_rounded,
-                                        label: "Mesagerie globală",
-                                        onTap: () => _openSidebarPage(
-                                          const SecretariatGlobalMessagesPage(),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Tooltip(
-                            message: "Deconectare",
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
-                              onTap: _showLogoutDialog,
-                              child: Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.10),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.14),
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.logout_rounded,
-                                  color: Colors.white.withValues(alpha: 0.82),
-                                  size: 18,
-                                ),
+                        SizedBox(
+                          height: 80,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Secretariat',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
                         ),
+                        const SizedBox(height: 8),
+
+                        Column(
+                          children: [
+                            _buildSidebarItem(
+                              icon: Icons.dashboard_rounded,
+                              label: "Meniu",
+                              onTap: () => setState(() {
+                                activeSidebarLabel = "Meniu";
+                              }),
+                            ),
+                            _buildSidebarItem(
+                              icon: Icons.table_chart,
+                              label: "Clase",
+                              onTap: () => setState(() {
+                                activeSidebarLabel = 'Clase';
+                              }),
+                            ),
+                            _buildSidebarItem(
+                              icon: Icons.people,
+                              label: "Elevi",
+                              onTap: () => setState(() {
+                                activeSidebarLabel = 'Elevi';
+                              }),
+                            ),
+                            _buildSidebarItem(
+                              icon: Icons.family_restroom,
+                              label: "Parinti",
+                              onTap: () => setState(() {
+                                activeSidebarLabel = 'Parinti';
+                              }),
+                            ),
+                            _buildSidebarItem(
+                              icon: Icons.person,
+                              label: "Profesori",
+                              onTap: () => setState(() {
+                                activeSidebarLabel = 'Profesori';
+                              }),
+                            ),
+                            _buildSidebarItem(
+                              icon: Icons.admin_panel_settings,
+                              label: "Administratori",
+                              onTap: () => setState(() {
+                                activeSidebarLabel = 'Administratori';
+                              }),
+                            ),
+                            _buildSidebarItem(
+                              icon: Icons.door_front_door,
+                              label: "Turnichete",
+                              onTap: () => setState(() {
+                                activeSidebarLabel = 'Turnichete';
+                              }),
+                            ),
+                            _buildSidebarItem(
+                              icon: Icons.schedule,
+                              label: "Orare",
+                              onTap: () => setState(() {
+                                activeSidebarLabel = 'Orare';
+                              }),
+                            ),
+                            _buildSidebarItem(
+                              icon: Icons.campaign_rounded,
+                              label: "Mesagerie globală",
+                              onTap: () => setState(() {
+                                activeSidebarLabel = 'Mesagerie globală';
+                              }),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.97),
-                            surfaceColor.withValues(alpha: 0.95),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(36),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.30),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.18),
-                            blurRadius: 32,
-                            offset: const Offset(0, 18),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Tooltip(
+                    message: "Deconectare",
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: _showLogoutDialog,
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.14),
                           ),
-                        ],
+                        ),
+                        child: Icon(
+                          Icons.logout_rounded,
+                          color: Colors.white.withValues(alpha: 0.82),
+                          size: 18,
+                        ),
                       ),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(26),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1320),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(28),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(30),
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        Color(0xFF7AAF5B),
-                                        Color(0xFF5A9641),
-                                      ],
-                                    ),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.30,
-                                      ),
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.20,
-                                        ),
-                                        blurRadius: 30,
-                                        offset: const Offset(0, 16),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  "Bun venit, $displayName",
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 32,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 10),
-                                                const Text(
-                                                  "Cele trei valori pe care Colegiul Național de Informatică Tudor Vianu le Încurajează",
-                                                  style: TextStyle(
-                                                    color: Color(0xFFE5FFF0),
-                                                    fontSize: 14,
-                                                    height: 1.5,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 18),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                              vertical: 14,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.14,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.18,
-                                                ),
-                                              ),
-                                            ),
-                                            child: const Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  "Misiune",
-                                                  style: TextStyle(
-                                                    color: Color(0xFFC7F1D8),
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w700,
-                                                    letterSpacing: 1.2,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 6),
-                                                Text(
-                                                  "Tudor Vianu",
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 18),
-                                      Wrap(
-                                        spacing: 12,
-                                        runSpacing: 12,
-                                        children: const [
-                                          _HeaderBadge(
-                                            icon: Icons.groups_outlined,
-                                            label: "Spiritul de echipă",
-                                          ),
-                                          _HeaderBadge(
-                                            icon: Icons.emoji_events_outlined,
-                                            label: "Performanță",
-                                          ),
-                                          _HeaderBadge(
-                                            icon: Icons.military_tech_outlined,
-                                            label: "Competiție",
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  height: 80,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF5C8B42), Color(0xFF40632D)],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: activeSidebarLabel != 'Meniu'
+                      ? _buildEmbeddedPage(activeSidebarLabel)
+                      : Container(
+                          color: surfaceColor,
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(26),
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 1320,
                                 ),
-                                const SizedBox(height: 24),
-                                Row(
+                                child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Left Column
-                                    Expanded(
-                                      child: Column(
-                                        children: [
-                                          // Create User Card
-                                          _buildCard(
-                                            title: "Crează Utilizator",
-                                            primaryGreen: primaryGreen,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                _buildTextField(
-                                                  controller: fullNameC,
-                                                  label:
-                                                      "Nume complet - obligatoriu",
-                                                ),
-                                                const SizedBox(height: 12),
-                                                _buildTextField(
-                                                  controller: usernameC,
-                                                  label:
-                                                      "Utilizator - obligatoriu",
-                                                ),
-                                                const SizedBox(height: 12),
-                                                _buildTextField(
-                                                  controller: passwordC,
-                                                  label: "Parolă - obligatoriu",
-                                                ),
-                                                const SizedBox(height: 12),
-                                                Container(
-                                                  width: double.infinity,
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 8,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    border: Border.all(
-                                                      color: Colors.grey[200]!,
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // Left Column
+                                        Expanded(
+                                          child: Column(
+                                            children: [
+                                              // Create User Card
+                                              _buildCard(
+                                                title: "Crează Utilizator",
+                                                primaryGreen: primaryGreen,
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    _buildTextField(
+                                                      controller: fullNameC,
+                                                      label:
+                                                          "Nume complet - obligatoriu",
                                                     ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
-                                                  ),
-                                                  child: DropdownButtonHideUnderline(
-                                                    child: DropdownButton<String>(
-                                                      value: role,
-                                                      isExpanded: true,
-                                                      items: const [
-                                                        DropdownMenuItem(
-                                                          value: "student",
-                                                          child: Text("elev"),
-                                                        ),
-                                                        DropdownMenuItem(
-                                                          value: "teacher",
-                                                          child: Text(
-                                                            "profesor",
-                                                          ),
-                                                        ),
-                                                        DropdownMenuItem(
-                                                          value: "admin",
-                                                          child: Text(
-                                                            "administrator",
-                                                          ),
-                                                        ),
-                                                        DropdownMenuItem(
-                                                          value: "parent",
-                                                          child: Text(
-                                                            "părinte",
-                                                          ),
-                                                        ),
-                                                        DropdownMenuItem(
-                                                          value: "gate",
-                                                          child: Text("poartă"),
-                                                        ),
-                                                      ],
-                                                      onChanged: (v) => setState(
-                                                        () {
-                                                          role = v ?? "student";
-                                                          if (role !=
-                                                                  'student' &&
-                                                              role !=
-                                                                  'teacher') {
-                                                            selectedCreateUserClassId =
-                                                                '';
-                                                          }
-                                                        },
-                                                      ),
+                                                    const SizedBox(height: 12),
+                                                    _buildTextField(
+                                                      controller: usernameC,
+                                                      label:
+                                                          "Utilizator - obligatoriu",
                                                     ),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 6),
-                                                const Text(
-                                                  'Rol - obligatoriu',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.black54,
-                                                  ),
-                                                ),
-                                                if (role == "student" ||
-                                                    role == "teacher") ...[
-                                                  const SizedBox(height: 12),
-                                                  StreamBuilder<QuerySnapshot>(
-                                                    stream: FirebaseFirestore
-                                                        .instance
-                                                        .collection('classes')
-                                                        .orderBy('name')
-                                                        .snapshots(),
-                                                    builder: (context, snap) {
-                                                      if (snap.hasError) {
-                                                        return Text(
-                                                          "Clasele nu au putut fi încărcate.",
-                                                          style:
-                                                              const TextStyle(
-                                                                color:
-                                                                    Colors.red,
+                                                    const SizedBox(height: 12),
+                                                    _buildTextField(
+                                                      controller: passwordC,
+                                                      label:
+                                                          "Parolă - obligatoriu",
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    Container(
+                                                      width: double.infinity,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 12,
+                                                            vertical: 8,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        border: Border.all(
+                                                          color:
+                                                              Colors.grey[200]!,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              4,
+                                                            ),
+                                                      ),
+                                                      child: DropdownButtonHideUnderline(
+                                                        child: DropdownButton<String>(
+                                                          value: role,
+                                                          isExpanded: true,
+                                                          items: const [
+                                                            DropdownMenuItem(
+                                                              value: "student",
+                                                              child: Text(
+                                                                "elev",
                                                               ),
-                                                        );
-                                                      }
-                                                      if (!snap.hasData) {
-                                                        return const CircularProgressIndicator();
-                                                      }
-
-                                                      final docs =
-                                                          snap.data!.docs;
-                                                      final classOptions = docs.map(
-                                                        (doc) {
-                                                          final data =
-                                                              doc.data()
-                                                                  as Map<
-                                                                    String,
-                                                                    dynamic
-                                                                  >;
-                                                          return {
-                                                            'id': doc.id,
-                                                            'name':
-                                                                (data['name'] ??
-                                                                        doc.id)
-                                                                    .toString(),
-                                                          };
-                                                        },
-                                                      ).toList();
-
-                                                      final hasSelectedClass =
-                                                          classOptions.any(
-                                                            (option) =>
-                                                                option['id'] ==
-                                                                selectedCreateUserClassId,
-                                                          );
-
-                                                      if (!hasSelectedClass &&
-                                                          selectedCreateUserClassId
-                                                              .isNotEmpty) {
-                                                        WidgetsBinding.instance
-                                                            .addPostFrameCallback((
-                                                              _,
-                                                            ) {
-                                                              if (!mounted) {
-                                                                return;
-                                                              }
-                                                              setState(() {
-                                                                selectedCreateUserClassId =
-                                                                    '';
-                                                              });
-                                                            });
-                                                      }
-
-                                                      return DropdownButtonFormField<
-                                                        String
+                                                            ),
+                                                            DropdownMenuItem(
+                                                              value: "teacher",
+                                                              child: Text(
+                                                                "profesor",
+                                                              ),
+                                                            ),
+                                                            DropdownMenuItem(
+                                                              value: "admin",
+                                                              child: Text(
+                                                                "administrator",
+                                                              ),
+                                                            ),
+                                                            DropdownMenuItem(
+                                                              value: "parent",
+                                                              child: Text(
+                                                                "părinte",
+                                                              ),
+                                                            ),
+                                                            DropdownMenuItem(
+                                                              value: "gate",
+                                                              child: Text(
+                                                                "poartă",
+                                                              ),
+                                                            ),
+                                                          ],
+                                                          onChanged: (v) => setState(() {
+                                                            role =
+                                                                v ?? "student";
+                                                            if (role !=
+                                                                    'student' &&
+                                                                role !=
+                                                                    'teacher') {
+                                                              selectedCreateUserClassId =
+                                                                  '';
+                                                            }
+                                                          }),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 6),
+                                                    const Text(
+                                                      'Rol - obligatoriu',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.black54,
+                                                      ),
+                                                    ),
+                                                    if (role == "student" ||
+                                                        role == "teacher") ...[
+                                                      const SizedBox(
+                                                        height: 12,
+                                                      ),
+                                                      StreamBuilder<
+                                                        QuerySnapshot
                                                       >(
-                                                        value: hasSelectedClass
-                                                            ? selectedCreateUserClassId
-                                                            : null,
-                                                        isExpanded: true,
-                                                        decoration: InputDecoration(
-                                                          labelText:
-                                                              'Clasa - obligatoriu',
-                                                          border: OutlineInputBorder(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  6,
-                                                                ),
-                                                          ),
-                                                          filled: true,
-                                                          fillColor:
-                                                              Colors.grey[50],
-                                                        ),
-                                                        hint: const Text(
-                                                          'Selectează clasa',
-                                                        ),
-                                                        items: classOptions
-                                                            .map(
-                                                              (option) =>
-                                                                  DropdownMenuItem<
-                                                                    String
-                                                                  >(
+                                                        stream:
+                                                            FirebaseFirestore
+                                                                .instance
+                                                                .collection(
+                                                                  'classes',
+                                                                )
+                                                                .orderBy('name')
+                                                                .snapshots(),
+                                                        builder: (context, snap) {
+                                                          if (snap.hasError) {
+                                                            return Text(
+                                                              "Clasele nu au putut fi încărcate.",
+                                                              style:
+                                                                  const TextStyle(
+                                                                    color: Colors
+                                                                        .red,
+                                                                  ),
+                                                            );
+                                                          }
+                                                          if (!snap.hasData) {
+                                                            return const CircularProgressIndicator();
+                                                          }
+
+                                                          final docs =
+                                                              snap.data!.docs;
+                                                          final classOptions = docs.map((
+                                                            doc,
+                                                          ) {
+                                                            final data =
+                                                                doc.data()
+                                                                    as Map<
+                                                                      String,
+                                                                      dynamic
+                                                                    >;
+                                                            return {
+                                                              'id': doc.id,
+                                                              'name':
+                                                                  (data['name'] ??
+                                                                          doc.id)
+                                                                      .toString(),
+                                                            };
+                                                          }).toList();
+
+                                                          final hasSelectedClass =
+                                                              classOptions.any(
+                                                                (option) =>
+                                                                    option['id'] ==
+                                                                    selectedCreateUserClassId,
+                                                              );
+
+                                                          if (!hasSelectedClass &&
+                                                              selectedCreateUserClassId
+                                                                  .isNotEmpty) {
+                                                            WidgetsBinding
+                                                                .instance
+                                                                .addPostFrameCallback((
+                                                                  _,
+                                                                ) {
+                                                                  if (!mounted) {
+                                                                    return;
+                                                                  }
+                                                                  setState(() {
+                                                                    selectedCreateUserClassId =
+                                                                        '';
+                                                                  });
+                                                                });
+                                                          }
+
+                                                          return DropdownButtonFormField<
+                                                            String
+                                                          >(
+                                                            value:
+                                                                hasSelectedClass
+                                                                ? selectedCreateUserClassId
+                                                                : null,
+                                                            isExpanded: true,
+                                                            decoration: InputDecoration(
+                                                              labelText:
+                                                                  'Clasa - obligatoriu',
+                                                              border: OutlineInputBorder(
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      6,
+                                                                    ),
+                                                              ),
+                                                              filled: true,
+                                                              fillColor: Colors
+                                                                  .grey[50],
+                                                            ),
+                                                            hint: const Text(
+                                                              'Selectează clasa',
+                                                            ),
+                                                            items: classOptions
+                                                                .map(
+                                                                  (
+                                                                    option,
+                                                                  ) => DropdownMenuItem<String>(
                                                                     value:
                                                                         option['id'],
                                                                     child: Text(
                                                                       option['name']!,
                                                                     ),
                                                                   ),
-                                                            )
-                                                            .toList(),
-                                                        onChanged: (value) {
-                                                          setState(() {
-                                                            selectedCreateUserClassId =
-                                                                value ?? '';
-                                                          });
-                                                        },
-                                                      );
-                                                    },
-                                                  ),
-                                                ],
-                                                const SizedBox(height: 16),
-                                                Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: _buildButton(
-                                                        label: "Generează",
-                                                        primaryGreen:
-                                                            primaryGreen,
-                                                        onPressed:
-                                                            _generateCreds,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 12),
-                                                    Expanded(
-                                                      child: _buildButton(
-                                                        label: "Copiază",
-                                                        primaryGreen:
-                                                            primaryGreen,
-                                                        onPressed: () {
-                                                          _copy(
-                                                            "username: ${usernameC.text}\npassword: ${passwordC.text}",
+                                                                )
+                                                                .toList(),
+                                                            onChanged: (value) {
+                                                              setState(() {
+                                                                selectedCreateUserClassId =
+                                                                    value ?? '';
+                                                              });
+                                                            },
                                                           );
                                                         },
                                                       ),
+                                                    ],
+                                                    const SizedBox(height: 16),
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          child: _buildButton(
+                                                            label: "Generează",
+                                                            primaryGreen:
+                                                                primaryGreen,
+                                                            onPressed:
+                                                                _generateCreds,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 12,
+                                                        ),
+                                                        Expanded(
+                                                          child: _buildButton(
+                                                            label: "Copiază",
+                                                            primaryGreen:
+                                                                primaryGreen,
+                                                            onPressed: () {
+                                                              _copy(
+                                                                "username: ${usernameC.text}\npassword: ${passwordC.text}",
+                                                              );
+                                                            },
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 16),
+                                                    // create user button
+                                                    _buildButton(
+                                                      label:
+                                                          "Crează utilizator",
+                                                      primaryGreen:
+                                                          primaryGreen,
+                                                      fullWidth: true,
+                                                      onPressed:
+                                                          _isActionBusy(
+                                                            'create-user',
+                                                          )
+                                                          ? null
+                                                          : () {
+                                                              _runGuarded('create-user', () async {
+                                                                final uname =
+                                                                    usernameC
+                                                                        .text
+                                                                        .trim();
+                                                                final pass =
+                                                                    passwordC
+                                                                        .text;
+                                                                final full =
+                                                                    fullNameC
+                                                                        .text
+                                                                        .trim();
+
+                                                                // Basic client-side validation to avoid cloud failures
+                                                                if (full
+                                                                    .isEmpty) {
+                                                                  _logFailure(
+                                                                    'Completează numele complet.',
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    'Completează numele complet.',
+                                                                  );
+                                                                  return;
+                                                                }
+                                                                if (uname
+                                                                    .isEmpty) {
+                                                                  _logFailure(
+                                                                    'Completează username-ul.',
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    'Completează username-ul.',
+                                                                  );
+                                                                  return;
+                                                                }
+                                                                if (uname
+                                                                    .contains(
+                                                                      RegExp(
+                                                                        r'\s',
+                                                                      ),
+                                                                    )) {
+                                                                  _logFailure(
+                                                                    'Username-ul nu poate conține spații.',
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    'Username-ul nu poate conține spații.',
+                                                                  );
+                                                                  return;
+                                                                }
+                                                                if (pass.length <
+                                                                    6) {
+                                                                  _logFailure(
+                                                                    'Parola trebuie să aibă cel puțin 6 caractere.',
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    'Parola trebuie să aibă cel puțin 6 caractere.',
+                                                                  );
+                                                                  return;
+                                                                }
+                                                                if ((role ==
+                                                                            'teacher' ||
+                                                                        role ==
+                                                                            'student') &&
+                                                                    selectedCreateUserClassId
+                                                                        .trim()
+                                                                        .isEmpty) {
+                                                                  _logFailure(
+                                                                    'Selectează o clasă pentru elev/profesor.',
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    'Selectează o clasă pentru elev/profesor.',
+                                                                  );
+                                                                  return;
+                                                                }
+
+                                                                try {
+                                                                  // cloud function
+                                                                  await api.createUser(
+                                                                    username: uname
+                                                                        .toLowerCase(),
+                                                                    password:
+                                                                        pass,
+                                                                    role: role,
+                                                                    fullName:
+                                                                        full,
+                                                                    classId:
+                                                                        role ==
+                                                                                "student" ||
+                                                                            role ==
+                                                                                "teacher"
+                                                                        ? selectedCreateUserClassId
+                                                                        : null,
+                                                                  );
+
+                                                                  String?
+                                                                  csvPath;
+                                                                  try {
+                                                                    csvPath = await _appendCreatedUserToCsv(
+                                                                      username:
+                                                                          uname
+                                                                              .toLowerCase(),
+                                                                      password:
+                                                                          pass,
+                                                                      fullName:
+                                                                          full,
+                                                                      role:
+                                                                          role,
+                                                                      classId:
+                                                                          role ==
+                                                                                  'student' ||
+                                                                              role ==
+                                                                                  'teacher'
+                                                                          ? selectedCreateUserClassId
+                                                                          : null,
+                                                                    );
+                                                                    _logSuccess(
+                                                                      'CSV actualizat: $csvPath',
+                                                                    );
+                                                                  } catch (
+                                                                    csvError
+                                                                  ) {
+                                                                    _logFailure(
+                                                                      'Utilizatorul a fost creat, dar CSV-ul nu a putut fi salvat: $csvError',
+                                                                    );
+                                                                  }
+
+                                                                  _logSuccess(
+                                                                    'Utilizator creat: $uname',
+                                                                  );
+
+                                                                  if (!mounted)
+                                                                    return;
+                                                                  _showInfoMessage(
+                                                                    csvPath ==
+                                                                            null
+                                                                        ? 'Utilizator creat: $uname. CSV-ul nu a fost actualizat.'
+                                                                        : 'Utilizator creat: $uname. CSV actualizat.',
+                                                                  );
+                                                                } catch (e) {
+                                                                  final message =
+                                                                      _friendlyCreateUserError(
+                                                                        e,
+                                                                        role,
+                                                                        selectedCreateUserClassId,
+                                                                      );
+                                                                  _logFailure(
+                                                                    message,
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    message,
+                                                                  );
+                                                                }
+                                                              });
+                                                            },
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    _buildButton(
+                                                      label:
+                                                          'Exportă CSV cu useri și parole',
+                                                      primaryGreen:
+                                                          primaryGreen,
+                                                      fullWidth: true,
+                                                      onPressed:
+                                                          _shareCredentialsCsv,
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    const Text(
+                                                      'La fiecare utilizator creat se adaugă automat o linie în CSV. Folosește exportul ca să trimiți fișierul dirigintelui.',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.black54,
+                                                      ),
                                                     ),
                                                   ],
                                                 ),
-                                                const SizedBox(height: 16),
-                                                // create user button
-                                                _buildButton(
-                                                  label: "Crează utilizator",
-                                                  primaryGreen: primaryGreen,
-                                                  fullWidth: true,
-                                                  onPressed:
-                                                      _isActionBusy(
-                                                        'create-user',
-                                                      )
-                                                      ? null
-                                                      : () {
-                                                          _runGuarded('create-user', () async {
-                                                            final uname =
-                                                                usernameC.text
-                                                                    .trim();
-                                                            final pass =
-                                                                passwordC.text;
-                                                            final full =
-                                                                fullNameC.text
-                                                                    .trim();
-
-                                                            // Basic client-side validation to avoid cloud failures
-                                                            if (full.isEmpty) {
-                                                              _logFailure(
-                                                                'Completează numele complet.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Completează numele complet.',
-                                                              );
-                                                              return;
-                                                            }
-                                                            if (uname.isEmpty) {
-                                                              _logFailure(
-                                                                'Completează username-ul.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Completează username-ul.',
-                                                              );
-                                                              return;
-                                                            }
-                                                            if (uname.contains(
-                                                              RegExp(r'\s'),
-                                                            )) {
-                                                              _logFailure(
-                                                                'Username-ul nu poate conține spații.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Username-ul nu poate conține spații.',
-                                                              );
-                                                              return;
-                                                            }
-                                                            if (pass.length <
-                                                                6) {
-                                                              _logFailure(
-                                                                'Parola trebuie să aibă cel puțin 6 caractere.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Parola trebuie să aibă cel puțin 6 caractere.',
-                                                              );
-                                                              return;
-                                                            }
-                                                            if ((role ==
-                                                                        'teacher' ||
-                                                                    role ==
-                                                                        'student') &&
-                                                                selectedCreateUserClassId
-                                                                    .trim()
-                                                                    .isEmpty) {
-                                                              _logFailure(
-                                                                'Selectează o clasă pentru elev/profesor.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Selectează o clasă pentru elev/profesor.',
-                                                              );
-                                                              return;
-                                                            }
-
-                                                            try {
-                                                              // cloud function
-                                                              await api.createUser(
-                                                                username: uname
-                                                                    .toLowerCase(),
-                                                                password: pass,
-                                                                role: role,
-                                                                fullName: full,
-                                                                classId:
-                                                                    role ==
-                                                                            "student" ||
-                                                                        role ==
-                                                                            "teacher"
-                                                                    ? selectedCreateUserClassId
-                                                                    : null,
-                                                              );
-
-                                                              String? csvPath;
-                                                              try {
-                                                                csvPath = await _appendCreatedUserToCsv(
-                                                                  username: uname
-                                                                      .toLowerCase(),
-                                                                  password:
-                                                                      pass,
-                                                                  fullName:
-                                                                      full,
-                                                                  role: role,
-                                                                  classId:
-                                                                      role ==
-                                                                              'student' ||
-                                                                          role ==
-                                                                              'teacher'
-                                                                      ? selectedCreateUserClassId
-                                                                      : null,
-                                                                );
-                                                                _logSuccess(
-                                                                  'CSV actualizat: $csvPath',
-                                                                );
-                                                              } catch (
-                                                                csvError
-                                                              ) {
-                                                                _logFailure(
-                                                                  'Utilizatorul a fost creat, dar CSV-ul nu a putut fi salvat: $csvError',
-                                                                );
-                                                              }
-
-                                                              _logSuccess(
-                                                                'Utilizator creat: $uname',
-                                                              );
-
-                                                              if (!mounted)
-                                                                return;
-                                                              _showInfoMessage(
-                                                                csvPath == null
-                                                                    ? 'Utilizator creat: $uname. CSV-ul nu a fost actualizat.'
-                                                                    : 'Utilizator creat: $uname. CSV actualizat.',
-                                                              );
-                                                            } catch (e) {
-                                                              final message =
-                                                                  _friendlyCreateUserError(
-                                                                    e,
-                                                                    role,
-                                                                    selectedCreateUserClassId,
-                                                                  );
-                                                              _logFailure(
-                                                                message,
-                                                              );
-                                                              _showInfoMessage(
-                                                                message,
-                                                              );
-                                                            }
-                                                          });
-                                                        },
-                                                ),
-                                                const SizedBox(height: 12),
-                                                _buildButton(
-                                                  label:
-                                                      'Exportă CSV cu useri și parole',
-                                                  primaryGreen: primaryGreen,
-                                                  fullWidth: true,
-                                                  onPressed:
-                                                      _shareCredentialsCsv,
-                                                ),
-                                                const SizedBox(height: 8),
-                                                const Text(
-                                                  'La fiecare utilizator creat se adaugă automat o linie în CSV. Folosește exportul ca să trimiți fișierul dirigintelui.',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.black54,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(height: 24),
-                                          // Create Class Card
-                                          _buildCard(
-                                            title: "Creeaza Clasa",
-                                            primaryGreen: primaryGreen,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
+                                              ),
+                                              const SizedBox(height: 24),
+                                              // Create Class Card
+                                              _buildCard(
+                                                title: "Creeaza Clasa",
+                                                primaryGreen: primaryGreen,
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
-                                                    Expanded(
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 12,
-                                                              vertical: 8,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          border: Border.all(
-                                                            color: Colors
-                                                                .grey[200]!,
-                                                          ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                4,
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          child: Container(
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  horizontal:
+                                                                      12,
+                                                                  vertical: 8,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              border: Border.all(
+                                                                color: Colors
+                                                                    .grey[200]!,
                                                               ),
-                                                        ),
-                                                        child: DropdownButtonHideUnderline(
-                                                          child: DropdownButton<int>(
-                                                            value:
-                                                                selectedNumber,
-                                                            isExpanded: true,
-                                                            items:
-                                                                List.generate(
-                                                                  12,
-                                                                  (i) => i + 1,
-                                                                ).map((num) {
-                                                                  return DropdownMenuItem(
-                                                                    value: num,
-                                                                    child: Text(
-                                                                      num.toString(),
-                                                                    ),
-                                                                  );
-                                                                }).toList(),
-                                                            onChanged: (v) =>
-                                                                setState(
-                                                                  () =>
-                                                                      selectedNumber =
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    4,
+                                                                  ),
+                                                            ),
+                                                            child: DropdownButtonHideUnderline(
+                                                              child: DropdownButton<int>(
+                                                                value:
+                                                                    selectedNumber,
+                                                                isExpanded:
+                                                                    true,
+                                                                items:
+                                                                    List.generate(
+                                                                      12,
+                                                                      (i) =>
+                                                                          i + 1,
+                                                                    ).map((
+                                                                      num,
+                                                                    ) {
+                                                                      return DropdownMenuItem(
+                                                                        value:
+                                                                            num,
+                                                                        child: Text(
+                                                                          num.toString(),
+                                                                        ),
+                                                                      );
+                                                                    }).toList(),
+                                                                onChanged: (v) =>
+                                                                    setState(
+                                                                      () => selectedNumber =
                                                                           v ??
                                                                           9,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 12),
-                                                    Expanded(
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 12,
-                                                              vertical: 8,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          border: Border.all(
-                                                            color: Colors
-                                                                .grey[200]!,
-                                                          ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                4,
+                                                                    ),
                                                               ),
+                                                            ),
+                                                          ),
                                                         ),
-                                                        child: DropdownButtonHideUnderline(
-                                                          child: DropdownButton<String>(
-                                                            value:
-                                                                selectedLetter,
-                                                            isExpanded: true,
-                                                            items:
-                                                                List.generate(
-                                                                  26,
-                                                                  (i) =>
-                                                                      String.fromCharCode(
+                                                        const SizedBox(
+                                                          width: 12,
+                                                        ),
+                                                        Expanded(
+                                                          child: Container(
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  horizontal:
+                                                                      12,
+                                                                  vertical: 8,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              border: Border.all(
+                                                                color: Colors
+                                                                    .grey[200]!,
+                                                              ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    4,
+                                                                  ),
+                                                            ),
+                                                            child: DropdownButtonHideUnderline(
+                                                              child: DropdownButton<String>(
+                                                                value:
+                                                                    selectedLetter,
+                                                                isExpanded:
+                                                                    true,
+                                                                items:
+                                                                    List.generate(
+                                                                      26,
+                                                                      (
+                                                                        i,
+                                                                      ) => String.fromCharCode(
                                                                         65 + i,
                                                                       ),
-                                                                ).map((letter) {
-                                                                  return DropdownMenuItem(
-                                                                    value:
-                                                                        letter,
-                                                                    child: Text(
+                                                                    ).map((
                                                                       letter,
-                                                                    ),
-                                                                  );
-                                                                }).toList(),
-                                                            onChanged: (v) =>
-                                                                setState(
-                                                                  () =>
-                                                                      selectedLetter =
+                                                                    ) {
+                                                                      return DropdownMenuItem(
+                                                                        value:
+                                                                            letter,
+                                                                        child: Text(
+                                                                          letter,
+                                                                        ),
+                                                                      );
+                                                                    }).toList(),
+                                                                onChanged: (v) =>
+                                                                    setState(
+                                                                      () => selectedLetter =
                                                                           v ??
                                                                           "A",
-                                                                ),
+                                                                    ),
+                                                              ),
+                                                            ),
                                                           ),
                                                         ),
-                                                      ),
+                                                      ],
                                                     ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 16),
-                                                Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: _buildButton(
-                                                        label: "Creeaza",
-                                                        primaryGreen:
-                                                            primaryGreen,
-                                                        onPressed:
-                                                            _isActionBusy(
-                                                              'create-class',
-                                                            )
-                                                            ? null
-                                                            : () {
-                                                                _runGuarded(
+                                                    const SizedBox(height: 16),
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          child: _buildButton(
+                                                            label: "Creeaza",
+                                                            primaryGreen:
+                                                                primaryGreen,
+                                                            onPressed:
+                                                                _isActionBusy(
                                                                   'create-class',
-                                                                  () async {
-                                                                    final classId =
-                                                                        "$selectedNumber$selectedLetter";
-                                                                    final existingClass = await FirebaseFirestore
-                                                                        .instance
-                                                                        .collection(
-                                                                          'classes',
-                                                                        )
-                                                                        .doc(
-                                                                          classId,
-                                                                        )
-                                                                        .get();
-                                                                    if (existingClass
-                                                                        .exists) {
-                                                                      final message =
-                                                                          'Clasa $classId există deja.';
-                                                                      _logFailure(
-                                                                        message,
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        message,
-                                                                      );
-                                                                      return;
-                                                                    }
-                                                                    try {
-                                                                      await api.createClass(
-                                                                        name:
-                                                                            classId,
-                                                                      );
-                                                                      _logSuccess(
-                                                                        'Clasă creată: $classId',
-                                                                      );
-                                                                      if (!mounted) {
-                                                                        return;
-                                                                      }
-                                                                      _showInfoMessage(
-                                                                        "Clasă creată: $classId",
-                                                                      );
-                                                                    } catch (
-                                                                      e
-                                                                    ) {
-                                                                      final message =
-                                                                          _friendlyCreateClassError(
+                                                                )
+                                                                ? null
+                                                                : () {
+                                                                    _runGuarded(
+                                                                      'create-class',
+                                                                      () async {
+                                                                        final classId =
+                                                                            "$selectedNumber$selectedLetter";
+                                                                        final existingClass = await FirebaseFirestore
+                                                                            .instance
+                                                                            .collection(
+                                                                              'classes',
+                                                                            )
+                                                                            .doc(
+                                                                              classId,
+                                                                            )
+                                                                            .get();
+                                                                        if (existingClass
+                                                                            .exists) {
+                                                                          final message =
+                                                                              'Clasa $classId există deja.';
+                                                                          _logFailure(
+                                                                            message,
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            message,
+                                                                          );
+                                                                          return;
+                                                                        }
+                                                                        try {
+                                                                          await api.createClass(
+                                                                            name:
+                                                                                classId,
+                                                                          );
+                                                                          _logSuccess(
+                                                                            'Clasă creată: $classId',
+                                                                          );
+                                                                          if (!mounted) {
+                                                                            return;
+                                                                          }
+                                                                          _showInfoMessage(
+                                                                            "Clasă creată: $classId",
+                                                                          );
+                                                                        } catch (
+                                                                          e
+                                                                        ) {
+                                                                          final message = _friendlyCreateClassError(
                                                                             e,
                                                                             classId,
                                                                           );
-                                                                      _logFailure(
-                                                                        message,
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        message,
-                                                                      );
-                                                                    }
-                                                                  },
-                                                                );
-                                                              },
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 12),
-                                                    Expanded(
-                                                      child: _buildButton(
-                                                        label: "Sterge",
-                                                        primaryGreen:
-                                                            Colors.red.shade600,
-                                                        onPressed:
-                                                            _isActionBusy(
-                                                              'delete-class',
-                                                            )
-                                                            ? null
-                                                            : () {
-                                                                _runGuarded(
-                                                                  'delete-class',
-                                                                  () async {
-                                                                    final shouldProceed = await _confirmMajorAction(
-                                                                      title:
-                                                                          'Confirmare',
-                                                                      message:
-                                                                          'Esti sigur ca vrei sa stergi clasa selectata?',
+                                                                          _logFailure(
+                                                                            message,
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            message,
+                                                                          );
+                                                                        }
+                                                                      },
                                                                     );
-                                                                    if (!shouldProceed) {
-                                                                      return;
-                                                                    }
+                                                                  },
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 12,
+                                                        ),
+                                                        Expanded(
+                                                          child: _buildButton(
+                                                            label: "Sterge",
+                                                            primaryGreen: Colors
+                                                                .red
+                                                                .shade600,
+                                                            onPressed:
+                                                                _isActionBusy(
+                                                                  'delete-class',
+                                                                )
+                                                                ? null
+                                                                : () {
+                                                                    _runGuarded(
+                                                                      'delete-class',
+                                                                      () async {
+                                                                        final shouldProceed = await _confirmMajorAction(
+                                                                          title:
+                                                                              'Confirmare',
+                                                                          message:
+                                                                              'Esti sigur ca vrei sa stergi clasa selectata?',
+                                                                        );
+                                                                        if (!shouldProceed) {
+                                                                          return;
+                                                                        }
 
-                                                                    final classId =
-                                                                        "$selectedNumber$selectedLetter";
-                                                                    try {
-                                                                      await api.deleteClassCascade(
-                                                                        classId:
-                                                                            classId,
-                                                                      );
-                                                                      _logSuccess(
-                                                                        'Clasă ștearsă: $classId',
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        'Clasa a fost ștearsă.',
-                                                                      );
-                                                                    } catch (
-                                                                      e
-                                                                    ) {
-                                                                      final message =
-                                                                          _friendlyError(
+                                                                        final classId =
+                                                                            "$selectedNumber$selectedLetter";
+                                                                        try {
+                                                                          await api.deleteClassCascade(
+                                                                            classId:
+                                                                                classId,
+                                                                          );
+                                                                          _logSuccess(
+                                                                            'Clasă ștearsă: $classId',
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            'Clasa a fost ștearsă.',
+                                                                          );
+                                                                        } catch (
+                                                                          e
+                                                                        ) {
+                                                                          final message = _friendlyError(
                                                                             'delete-class',
                                                                           );
-                                                                      _logFailure(
-                                                                        message,
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        message,
-                                                                      );
-                                                                    }
+                                                                          _logFailure(
+                                                                            message,
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            message,
+                                                                          );
+                                                                        }
+                                                                      },
+                                                                    );
                                                                   },
-                                                                );
-                                                              },
-                                                      ),
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
                                                   ],
                                                 ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(height: 24),
-                                          // Assign Parents Card
-                                          _buildCard(
-                                            title: "Atribuie Parinti",
-                                            primaryGreen: primaryGreen,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                const Text("Selecteaza elev:"),
-                                                const SizedBox(height: 8),
-                                                StreamBuilder<QuerySnapshot>(
-                                                  stream: FirebaseFirestore
-                                                      .instance
-                                                      .collection('users')
-                                                      .where(
-                                                        'role',
-                                                        isEqualTo: 'student',
-                                                      )
-                                                      .snapshots(),
-                                                  builder: (context, ssnap) {
-                                                    if (ssnap.hasError) {
-                                                      return Text(
-                                                        'Lista elevilor nu a putut fi încărcată.',
-                                                      );
-                                                    }
-                                                    if (!ssnap.hasData) {
-                                                      return const CircularProgressIndicator();
-                                                    }
-
-                                                    final studentOptions = ssnap
-                                                        .data!
-                                                        .docs
-                                                        .map((d) {
-                                                          final data =
-                                                              d.data()
-                                                                  as Map<
-                                                                    String,
-                                                                    dynamic
-                                                                  >;
-                                                          final name =
-                                                              (data['fullName'] ??
-                                                                      data['username'] ??
-                                                                      d.id)
-                                                                  .toString();
-                                                          return {
-                                                            'id': d.id,
-                                                            'name': name,
-                                                          };
-                                                        })
-                                                        .toList();
-
-                                                    studentOptions.sort(
-                                                      (a, b) => a['name']!
-                                                          .toLowerCase()
-                                                          .compareTo(
-                                                            b['name']!
-                                                                .toLowerCase(),
-                                                          ),
-                                                    );
-
-                                                    return Autocomplete<
-                                                      Map<String, String>
+                                              ),
+                                              const SizedBox(height: 24),
+                                              // Assign Parents Card
+                                              _buildCard(
+                                                title: "Atribuie Parinti",
+                                                primaryGreen: primaryGreen,
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    const Text(
+                                                      "Selecteaza elev:",
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    StreamBuilder<
+                                                      QuerySnapshot
                                                     >(
-                                                      optionsBuilder: (txt) {
-                                                        if (txt.text.isEmpty) {
-                                                          return studentOptions;
+                                                      stream: FirebaseFirestore
+                                                          .instance
+                                                          .collection('users')
+                                                          .where(
+                                                            'role',
+                                                            isEqualTo:
+                                                                'student',
+                                                          )
+                                                          .snapshots(),
+                                                      builder: (context, ssnap) {
+                                                        if (ssnap.hasError) {
+                                                          return Text(
+                                                            'Lista elevilor nu a putut fi încărcată.',
+                                                          );
                                                         }
-                                                        return studentOptions.where(
-                                                          (o) => o['name']!
+                                                        if (!ssnap.hasData) {
+                                                          return const CircularProgressIndicator();
+                                                        }
+
+                                                        final studentOptions =
+                                                            ssnap.data!.docs.map((
+                                                              d,
+                                                            ) {
+                                                              final data =
+                                                                  d.data()
+                                                                      as Map<
+                                                                        String,
+                                                                        dynamic
+                                                                      >;
+                                                              final name =
+                                                                  (data['fullName'] ??
+                                                                          data['username'] ??
+                                                                          d.id)
+                                                                      .toString();
+                                                              return {
+                                                                'id': d.id,
+                                                                'name': name,
+                                                              };
+                                                            }).toList();
+
+                                                        studentOptions.sort(
+                                                          (a, b) => a['name']!
                                                               .toLowerCase()
-                                                              .contains(
-                                                                txt.text
+                                                              .compareTo(
+                                                                b['name']!
                                                                     .toLowerCase(),
                                                               ),
                                                         );
-                                                      },
-                                                      displayStringForOption:
-                                                          (o) => o['name']!,
-                                                      onSelected: (o) => setState(
-                                                        () {
-                                                          selectedAssignStudent =
-                                                              o;
-                                                          selectedAssignParent =
-                                                              null;
-                                                        },
-                                                      ),
-                                                      fieldViewBuilder:
-                                                          (
-                                                            context,
-                                                            ctrl,
-                                                            focusNode,
-                                                            onSubmit,
-                                                          ) {
-                                                            ctrl.text =
-                                                                selectedAssignStudent?['name'] ??
-                                                                '';
-                                                            return TextField(
-                                                              controller: ctrl,
-                                                              focusNode:
-                                                                  focusNode,
-                                                              decoration:
-                                                                  const InputDecoration(
-                                                                    hintText:
-                                                                        'Numele studentului...',
+
+                                                        return Autocomplete<
+                                                          Map<String, String>
+                                                        >(
+                                                          optionsBuilder: (txt) {
+                                                            if (txt
+                                                                .text
+                                                                .isEmpty) {
+                                                              return studentOptions;
+                                                            }
+                                                            return studentOptions.where(
+                                                              (o) => o['name']!
+                                                                  .toLowerCase()
+                                                                  .contains(
+                                                                    txt.text
+                                                                        .toLowerCase(),
                                                                   ),
                                                             );
                                                           },
-                                                    );
-                                                  },
-                                                ),
-                                                const SizedBox(height: 12),
-                                                if (selectedAssignStudent !=
-                                                    null) ...[
-                                                  const Text(
-                                                    "Parintii actuali:",
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  StreamBuilder<
-                                                    DocumentSnapshot
-                                                  >(
-                                                    stream: FirebaseFirestore
-                                                        .instance
-                                                        .collection('users')
-                                                        .doc(
-                                                          selectedAssignStudent!['id'],
-                                                        )
-                                                        .snapshots(),
-                                                    builder: (context, snap) {
-                                                      if (snap.hasError) {
-                                                        return Text(
-                                                          'Datele elevului nu au putut fi încărcate.',
+                                                          displayStringForOption:
+                                                              (o) => o['name']!,
+                                                          onSelected: (o) =>
+                                                              setState(() {
+                                                                selectedAssignStudent =
+                                                                    o;
+                                                                selectedAssignParent =
+                                                                    null;
+                                                              }),
+                                                          fieldViewBuilder:
+                                                              (
+                                                                context,
+                                                                ctrl,
+                                                                focusNode,
+                                                                onSubmit,
+                                                              ) {
+                                                                ctrl.text =
+                                                                    selectedAssignStudent?['name'] ??
+                                                                    '';
+                                                                return TextField(
+                                                                  controller:
+                                                                      ctrl,
+                                                                  focusNode:
+                                                                      focusNode,
+                                                                  decoration:
+                                                                      const InputDecoration(
+                                                                        hintText:
+                                                                            'Numele studentului...',
+                                                                      ),
+                                                                );
+                                                              },
                                                         );
-                                                      }
-                                                      if (!snap.hasData) {
-                                                        return const CircularProgressIndicator();
-                                                      }
-                                                      final data =
-                                                          snap.data!.data()
-                                                              as Map<
-                                                                String,
-                                                                dynamic
-                                                              >? ??
-                                                          {};
-                                                      final parents =
-                                                          List<String>.from(
-                                                            data['parents'] ??
-                                                                [],
-                                                          );
+                                                      },
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    if (selectedAssignStudent !=
+                                                        null) ...[
+                                                      const Text(
+                                                        "Parintii actuali:",
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      StreamBuilder<
+                                                        DocumentSnapshot
+                                                      >(
+                                                        stream: FirebaseFirestore
+                                                            .instance
+                                                            .collection('users')
+                                                            .doc(
+                                                              selectedAssignStudent!['id'],
+                                                            )
+                                                            .snapshots(),
+                                                        builder: (context, snap) {
+                                                          if (snap.hasError) {
+                                                            return Text(
+                                                              'Datele elevului nu au putut fi încărcate.',
+                                                            );
+                                                          }
+                                                          if (!snap.hasData) {
+                                                            return const CircularProgressIndicator();
+                                                          }
+                                                          final data =
+                                                              snap.data!.data()
+                                                                  as Map<
+                                                                    String,
+                                                                    dynamic
+                                                                  >? ??
+                                                              {};
+                                                          final parents =
+                                                              List<String>.from(
+                                                                data['parents'] ??
+                                                                    [],
+                                                              );
 
-                                                      if (parents.isEmpty) {
-                                                        return const Text(
-                                                          'Niciun părinte asignat',
-                                                        );
-                                                      }
+                                                          if (parents.isEmpty) {
+                                                            return const Text(
+                                                              'Niciun părinte asignat',
+                                                            );
+                                                          }
 
-                                                      return Column(
-                                                        children: parents.map((
-                                                          puid,
-                                                        ) {
-                                                          return FutureBuilder<
-                                                            DocumentSnapshot
-                                                          >(
-                                                            future:
-                                                                FirebaseFirestore
+                                                          return Column(
+                                                            children: parents.map((
+                                                              puid,
+                                                            ) {
+                                                              return FutureBuilder<
+                                                                DocumentSnapshot
+                                                              >(
+                                                                future: FirebaseFirestore
                                                                     .instance
                                                                     .collection(
                                                                       'users',
                                                                     )
                                                                     .doc(puid)
                                                                     .get(),
-                                                            builder: (context, psnap) {
-                                                              if (!psnap
-                                                                  .hasData) {
-                                                                return const SizedBox.shrink();
-                                                              }
-                                                              final pdata =
-                                                                  psnap.data!
-                                                                          .data()
-                                                                      as Map<
-                                                                        String,
-                                                                        dynamic
-                                                                      >? ??
-                                                                  {};
-                                                              final pname =
-                                                                  (pdata['fullName'] ??
-                                                                          pdata['username'] ??
-                                                                          psnap
-                                                                              .data!
-                                                                              .id)
-                                                                      .toString();
-                                                              return ListTile(
-                                                                title: Text(
-                                                                  pname,
-                                                                ),
-                                                                subtitle: Text(
-                                                                  'uid: $puid',
-                                                                ),
-                                                                trailing: IconButton(
-                                                                  icon: const Icon(
-                                                                    Icons
-                                                                        .remove_circle,
-                                                                    color: Colors
-                                                                        .red,
-                                                                  ),
-                                                                  onPressed:
-                                                                      _isActionBusy(
-                                                                        'remove-parent-$puid',
-                                                                      )
-                                                                      ? null
-                                                                      : () {
-                                                                          _runGuarded(
+                                                                builder: (context, psnap) {
+                                                                  if (!psnap
+                                                                      .hasData) {
+                                                                    return const SizedBox.shrink();
+                                                                  }
+                                                                  final pdata =
+                                                                      psnap.data!
+                                                                              .data()
+                                                                          as Map<
+                                                                            String,
+                                                                            dynamic
+                                                                          >? ??
+                                                                      {};
+                                                                  final pname =
+                                                                      (pdata['fullName'] ??
+                                                                              pdata['username'] ??
+                                                                              psnap.data!.id)
+                                                                          .toString();
+                                                                  return ListTile(
+                                                                    title: Text(
+                                                                      pname,
+                                                                    ),
+                                                                    subtitle: Text(
+                                                                      'uid: $puid',
+                                                                    ),
+                                                                    trailing: IconButton(
+                                                                      icon: const Icon(
+                                                                        Icons
+                                                                            .remove_circle,
+                                                                        color: Colors
+                                                                            .red,
+                                                                      ),
+                                                                      onPressed:
+                                                                          _isActionBusy(
                                                                             'remove-parent-$puid',
-                                                                            () async {
-                                                                              final confirm =
-                                                                                  await showDialog<
-                                                                                    bool
-                                                                                  >(
-                                                                                    context: context,
-                                                                                    builder:
-                                                                                        (
-                                                                                          _,
-                                                                                        ) => AlertDialog(
-                                                                                          title: const Text(
-                                                                                            'Confirm',
-                                                                                          ),
-                                                                                          content: Text(
-                                                                                            'Sunteți sigur că vreți să scoateți părintele $pname din elevul ${selectedAssignStudent!['name']}?',
-                                                                                          ),
-                                                                                          actions: [
-                                                                                            TextButton(
-                                                                                              onPressed: () => Navigator.pop(
-                                                                                                context,
-                                                                                                false,
+                                                                          )
+                                                                          ? null
+                                                                          : () {
+                                                                              _runGuarded(
+                                                                                'remove-parent-$puid',
+                                                                                () async {
+                                                                                  final confirm =
+                                                                                      await showDialog<
+                                                                                        bool
+                                                                                      >(
+                                                                                        context: context,
+                                                                                        builder:
+                                                                                            (
+                                                                                              _,
+                                                                                            ) => AlertDialog(
+                                                                                              title: const Text(
+                                                                                                'Confirm',
                                                                                               ),
-                                                                                              child: const Text(
-                                                                                                'Nu',
+                                                                                              content: Text(
+                                                                                                'Sunteți sigur că vreți să scoateți părintele $pname din elevul ${selectedAssignStudent!['name']}?',
                                                                                               ),
+                                                                                              actions: [
+                                                                                                TextButton(
+                                                                                                  onPressed: () => Navigator.pop(
+                                                                                                    context,
+                                                                                                    false,
+                                                                                                  ),
+                                                                                                  child: const Text(
+                                                                                                    'Nu',
+                                                                                                  ),
+                                                                                                ),
+                                                                                                TextButton(
+                                                                                                  onPressed: () => Navigator.pop(
+                                                                                                    context,
+                                                                                                    true,
+                                                                                                  ),
+                                                                                                  child: const Text(
+                                                                                                    'Da',
+                                                                                                  ),
+                                                                                                ),
+                                                                                              ],
                                                                                             ),
-                                                                                            TextButton(
-                                                                                              onPressed: () => Navigator.pop(
-                                                                                                context,
-                                                                                                true,
-                                                                                              ),
-                                                                                              child: const Text(
-                                                                                                'Da',
-                                                                                              ),
-                                                                                            ),
-                                                                                          ],
-                                                                                        ),
-                                                                                  );
-                                                                              if (confirm !=
-                                                                                  true) {
-                                                                                return;
-                                                                              }
-                                                                              try {
-                                                                                await api.removeParentFromStudent(
-                                                                                  studentUid: selectedAssignStudent!['id']!,
-                                                                                  parentUid: puid,
-                                                                                );
-                                                                                _logSuccess(
-                                                                                  'Părinte eliminat din elev cu succes.',
-                                                                                );
-                                                                                _showInfoMessage(
-                                                                                  'Părintele a fost eliminat cu succes.',
-                                                                                );
-                                                                              } catch (
-                                                                                e
-                                                                              ) {
-                                                                                final message = _friendlyError(
-                                                                                  'remove-parent',
-                                                                                );
-                                                                                _logFailure(
-                                                                                  message,
-                                                                                );
-                                                                                _showInfoMessage(
-                                                                                  message,
-                                                                                );
-                                                                              }
+                                                                                      );
+                                                                                  if (confirm !=
+                                                                                      true) {
+                                                                                    return;
+                                                                                  }
+                                                                                  try {
+                                                                                    await api.removeParentFromStudent(
+                                                                                      studentUid: selectedAssignStudent!['id']!,
+                                                                                      parentUid: puid,
+                                                                                    );
+                                                                                    _logSuccess(
+                                                                                      'Părinte eliminat din elev cu succes.',
+                                                                                    );
+                                                                                    _showInfoMessage(
+                                                                                      'Părintele a fost eliminat cu succes.',
+                                                                                    );
+                                                                                  } catch (
+                                                                                    e
+                                                                                  ) {
+                                                                                    final message = _friendlyError(
+                                                                                      'remove-parent',
+                                                                                    );
+                                                                                    _logFailure(
+                                                                                      message,
+                                                                                    );
+                                                                                    _showInfoMessage(
+                                                                                      message,
+                                                                                    );
+                                                                                  }
+                                                                                },
+                                                                              );
                                                                             },
-                                                                          );
-                                                                        },
-                                                                ),
+                                                                    ),
+                                                                  );
+                                                                },
                                                               );
-                                                            },
+                                                            }).toList(),
                                                           );
-                                                        }).toList(),
-                                                      );
-                                                    },
-                                                  ),
-                                                  const SizedBox(height: 12),
-                                                  const Text(
-                                                    'Select parent to assign:',
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  StreamBuilder<QuerySnapshot>(
-                                                    stream: FirebaseFirestore
-                                                        .instance
-                                                        .collection('users')
-                                                        .where(
-                                                          'role',
-                                                          isEqualTo: 'parent',
-                                                        )
-                                                        .snapshots(),
-                                                    builder: (context, psnap) {
-                                                      if (psnap.hasError) {
-                                                        return Text(
-                                                          'Lista părinților nu a putut fi încărcată.',
-                                                        );
-                                                      }
-                                                      if (!psnap.hasData) {
-                                                        return const CircularProgressIndicator();
-                                                      }
-                                                      final popts = psnap
-                                                          .data!
-                                                          .docs
-                                                          .map((d) {
+                                                        },
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 12,
+                                                      ),
+                                                      const Text(
+                                                        'Select parent to assign:',
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      StreamBuilder<
+                                                        QuerySnapshot
+                                                      >(
+                                                        stream:
+                                                            FirebaseFirestore
+                                                                .instance
+                                                                .collection(
+                                                                  'users',
+                                                                )
+                                                                .where(
+                                                                  'role',
+                                                                  isEqualTo:
+                                                                      'parent',
+                                                                )
+                                                                .snapshots(),
+                                                        builder: (context, psnap) {
+                                                          if (psnap.hasError) {
+                                                            return Text(
+                                                              'Lista părinților nu a putut fi încărcată.',
+                                                            );
+                                                          }
+                                                          if (!psnap.hasData) {
+                                                            return const CircularProgressIndicator();
+                                                          }
+                                                          final popts = psnap.data!.docs.map((
+                                                            d,
+                                                          ) {
                                                             final data =
                                                                 d.data()
                                                                     as Map<
@@ -1929,525 +1702,605 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                               'id': d.id,
                                                               'name': name,
                                                             };
-                                                          })
-                                                          .toList();
+                                                          }).toList();
 
-                                                      popts.sort(
-                                                        (a, b) => a['name']!
-                                                            .toLowerCase()
-                                                            .compareTo(
-                                                              b['name']!
-                                                                  .toLowerCase(),
-                                                            ),
-                                                      );
-
-                                                      return Autocomplete<
-                                                        Map<String, String>
-                                                      >(
-                                                        optionsBuilder: (txt) {
-                                                          if (txt
-                                                              .text
-                                                              .isEmpty) {
-                                                            return popts;
-                                                          }
-                                                          return popts.where(
-                                                            (o) => o['name']!
+                                                          popts.sort(
+                                                            (a, b) => a['name']!
                                                                 .toLowerCase()
-                                                                .contains(
-                                                                  txt.text
+                                                                .compareTo(
+                                                                  b['name']!
                                                                       .toLowerCase(),
                                                                 ),
                                                           );
-                                                        },
-                                                        displayStringForOption:
-                                                            (o) => o['name']!,
-                                                        onSelected: (o) => setState(
-                                                          () =>
-                                                              selectedAssignParent =
+
+                                                          return Autocomplete<
+                                                            Map<String, String>
+                                                          >(
+                                                            optionsBuilder: (txt) {
+                                                              if (txt
+                                                                  .text
+                                                                  .isEmpty) {
+                                                                return popts;
+                                                              }
+                                                              return popts.where(
+                                                                (
                                                                   o,
-                                                        ),
-                                                        fieldViewBuilder:
-                                                            (
-                                                              context,
-                                                              ctrl,
-                                                              focusNode,
-                                                              onSubmit,
-                                                            ) {
-                                                              ctrl.text =
-                                                                  selectedAssignParent?['name'] ??
-                                                                  '';
-                                                              return TextField(
-                                                                controller:
-                                                                    ctrl,
-                                                                focusNode:
-                                                                    focusNode,
-                                                                decoration:
-                                                                    const InputDecoration(
-                                                                      hintText:
-                                                                          'Numele părintelui...',
+                                                                ) => o['name']!
+                                                                    .toLowerCase()
+                                                                    .contains(
+                                                                      txt.text
+                                                                          .toLowerCase(),
                                                                     ),
                                                               );
                                                             },
-                                                      );
-                                                    },
-                                                  ),
-                                                  const SizedBox(height: 12),
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: ElevatedButton(
-                                                          onPressed:
-                                                              selectedAssignParent ==
-                                                                      null ||
+                                                            displayStringForOption:
+                                                                (o) =>
+                                                                    o['name']!,
+                                                            onSelected: (o) =>
+                                                                setState(
+                                                                  () =>
+                                                                      selectedAssignParent =
+                                                                          o,
+                                                                ),
+                                                            fieldViewBuilder:
+                                                                (
+                                                                  context,
+                                                                  ctrl,
+                                                                  focusNode,
+                                                                  onSubmit,
+                                                                ) {
+                                                                  ctrl.text =
+                                                                      selectedAssignParent?['name'] ??
+                                                                      '';
+                                                                  return TextField(
+                                                                    controller:
+                                                                        ctrl,
+                                                                    focusNode:
+                                                                        focusNode,
+                                                                    decoration:
+                                                                        const InputDecoration(
+                                                                          hintText:
+                                                                              'Numele părintelui...',
+                                                                        ),
+                                                                  );
+                                                                },
+                                                          );
+                                                        },
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 12,
+                                                      ),
+                                                      Row(
+                                                        children: [
+                                                          Expanded(
+                                                            child: ElevatedButton(
+                                                              onPressed:
+                                                                  selectedAssignParent ==
+                                                                          null ||
+                                                                      _isActionBusy(
+                                                                        'assign-parent',
+                                                                      )
+                                                                  ? null
+                                                                  : () {
+                                                                      _runGuarded(
+                                                                        'assign-parent',
+                                                                        () async {
+                                                                          final sp =
+                                                                              selectedAssignStudent!['id'];
+                                                                          final pp =
+                                                                              selectedAssignParent!['id'];
+                                                                          try {
+                                                                            final stuRef = FirebaseFirestore.instance
+                                                                                .collection(
+                                                                                  'users',
+                                                                                )
+                                                                                .doc(
+                                                                                  sp,
+                                                                                );
+                                                                            final stuSnap =
+                                                                                await stuRef.get();
+                                                                            final stuData =
+                                                                                stuSnap.data() ??
+                                                                                {};
+                                                                            final parents =
+                                                                                List<
+                                                                                  String
+                                                                                >.from(
+                                                                                  stuData['parents'] ??
+                                                                                      [],
+                                                                                );
+                                                                            if (parents.contains(
+                                                                              pp,
+                                                                            )) {
+                                                                              _logFailure(
+                                                                                'Părintele este deja atribuit acestui elev.',
+                                                                              );
+                                                                              _showInfoMessage(
+                                                                                'Părintele este deja atribuit acestui elev.',
+                                                                              );
+                                                                              return;
+                                                                            }
+                                                                            if (parents.length >=
+                                                                                2) {
+                                                                              _logFailure(
+                                                                                'Elevul are deja 2 părinți atribuiți.',
+                                                                              );
+                                                                              _showInfoMessage(
+                                                                                'Elevul are deja 2 părinți atribuiți.',
+                                                                              );
+                                                                              return;
+                                                                            }
+                                                                            await api.assignParentToStudent(
+                                                                              studentUid: sp!,
+                                                                              parentUid: pp!,
+                                                                            );
+                                                                            _logSuccess(
+                                                                              'Părinte atribuit elevului cu succes.',
+                                                                            );
+                                                                            _showInfoMessage(
+                                                                              'Părintele a fost atribuit cu succes.',
+                                                                            );
+                                                                          } catch (
+                                                                            e
+                                                                          ) {
+                                                                            final message = _friendlyError(
+                                                                              'assign-parent',
+                                                                            );
+                                                                            _logFailure(
+                                                                              message,
+                                                                            );
+                                                                            _showInfoMessage(
+                                                                              message,
+                                                                            );
+                                                                          }
+                                                                        },
+                                                                      );
+                                                                    },
+                                                              child:
                                                                   _isActionBusy(
                                                                     'assign-parent',
                                                                   )
-                                                              ? null
-                                                              : () {
-                                                                  _runGuarded(
-                                                                    'assign-parent',
-                                                                    () async {
-                                                                      final sp =
-                                                                          selectedAssignStudent!['id'];
-                                                                      final pp =
-                                                                          selectedAssignParent!['id'];
-                                                                      try {
-                                                                        final stuRef = FirebaseFirestore
-                                                                            .instance
-                                                                            .collection(
-                                                                              'users',
-                                                                            )
-                                                                            .doc(
-                                                                              sp,
-                                                                            );
-                                                                        final stuSnap =
-                                                                            await stuRef.get();
-                                                                        final stuData =
-                                                                            stuSnap.data() ??
-                                                                            {};
-                                                                        final parents =
-                                                                            List<
-                                                                              String
-                                                                            >.from(
-                                                                              stuData['parents'] ??
-                                                                                  [],
-                                                                            );
-                                                                        if (parents
-                                                                            .contains(
-                                                                              pp,
-                                                                            )) {
-                                                                          _logFailure(
-                                                                            'Părintele este deja atribuit acestui elev.',
-                                                                          );
-                                                                          _showInfoMessage(
-                                                                            'Părintele este deja atribuit acestui elev.',
-                                                                          );
-                                                                          return;
-                                                                        }
-                                                                        if (parents.length >=
-                                                                            2) {
-                                                                          _logFailure(
-                                                                            'Elevul are deja 2 părinți atribuiți.',
-                                                                          );
-                                                                          _showInfoMessage(
-                                                                            'Elevul are deja 2 părinți atribuiți.',
-                                                                          );
-                                                                          return;
-                                                                        }
-                                                                        await api.assignParentToStudent(
-                                                                          studentUid:
-                                                                              sp!,
-                                                                          parentUid:
-                                                                              pp!,
-                                                                        );
-                                                                        _logSuccess(
-                                                                          'Părinte atribuit elevului cu succes.',
-                                                                        );
-                                                                        _showInfoMessage(
-                                                                          'Părintele a fost atribuit cu succes.',
-                                                                        );
-                                                                      } catch (
-                                                                        e
-                                                                      ) {
-                                                                        final message =
-                                                                            _friendlyError(
-                                                                              'assign-parent',
-                                                                            );
-                                                                        _logFailure(
-                                                                          message,
-                                                                        );
-                                                                        _showInfoMessage(
-                                                                          message,
-                                                                        );
-                                                                      }
-                                                                    },
-                                                                  );
-                                                                },
-                                                          child:
-                                                              _isActionBusy(
-                                                                'assign-parent',
-                                                              )
-                                                              ? const SizedBox(
-                                                                  width: 16,
-                                                                  height: 16,
-                                                                  child: CircularProgressIndicator(
-                                                                    strokeWidth:
-                                                                        2,
-                                                                    color: Colors
-                                                                        .white,
-                                                                  ),
-                                                                )
-                                                              : const Text(
-                                                                  'Assign parent',
-                                                                ),
-                                                        ),
+                                                                  ? const SizedBox(
+                                                                      width: 16,
+                                                                      height:
+                                                                          16,
+                                                                      child: CircularProgressIndicator(
+                                                                        strokeWidth:
+                                                                            2,
+                                                                        color: Colors
+                                                                            .white,
+                                                                      ),
+                                                                    )
+                                                                  : const Text(
+                                                                      'Assign parent',
+                                                                    ),
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ],
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          ),
-                                          // Log Section (moved here)
-                                          _buildCard(
-                                            title: "Log",
-                                            primaryGreen: primaryGreen,
-                                            hasBorder: false,
-                                            child: Container(
-                                              width: double.infinity,
-                                              height: 200,
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey[50],
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                                border: Border.all(
-                                                  color: Colors.grey[200]!,
+                                                  ],
                                                 ),
                                               ),
-                                              padding: const EdgeInsets.all(12),
-                                              child: SingleChildScrollView(
-                                                child: SelectableText(
-                                                  log.isEmpty ? "(empty)" : log,
-                                                  style: const TextStyle(
-                                                    fontFamily: 'monospace',
-                                                    fontSize: 12,
+                                              // Log Section (moved here)
+                                              _buildCard(
+                                                title: "Log",
+                                                primaryGreen: primaryGreen,
+                                                hasBorder: false,
+                                                child: Container(
+                                                  width: double.infinity,
+                                                  height: 200,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey[50],
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          6,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: Colors.grey[200]!,
+                                                    ),
+                                                  ),
+                                                  padding: const EdgeInsets.all(
+                                                    12,
+                                                  ),
+                                                  child: SingleChildScrollView(
+                                                    child: SelectableText(
+                                                      log.isEmpty
+                                                          ? "(empty)"
+                                                          : log,
+                                                      style: const TextStyle(
+                                                        fontFamily: 'monospace',
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
+                                            ],
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 24),
-                                    // Right Column
-                                    Expanded(
-                                      child: Column(
-                                        children: [
-                                          // Reset / Disable Card
-                                          _buildCard(
-                                            title:
-                                                "Resetează / Dezactivează cont",
-                                            primaryGreen: primaryGreen,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                _buildTextField(
-                                                  controller: targetUserC,
-                                                  label: "Utilizator țintă",
-                                                ),
-                                                const SizedBox(height: 12),
-                                                _buildTextField(
-                                                  controller:
-                                                      targetUserFullNameC,
-                                                  label:
-                                                      "Nume complet nou - obligatoriu",
-                                                ),
-                                                const SizedBox(height: 12),
-                                                _buildButton(
-                                                  label: "Schimba nume",
-                                                  primaryGreen: primaryGreen,
-                                                  onPressed:
-                                                      _isActionBusy(
-                                                        'rename-user',
-                                                      )
-                                                      ? null
-                                                      : () {
-                                                          _runGuarded('rename-user', () async {
-                                                            final shouldProceed =
-                                                                await _confirmMajorAction(
-                                                                  title:
-                                                                      'Confirmare',
-                                                                  message:
-                                                                      'Esti sigur ca vrei sa schimbi numele utilizatorului?',
-                                                                );
-                                                            if (!shouldProceed) {
-                                                              return;
-                                                            }
+                                        ),
+                                        const SizedBox(width: 24),
+                                        // Right Column
+                                        Expanded(
+                                          child: Column(
+                                            children: [
+                                              // Reset / Disable Card
+                                              _buildCard(
+                                                title:
+                                                    "Resetează / Dezactivează cont",
+                                                primaryGreen: primaryGreen,
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    _buildTextField(
+                                                      controller: targetUserC,
+                                                      label: "Utilizator țintă",
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    _buildTextField(
+                                                      controller:
+                                                          targetUserFullNameC,
+                                                      label:
+                                                          "Nume complet nou - obligatoriu",
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    _buildButton(
+                                                      label: "Schimba nume",
+                                                      primaryGreen:
+                                                          primaryGreen,
+                                                      onPressed:
+                                                          _isActionBusy(
+                                                            'rename-user',
+                                                          )
+                                                          ? null
+                                                          : () {
+                                                              _runGuarded('rename-user', () async {
+                                                                final shouldProceed =
+                                                                    await _confirmMajorAction(
+                                                                      title:
+                                                                          'Confirmare',
+                                                                      message:
+                                                                          'Esti sigur ca vrei sa schimbi numele utilizatorului?',
+                                                                    );
+                                                                if (!shouldProceed) {
+                                                                  return;
+                                                                }
 
-                                                            final username =
-                                                                targetUserC.text
-                                                                    .trim();
-                                                            final newFullName =
-                                                                targetUserFullNameC
-                                                                    .text
-                                                                    .trim();
+                                                                final username =
+                                                                    targetUserC
+                                                                        .text
+                                                                        .trim();
+                                                                final newFullName =
+                                                                    targetUserFullNameC
+                                                                        .text
+                                                                        .trim();
 
-                                                            if (username
-                                                                .isEmpty) {
-                                                              _logFailure(
-                                                                'Completează utilizatorul țintă.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Completează utilizatorul țintă.',
-                                                              );
-                                                              return;
-                                                            }
+                                                                if (username
+                                                                    .isEmpty) {
+                                                                  _logFailure(
+                                                                    'Completează utilizatorul țintă.',
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    'Completează utilizatorul țintă.',
+                                                                  );
+                                                                  return;
+                                                                }
 
-                                                            if (newFullName
-                                                                    .length <
-                                                                3) {
-                                                              _logFailure(
-                                                                'Numele complet nou trebuie să aibă cel puțin 3 caractere.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Numele complet nou trebuie să aibă cel puțin 3 caractere.',
-                                                              );
-                                                              return;
-                                                            }
+                                                                if (newFullName
+                                                                        .length <
+                                                                    3) {
+                                                                  _logFailure(
+                                                                    'Numele complet nou trebuie să aibă cel puțin 3 caractere.',
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    'Numele complet nou trebuie să aibă cel puțin 3 caractere.',
+                                                                  );
+                                                                  return;
+                                                                }
 
-                                                            try {
-                                                              final res = await api
-                                                                  .updateUserFullName(
+                                                                try {
+                                                                  final res = await api.updateUserFullName(
                                                                     username:
                                                                         username,
                                                                     fullName:
                                                                         newFullName,
                                                                   );
 
-                                                              final changed =
-                                                                  res['changed'] ==
-                                                                  true;
-                                                              final message =
-                                                                  changed
-                                                                  ? 'Numele utilizatorului a fost actualizat.'
-                                                                  : 'Numele este deja setat la această valoare.';
+                                                                  final changed =
+                                                                      res['changed'] ==
+                                                                      true;
+                                                                  final message =
+                                                                      changed
+                                                                      ? 'Numele utilizatorului a fost actualizat.'
+                                                                      : 'Numele este deja setat la această valoare.';
 
-                                                              _logSuccess(
-                                                                message,
-                                                              );
-                                                              _showInfoMessage(
-                                                                message,
-                                                              );
-
-                                                              if (changed) {
-                                                                targetUserFullNameC
-                                                                    .clear();
-                                                              }
-                                                            } catch (e) {
-                                                              final message =
-                                                                  _friendlyError(
-                                                                    'rename-user',
+                                                                  _logSuccess(
+                                                                    message,
                                                                   );
-                                                              _logFailure(
-                                                                message,
-                                                              );
-                                                              _showInfoMessage(
-                                                                message,
-                                                              );
-                                                            }
-                                                          });
-                                                        },
-                                                  fullWidth: true,
-                                                ),
-                                                const SizedBox(height: 12),
-                                                _buildTextField(
-                                                  controller:
-                                                      targetUserNewPasswordC,
-                                                  label:
-                                                      "Parolă nouă - obligatoriu",
-                                                ),
-                                                const SizedBox(height: 16),
-                                                _buildButton(
-                                                  label: "Resetare Parolă",
-                                                  primaryGreen: primaryGreen,
-                                                  onPressed:
-                                                      _isActionBusy(
-                                                        'reset-password',
-                                                      )
-                                                      ? null
-                                                      : () {
-                                                          _runGuarded('reset-password', () async {
-                                                            final shouldProceed =
-                                                                await _confirmMajorAction(
-                                                                  title:
-                                                                      'Confirmare',
-                                                                  message:
-                                                                      'Esti sigur ca vrei sa resetezi parola utilizatorului?',
-                                                                );
-                                                            if (!shouldProceed) {
-                                                              return;
-                                                            }
-                                                            if (targetUserC.text
-                                                                .trim()
-                                                                .isEmpty) {
-                                                              _logFailure(
-                                                                'Completează utilizatorul țintă.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Completează utilizatorul țintă.',
-                                                              );
-                                                              return;
-                                                            }
-
-                                                            final newPassword =
-                                                                targetUserNewPasswordC
-                                                                    .text;
-                                                            if (newPassword
-                                                                    .length <
-                                                                6) {
-                                                              _logFailure(
-                                                                'Completează parola nouă (minim 6 caractere).',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Completează parola nouă (minim 6 caractere).',
-                                                              );
-                                                              return;
-                                                            }
-
-                                                            try {
-                                                              await api.resetPassword(
-                                                                username:
-                                                                    targetUserC
-                                                                        .text,
-                                                                newPassword:
-                                                                    newPassword,
-                                                              );
-                                                              _logSuccess(
-                                                                'Parola a fost resetată cu succes.',
-                                                              );
-                                                              if (!mounted)
-                                                                return;
-                                                              _showInfoMessage(
-                                                                'Parola a fost actualizată.',
-                                                              );
-                                                              targetUserNewPasswordC
-                                                                  .clear();
-                                                            } catch (e) {
-                                                              final message =
-                                                                  _friendlyError(
-                                                                    'reset-password',
+                                                                  _showInfoMessage(
+                                                                    message,
                                                                   );
-                                                              _logFailure(
-                                                                message,
-                                                              );
-                                                              _showInfoMessage(
-                                                                message,
-                                                              );
-                                                            }
-                                                          });
-                                                        },
-                                                  fullWidth: true,
-                                                ),
-                                                const SizedBox(height: 12),
-                                                Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: _buildButton(
-                                                        label: "Dezactiveaza",
-                                                        primaryGreen:
-                                                            Colors.red[600]!,
-                                                        onPressed:
-                                                            _isActionBusy(
-                                                              'disable-user',
-                                                            )
-                                                            ? null
-                                                            : () {
-                                                                _runGuarded(
-                                                                  'disable-user',
-                                                                  () async {
-                                                                    final shouldProceed = await _confirmMajorAction(
-                                                                      title:
-                                                                          'Confirmare',
-                                                                      message:
-                                                                          'Esti sigur ca vrei sa dezactivezi contul?',
-                                                                    );
-                                                                    if (!shouldProceed) {
-                                                                      return;
-                                                                    }
-                                                                    if (targetUserC
-                                                                        .text
-                                                                        .trim()
-                                                                        .isEmpty) {
-                                                                      _showInfoMessage(
-                                                                        'Completează utilizatorul țintă.',
-                                                                      );
-                                                                      return;
-                                                                    }
 
-                                                                    try {
-                                                                      final res = await api.setDisabled(
-                                                                        username:
-                                                                            targetUserC.text,
-                                                                        disabled:
-                                                                            true,
+                                                                  if (changed) {
+                                                                    targetUserFullNameC
+                                                                        .clear();
+                                                                  }
+                                                                } catch (e) {
+                                                                  final message =
+                                                                      _friendlyError(
+                                                                        'rename-user',
                                                                       );
-                                                                      final changed =
-                                                                          res['changed'] ==
-                                                                          true;
-                                                                      final message =
-                                                                          changed
-                                                                          ? 'Contul a fost dezactivat.'
-                                                                          : 'Contul era deja dezactivat.';
-                                                                      _logSuccess(
-                                                                        message,
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        message,
-                                                                      );
-                                                                    } catch (
-                                                                      e
-                                                                    ) {
-                                                                      final message =
-                                                                          _friendlyError(
-                                                                            'disable-user',
-                                                                          );
-                                                                      _logFailure(
-                                                                        message,
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        message,
-                                                                      );
-                                                                    }
-                                                                  },
-                                                                );
-                                                              },
-                                                      ),
+                                                                  _logFailure(
+                                                                    message,
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    message,
+                                                                  );
+                                                                }
+                                                              });
+                                                            },
+                                                      fullWidth: true,
                                                     ),
-                                                    const SizedBox(width: 12),
-                                                    Expanded(
-                                                      child: _buildButton(
-                                                        label: "Activeaza",
-                                                        primaryGreen:
-                                                            primaryGreen,
-                                                        onPressed:
-                                                            _isActionBusy(
-                                                              'enable-user',
-                                                            )
-                                                            ? null
-                                                            : () {
-                                                                _runGuarded('enable-user', () async {
+                                                    const SizedBox(height: 12),
+                                                    _buildTextField(
+                                                      controller:
+                                                          targetUserNewPasswordC,
+                                                      label:
+                                                          "Parolă nouă - obligatoriu",
+                                                    ),
+                                                    const SizedBox(height: 16),
+                                                    _buildButton(
+                                                      label: "Resetare Parolă",
+                                                      primaryGreen:
+                                                          primaryGreen,
+                                                      onPressed:
+                                                          _isActionBusy(
+                                                            'reset-password',
+                                                          )
+                                                          ? null
+                                                          : () {
+                                                              _runGuarded(
+                                                                'reset-password',
+                                                                () async {
                                                                   final shouldProceed =
                                                                       await _confirmMajorAction(
                                                                         title:
                                                                             'Confirmare',
                                                                         message:
-                                                                            'Esti sigur ca vrei sa activezi contul?',
+                                                                            'Esti sigur ca vrei sa resetezi parola utilizatorului?',
                                                                       );
                                                                   if (!shouldProceed) {
                                                                     return;
                                                                   }
+                                                                  if (targetUserC
+                                                                      .text
+                                                                      .trim()
+                                                                      .isEmpty) {
+                                                                    _logFailure(
+                                                                      'Completează utilizatorul țintă.',
+                                                                    );
+                                                                    _showInfoMessage(
+                                                                      'Completează utilizatorul țintă.',
+                                                                    );
+                                                                    return;
+                                                                  }
+
+                                                                  final newPassword =
+                                                                      targetUserNewPasswordC
+                                                                          .text;
+                                                                  if (newPassword
+                                                                          .length <
+                                                                      6) {
+                                                                    _logFailure(
+                                                                      'Completează parola nouă (minim 6 caractere).',
+                                                                    );
+                                                                    _showInfoMessage(
+                                                                      'Completează parola nouă (minim 6 caractere).',
+                                                                    );
+                                                                    return;
+                                                                  }
+
+                                                                  try {
+                                                                    await api.resetPassword(
+                                                                      username:
+                                                                          targetUserC
+                                                                              .text,
+                                                                      newPassword:
+                                                                          newPassword,
+                                                                    );
+                                                                    _logSuccess(
+                                                                      'Parola a fost resetată cu succes.',
+                                                                    );
+                                                                    if (!mounted)
+                                                                      return;
+                                                                    _showInfoMessage(
+                                                                      'Parola a fost actualizată.',
+                                                                    );
+                                                                    targetUserNewPasswordC
+                                                                        .clear();
+                                                                  } catch (e) {
+                                                                    final message =
+                                                                        _friendlyError(
+                                                                          'reset-password',
+                                                                        );
+                                                                    _logFailure(
+                                                                      message,
+                                                                    );
+                                                                    _showInfoMessage(
+                                                                      message,
+                                                                    );
+                                                                  }
+                                                                },
+                                                              );
+                                                            },
+                                                      fullWidth: true,
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          child: _buildButton(
+                                                            label:
+                                                                "Dezactiveaza",
+                                                            primaryGreen: Colors
+                                                                .red[600]!,
+                                                            onPressed:
+                                                                _isActionBusy(
+                                                                  'disable-user',
+                                                                )
+                                                                ? null
+                                                                : () {
+                                                                    _runGuarded(
+                                                                      'disable-user',
+                                                                      () async {
+                                                                        final shouldProceed = await _confirmMajorAction(
+                                                                          title:
+                                                                              'Confirmare',
+                                                                          message:
+                                                                              'Esti sigur ca vrei sa dezactivezi contul?',
+                                                                        );
+                                                                        if (!shouldProceed) {
+                                                                          return;
+                                                                        }
+                                                                        if (targetUserC
+                                                                            .text
+                                                                            .trim()
+                                                                            .isEmpty) {
+                                                                          _showInfoMessage(
+                                                                            'Completează utilizatorul țintă.',
+                                                                          );
+                                                                          return;
+                                                                        }
+
+                                                                        try {
+                                                                          final res = await api.setDisabled(
+                                                                            username:
+                                                                                targetUserC.text,
+                                                                            disabled:
+                                                                                true,
+                                                                          );
+                                                                          final changed =
+                                                                              res['changed'] ==
+                                                                              true;
+                                                                          final message =
+                                                                              changed
+                                                                              ? 'Contul a fost dezactivat.'
+                                                                              : 'Contul era deja dezactivat.';
+                                                                          _logSuccess(
+                                                                            message,
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            message,
+                                                                          );
+                                                                        } catch (
+                                                                          e
+                                                                        ) {
+                                                                          final message = _friendlyError(
+                                                                            'disable-user',
+                                                                          );
+                                                                          _logFailure(
+                                                                            message,
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            message,
+                                                                          );
+                                                                        }
+                                                                      },
+                                                                    );
+                                                                  },
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 12,
+                                                        ),
+                                                        Expanded(
+                                                          child: _buildButton(
+                                                            label: "Activeaza",
+                                                            primaryGreen:
+                                                                primaryGreen,
+                                                            onPressed:
+                                                                _isActionBusy(
+                                                                  'enable-user',
+                                                                )
+                                                                ? null
+                                                                : () {
+                                                                    _runGuarded(
+                                                                      'enable-user',
+                                                                      () async {
+                                                                        final shouldProceed = await _confirmMajorAction(
+                                                                          title:
+                                                                              'Confirmare',
+                                                                          message:
+                                                                              'Esti sigur ca vrei sa activezi contul?',
+                                                                        );
+                                                                        if (!shouldProceed) {
+                                                                          return;
+                                                                        }
+                                                                        if (targetUserC
+                                                                            .text
+                                                                            .trim()
+                                                                            .isEmpty) {
+                                                                          _showInfoMessage(
+                                                                            'Completează utilizatorul țintă.',
+                                                                          );
+                                                                          return;
+                                                                        }
+
+                                                                        try {
+                                                                          final res = await api.setDisabled(
+                                                                            username:
+                                                                                targetUserC.text,
+                                                                            disabled:
+                                                                                false,
+                                                                          );
+                                                                          final changed =
+                                                                              res['changed'] ==
+                                                                              true;
+                                                                          final message =
+                                                                              changed
+                                                                              ? 'Contul a fost activat.'
+                                                                              : 'Contul era deja activ.';
+                                                                          _logSuccess(
+                                                                            message,
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            message,
+                                                                          );
+                                                                        } catch (
+                                                                          e
+                                                                        ) {
+                                                                          final message = _friendlyError(
+                                                                            'enable-user',
+                                                                          );
+                                                                          _logFailure(
+                                                                            message,
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            message,
+                                                                          );
+                                                                        }
+                                                                      },
+                                                                    );
+                                                                  },
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    _buildButton(
+                                                      label: "Reset Onboarding",
+                                                      primaryGreen:
+                                                          Colors.orange[700]!,
+                                                      onPressed:
+                                                          _isActionBusy(
+                                                            'remove-personal-email',
+                                                          )
+                                                          ? null
+                                                          : () {
+                                                              _runGuarded(
+                                                                'remove-personal-email',
+                                                                () async {
                                                                   if (targetUserC
                                                                       .text
                                                                       .trim()
@@ -2457,32 +2310,31 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     );
                                                                     return;
                                                                   }
-
+                                                                  final shouldProceed = await _confirmMajorAction(
+                                                                    title:
+                                                                        'Reset Onboarding',
+                                                                    message:
+                                                                        'Emailul personal al utilizatorului "${targetUserC.text.trim()}" va fi sters. '
+                                                                        'La urmatorul login va trebui sa parcurga din nou onboarding-ul.',
+                                                                  );
+                                                                  if (!shouldProceed)
+                                                                    return;
                                                                   try {
-                                                                    final res = await api.setDisabled(
+                                                                    await api.removePersonalEmail(
                                                                       username:
                                                                           targetUserC
                                                                               .text,
-                                                                      disabled:
-                                                                          false,
                                                                     );
-                                                                    final changed =
-                                                                        res['changed'] ==
-                                                                        true;
-                                                                    final message =
-                                                                        changed
-                                                                        ? 'Contul a fost activat.'
-                                                                        : 'Contul era deja activ.';
                                                                     _logSuccess(
-                                                                      message,
+                                                                      'Onboarding resetat pentru ${targetUserC.text.trim()}.',
                                                                     );
                                                                     _showInfoMessage(
-                                                                      message,
+                                                                      'Onboarding-ul a fost resetat.',
                                                                     );
                                                                   } catch (e) {
                                                                     final message =
                                                                         _friendlyError(
-                                                                          'enable-user',
+                                                                          'remove-personal-email',
                                                                         );
                                                                     _logFailure(
                                                                       message,
@@ -2491,100 +2343,42 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                       message,
                                                                     );
                                                                   }
-                                                                });
-                                                              },
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 12),
-                                                _buildButton(
-                                                  label: "Reset Onboarding",
-                                                  primaryGreen:
-                                                      Colors.orange[700]!,
-                                                  onPressed:
-                                                      _isActionBusy(
-                                                        'remove-personal-email',
-                                                      )
-                                                      ? null
-                                                      : () {
-                                                          _runGuarded(
-                                                            'remove-personal-email',
-                                                            () async {
-                                                              if (targetUserC
-                                                                  .text
-                                                                  .trim()
-                                                                  .isEmpty) {
-                                                                _showInfoMessage(
-                                                                  'Completează utilizatorul țintă.',
-                                                                );
-                                                                return;
-                                                              }
-                                                              final shouldProceed =
-                                                                  await _confirmMajorAction(
-                                                                    title:
-                                                                        'Reset Onboarding',
-                                                                    message:
-                                                                        'Emailul personal al utilizatorului "${targetUserC.text.trim()}" va fi sters. '
-                                                                        'La urmatorul login va trebui sa parcurga din nou onboarding-ul.',
-                                                                  );
-                                                              if (!shouldProceed)
-                                                                return;
-                                                              try {
-                                                                await api.removePersonalEmail(
-                                                                  username:
-                                                                      targetUserC
-                                                                          .text,
-                                                                );
-                                                                _logSuccess(
-                                                                  'Onboarding resetat pentru ${targetUserC.text.trim()}.',
-                                                                );
-                                                                _showInfoMessage(
-                                                                  'Onboarding-ul a fost resetat.',
-                                                                );
-                                                              } catch (e) {
-                                                                final message =
-                                                                    _friendlyError(
-                                                                      'remove-personal-email',
-                                                                    );
-                                                                _logFailure(
-                                                                  message,
-                                                                );
-                                                                _showInfoMessage(
-                                                                  message,
-                                                                );
-                                                              }
+                                                                },
+                                                              );
                                                             },
+                                                      fullWidth: true,
+                                                    ),
+                                                    const SizedBox(height: 16),
+                                                    _buildGlobalSecurityControls(),
+                                                    const SizedBox(height: 16),
+                                                    StreamBuilder<
+                                                      QuerySnapshot
+                                                    >(
+                                                      stream: FirebaseFirestore
+                                                          .instance
+                                                          .collection('classes')
+                                                          .orderBy('name')
+                                                          .snapshots(),
+                                                      builder: (context, snap) {
+                                                        if (snap.hasError) {
+                                                          return Text(
+                                                            "Clasele nu au putut fi încărcate.",
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .red,
+                                                                ),
                                                           );
-                                                        },
-                                                  fullWidth: true,
-                                                ),
-                                                const SizedBox(height: 16),
-                                                _buildGlobalSecurityControls(),
-                                                const SizedBox(height: 16),
-                                                StreamBuilder<QuerySnapshot>(
-                                                  stream: FirebaseFirestore
-                                                      .instance
-                                                      .collection('classes')
-                                                      .orderBy('name')
-                                                      .snapshots(),
-                                                  builder: (context, snap) {
-                                                    if (snap.hasError) {
-                                                      return Text(
-                                                        "Clasele nu au putut fi încărcate.",
-                                                        style: const TextStyle(
-                                                          color: Colors.red,
-                                                        ),
-                                                      );
-                                                    }
-                                                    if (!snap.hasData) {
-                                                      return const CircularProgressIndicator();
-                                                    }
+                                                        }
+                                                        if (!snap.hasData) {
+                                                          return const CircularProgressIndicator();
+                                                        }
 
-                                                    final docs =
-                                                        snap.data!.docs;
-                                                    final classOptions = docs
-                                                        .map((doc) {
+                                                        final docs =
+                                                            snap.data!.docs;
+                                                        final classOptions = docs.map((
+                                                          doc,
+                                                        ) {
                                                           final data =
                                                               doc.data()
                                                                   as Map<
@@ -2598,320 +2392,332 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                         doc.id)
                                                                     .toString(),
                                                           };
-                                                        })
-                                                        .toList();
+                                                        }).toList();
 
-                                                    return Autocomplete<
-                                                      Map<String, String>
-                                                    >(
-                                                      initialValue: TextEditingValue(
-                                                        text: classOptions
-                                                            .where(
-                                                              (option) =>
-                                                                  option['id'] ==
-                                                                  selectedMoveClassId,
-                                                            )
-                                                            .map(
-                                                              (option) =>
-                                                                  option['name']!,
-                                                            )
-                                                            .firstWhere(
-                                                              (_) => false,
-                                                              orElse: () => '',
-                                                            ),
-                                                      ),
-                                                      optionsBuilder:
-                                                          (
-                                                            TextEditingValue
-                                                            textEditingValue,
-                                                          ) {
-                                                            if (textEditingValue
-                                                                .text
-                                                                .isEmpty) {
-                                                              return classOptions;
-                                                            }
-                                                            return classOptions
+                                                        return Autocomplete<
+                                                          Map<String, String>
+                                                        >(
+                                                          initialValue: TextEditingValue(
+                                                            text: classOptions
                                                                 .where(
-                                                                  (
-                                                                    option,
-                                                                  ) => option['name']!
-                                                                      .toLowerCase()
-                                                                      .contains(
+                                                                  (option) =>
+                                                                      option['id'] ==
+                                                                      selectedMoveClassId,
+                                                                )
+                                                                .map(
+                                                                  (option) =>
+                                                                      option['name']!,
+                                                                )
+                                                                .firstWhere(
+                                                                  (_) => false,
+                                                                  orElse: () =>
+                                                                      '',
+                                                                ),
+                                                          ),
+                                                          optionsBuilder:
+                                                              (
+                                                                TextEditingValue
+                                                                textEditingValue,
+                                                              ) {
+                                                                if (textEditingValue
+                                                                    .text
+                                                                    .isEmpty) {
+                                                                  return classOptions;
+                                                                }
+                                                                return classOptions
+                                                                    .where(
+                                                                      (
+                                                                        option,
+                                                                      ) => option['name']!.toLowerCase().contains(
                                                                         textEditingValue
                                                                             .text
                                                                             .toLowerCase(),
                                                                       ),
-                                                                )
-                                                                .toList();
-                                                          },
-                                                      displayStringForOption:
-                                                          (option) =>
-                                                              option['name']!,
-                                                      fieldViewBuilder:
-                                                          (
-                                                            context,
-                                                            textEditingController,
-                                                            focusNode,
-                                                            onFieldSubmitted,
-                                                          ) {
-                                                            return TextFormField(
-                                                              controller:
-                                                                  textEditingController,
-                                                              focusNode:
-                                                                  focusNode,
-                                                              decoration: InputDecoration(
-                                                                labelText:
-                                                                    "Selecteaza clasa",
-                                                                hintText:
-                                                                    "Scrie pentru a cauta clase...",
-                                                                border: OutlineInputBorder(
-                                                                  borderRadius:
-                                                                      BorderRadius.circular(
-                                                                        6,
-                                                                      ),
-                                                                ),
-                                                                filled: true,
-                                                                fillColor: Colors
-                                                                    .grey[50],
-                                                              ),
-                                                            );
-                                                          },
-                                                      optionsViewBuilder:
-                                                          (
-                                                            context,
-                                                            onSelected,
-                                                            options,
-                                                          ) {
-                                                            return Align(
-                                                              alignment:
-                                                                  Alignment
-                                                                      .topLeft,
-                                                              child: Material(
-                                                                elevation: 4.0,
-                                                                child: Container(
-                                                                  width:
-                                                                      MediaQuery.of(
-                                                                        context,
-                                                                      ).size.width *
-                                                                      0.3,
-                                                                  constraints:
-                                                                      const BoxConstraints(
+                                                                    )
+                                                                    .toList();
+                                                              },
+                                                          displayStringForOption:
+                                                              (option) =>
+                                                                  option['name']!,
+                                                          fieldViewBuilder:
+                                                              (
+                                                                context,
+                                                                textEditingController,
+                                                                focusNode,
+                                                                onFieldSubmitted,
+                                                              ) {
+                                                                return TextFormField(
+                                                                  controller:
+                                                                      textEditingController,
+                                                                  focusNode:
+                                                                      focusNode,
+                                                                  decoration: InputDecoration(
+                                                                    labelText:
+                                                                        "Selecteaza clasa",
+                                                                    hintText:
+                                                                        "Scrie pentru a cauta clase...",
+                                                                    border: OutlineInputBorder(
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            6,
+                                                                          ),
+                                                                    ),
+                                                                    filled:
+                                                                        true,
+                                                                    fillColor:
+                                                                        Colors
+                                                                            .grey[50],
+                                                                  ),
+                                                                );
+                                                              },
+                                                          optionsViewBuilder:
+                                                              (
+                                                                context,
+                                                                onSelected,
+                                                                options,
+                                                              ) {
+                                                                return Align(
+                                                                  alignment:
+                                                                      Alignment
+                                                                          .topLeft,
+                                                                  child: Material(
+                                                                    elevation:
+                                                                        4.0,
+                                                                    child: Container(
+                                                                      width:
+                                                                          MediaQuery.of(
+                                                                            context,
+                                                                          ).size.width *
+                                                                          0.3,
+                                                                      constraints: const BoxConstraints(
                                                                         maxHeight:
                                                                             200,
                                                                       ),
-                                                                  child: ListView.builder(
-                                                                    padding:
-                                                                        EdgeInsets
-                                                                            .zero,
-                                                                    shrinkWrap:
-                                                                        true,
-                                                                    itemCount:
-                                                                        options
-                                                                            .length,
-                                                                    itemBuilder:
-                                                                        (
-                                                                          context,
-                                                                          index,
-                                                                        ) {
-                                                                          final option = options.elementAt(
-                                                                            index,
-                                                                          );
-                                                                          return ListTile(
-                                                                            title: Text(
-                                                                              option['name']!,
-                                                                            ),
-                                                                            onTap: () => onSelected(
-                                                                              option,
-                                                                            ),
-                                                                          );
-                                                                        },
+                                                                      child: ListView.builder(
+                                                                        padding:
+                                                                            EdgeInsets.zero,
+                                                                        shrinkWrap:
+                                                                            true,
+                                                                        itemCount:
+                                                                            options.length,
+                                                                        itemBuilder:
+                                                                            (
+                                                                              context,
+                                                                              index,
+                                                                            ) {
+                                                                              final option = options.elementAt(
+                                                                                index,
+                                                                              );
+                                                                              return ListTile(
+                                                                                title: Text(
+                                                                                  option['name']!,
+                                                                                ),
+                                                                                onTap: () => onSelected(
+                                                                                  option,
+                                                                                ),
+                                                                              );
+                                                                            },
+                                                                      ),
+                                                                    ),
                                                                   ),
-                                                                ),
-                                                              ),
-                                                            );
-                                                          },
-                                                      onSelected: (option) {
-                                                        setState(() {
-                                                          selectedMoveClassId =
-                                                              option['id']!;
-                                                        });
-                                                      },
-                                                    );
-                                                  },
-                                                ),
-                                                const SizedBox(height: 12),
-                                                _buildButton(
-                                                  label: "Mută utilizator",
-                                                  primaryGreen: primaryGreen,
-                                                  onPressed:
-                                                      _isActionBusy('move-user')
-                                                      ? null
-                                                      : () {
-                                                          _runGuarded('move-user', () async {
-                                                            if (targetUserC.text
-                                                                    .trim()
-                                                                    .isEmpty ||
-                                                                selectedMoveClassId
-                                                                    .trim()
-                                                                    .isEmpty) {
-                                                              _logFailure(
-                                                                'Completează utilizatorul și clasa pentru mutare.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Completează utilizatorul și clasa pentru mutare.',
-                                                              );
-                                                              return;
-                                                            }
-                                                            try {
-                                                              await api.moveStudentClass(
-                                                                username:
-                                                                    targetUserC
-                                                                        .text,
-                                                                newClassId:
-                                                                    selectedMoveClassId,
-                                                              );
-                                                              _logSuccess(
-                                                                'Utilizator mutat la clasa selectată.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Utilizatorul a fost mutat cu succes.',
-                                                              );
-                                                            } catch (e) {
-                                                              final message =
-                                                                  _friendlyMoveUserError(
-                                                                    e,
-                                                                    selectedMoveClassId,
-                                                                  );
-                                                              _logFailure(
-                                                                message,
-                                                              );
-                                                              _showInfoMessage(
-                                                                message,
-                                                              );
-                                                            }
-                                                          });
-                                                        },
-                                                  fullWidth: true,
-                                                ),
-                                                const SizedBox(height: 12),
-                                                // delete user button
-                                                _buildButton(
-                                                  label: "Sterge utilizator",
-                                                  primaryGreen:
-                                                      Colors.red[600]!,
-                                                  onPressed:
-                                                      _isActionBusy(
-                                                        'delete-user',
-                                                      )
-                                                      ? null
-                                                      : () {
-                                                          _runGuarded('delete-user', () async {
-                                                            final shouldProceed =
-                                                                await _confirmMajorAction(
-                                                                  title:
-                                                                      'Confirmare',
-                                                                  message:
-                                                                      'Esti sigur ca vrei sa stergi utilizatorul selectat?',
                                                                 );
-                                                            if (!shouldProceed)
-                                                              return;
-
-                                                            final uname =
-                                                                targetUserC.text
-                                                                    .trim()
-                                                                    .toLowerCase();
-                                                            if (uname.isEmpty) {
-                                                              _logFailure(
-                                                                'Completează username-ul utilizatorului de șters.',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Completează username-ul utilizatorului de șters.',
-                                                              );
-                                                              return;
-                                                            }
-                                                            bool deleted =
-                                                                false;
-                                                            try {
-                                                              // try cloud function first
-                                                              await api
-                                                                  .deleteUser(
+                                                              },
+                                                          onSelected: (option) {
+                                                            setState(() {
+                                                              selectedMoveClassId =
+                                                                  option['id']!;
+                                                            });
+                                                          },
+                                                        );
+                                                      },
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    _buildButton(
+                                                      label: "Mută utilizator",
+                                                      primaryGreen:
+                                                          primaryGreen,
+                                                      onPressed:
+                                                          _isActionBusy(
+                                                            'move-user',
+                                                          )
+                                                          ? null
+                                                          : () {
+                                                              _runGuarded('move-user', () async {
+                                                                if (targetUserC
+                                                                        .text
+                                                                        .trim()
+                                                                        .isEmpty ||
+                                                                    selectedMoveClassId
+                                                                        .trim()
+                                                                        .isEmpty) {
+                                                                  _logFailure(
+                                                                    'Completează utilizatorul și clasa pentru mutare.',
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    'Completează utilizatorul și clasa pentru mutare.',
+                                                                  );
+                                                                  return;
+                                                                }
+                                                                try {
+                                                                  await api.moveStudentClass(
                                                                     username:
-                                                                        uname,
+                                                                        targetUserC
+                                                                            .text,
+                                                                    newClassId:
+                                                                        selectedMoveClassId,
                                                                   );
-                                                              deleted = true;
-                                                            } catch (e) {
-                                                              // fallback below
-                                                            }
-                                                            if (!deleted) {
-                                                              try {
-                                                                await store
-                                                                    .deleteUser(
-                                                                      uname,
+                                                                  _logSuccess(
+                                                                    'Utilizator mutat la clasa selectată.',
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    'Utilizatorul a fost mutat cu succes.',
+                                                                  );
+                                                                } catch (e) {
+                                                                  final message =
+                                                                      _friendlyMoveUserError(
+                                                                        e,
+                                                                        selectedMoveClassId,
+                                                                      );
+                                                                  _logFailure(
+                                                                    message,
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    message,
+                                                                  );
+                                                                }
+                                                              });
+                                                            },
+                                                      fullWidth: true,
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    // delete user button
+                                                    _buildButton(
+                                                      label:
+                                                          "Sterge utilizator",
+                                                      primaryGreen:
+                                                          Colors.red[600]!,
+                                                      onPressed:
+                                                          _isActionBusy(
+                                                            'delete-user',
+                                                          )
+                                                          ? null
+                                                          : () {
+                                                              _runGuarded('delete-user', () async {
+                                                                final shouldProceed =
+                                                                    await _confirmMajorAction(
+                                                                      title:
+                                                                          'Confirmare',
+                                                                      message:
+                                                                          'Esti sigur ca vrei sa stergi utilizatorul selectat?',
                                                                     );
-                                                                deleted = true;
-                                                              } catch (e) {
-                                                                // handled below
-                                                              }
-                                                            }
+                                                                if (!shouldProceed)
+                                                                  return;
 
-                                                            if (deleted) {
-                                                              _logSuccess(
-                                                                'Utilizator șters: $uname',
-                                                              );
-                                                              _showInfoMessage(
-                                                                'Utilizatorul a fost șters.',
-                                                              );
-                                                            } else {
-                                                              final message =
-                                                                  _friendlyError(
-                                                                    'delete-user',
+                                                                final uname =
+                                                                    targetUserC
+                                                                        .text
+                                                                        .trim()
+                                                                        .toLowerCase();
+                                                                if (uname
+                                                                    .isEmpty) {
+                                                                  _logFailure(
+                                                                    'Completează username-ul utilizatorului de șters.',
                                                                   );
-                                                              _logFailure(
-                                                                message,
-                                                              );
-                                                              _showInfoMessage(
-                                                                message,
-                                                              );
-                                                            }
-                                                          });
-                                                        },
-                                                  fullWidth: true,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(height: 24),
-                                          // Orar Clasă Card
-                                          _buildCard(
-                                            title: "Orar Clasă",
-                                            primaryGreen: primaryGreen,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                StreamBuilder<QuerySnapshot>(
-                                                  stream: FirebaseFirestore
-                                                      .instance
-                                                      .collection('classes')
-                                                      .orderBy('name')
-                                                      .snapshots(),
-                                                  builder: (context, snap) {
-                                                    if (snap.hasError) {
-                                                      return Text(
-                                                        "Clasele nu au putut fi încărcate.",
-                                                        style: const TextStyle(
-                                                          color: Colors.red,
-                                                        ),
-                                                      );
-                                                    }
-                                                    if (!snap.hasData) {
-                                                      return const CircularProgressIndicator();
-                                                    }
+                                                                  _showInfoMessage(
+                                                                    'Completează username-ul utilizatorului de șters.',
+                                                                  );
+                                                                  return;
+                                                                }
+                                                                bool deleted =
+                                                                    false;
+                                                                try {
+                                                                  // try cloud function first
+                                                                  await api
+                                                                      .deleteUser(
+                                                                        username:
+                                                                            uname,
+                                                                      );
+                                                                  deleted =
+                                                                      true;
+                                                                } catch (e) {
+                                                                  // fallback below
+                                                                }
+                                                                if (!deleted) {
+                                                                  try {
+                                                                    await store
+                                                                        .deleteUser(
+                                                                          uname,
+                                                                        );
+                                                                    deleted =
+                                                                        true;
+                                                                  } catch (e) {
+                                                                    // handled below
+                                                                  }
+                                                                }
 
-                                                    final docs =
-                                                        snap.data!.docs;
-                                                    final classOptions = docs
-                                                        .map((doc) {
+                                                                if (deleted) {
+                                                                  _logSuccess(
+                                                                    'Utilizator șters: $uname',
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    'Utilizatorul a fost șters.',
+                                                                  );
+                                                                } else {
+                                                                  final message =
+                                                                      _friendlyError(
+                                                                        'delete-user',
+                                                                      );
+                                                                  _logFailure(
+                                                                    message,
+                                                                  );
+                                                                  _showInfoMessage(
+                                                                    message,
+                                                                  );
+                                                                }
+                                                              });
+                                                            },
+                                                      fullWidth: true,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 24),
+                                              // Orar Clasă Card
+                                              _buildCard(
+                                                title: "Orar Clasă",
+                                                primaryGreen: primaryGreen,
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    StreamBuilder<
+                                                      QuerySnapshot
+                                                    >(
+                                                      stream: FirebaseFirestore
+                                                          .instance
+                                                          .collection('classes')
+                                                          .orderBy('name')
+                                                          .snapshots(),
+                                                      builder: (context, snap) {
+                                                        if (snap.hasError) {
+                                                          return Text(
+                                                            "Clasele nu au putut fi încărcate.",
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .red,
+                                                                ),
+                                                          );
+                                                        }
+                                                        if (!snap.hasData) {
+                                                          return const CircularProgressIndicator();
+                                                        }
+
+                                                        final docs =
+                                                            snap.data!.docs;
+                                                        final classOptions = docs.map((
+                                                          doc,
+                                                        ) {
                                                           final data =
                                                               doc.data()
                                                                   as Map<
@@ -2925,570 +2731,566 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                         doc.id)
                                                                     .toString(),
                                                           };
-                                                        })
-                                                        .toList();
+                                                        }).toList();
 
-                                                    if (classOptions.isEmpty) {
-                                                      return Text(
-                                                        'Nu există clase create.',
-                                                        style: TextStyle(
-                                                          color:
-                                                              Colors.grey[700],
-                                                        ),
-                                                      );
-                                                    }
+                                                        if (classOptions
+                                                            .isEmpty) {
+                                                          return Text(
+                                                            'Nu există clase create.',
+                                                            style: TextStyle(
+                                                              color: Colors
+                                                                  .grey[700],
+                                                            ),
+                                                          );
+                                                        }
 
-                                                    final hasSelectedClass =
-                                                        classOptions.any(
-                                                          (option) =>
-                                                              option['id'] ==
-                                                              selectedScheduleClassId,
-                                                        );
+                                                        final hasSelectedClass =
+                                                            classOptions.any(
+                                                              (option) =>
+                                                                  option['id'] ==
+                                                                  selectedScheduleClassId,
+                                                            );
 
-                                                    if (!hasSelectedClass &&
-                                                        selectedScheduleClassId
-                                                            .isNotEmpty) {
-                                                      WidgetsBinding.instance
-                                                          .addPostFrameCallback((
-                                                            _,
-                                                          ) {
-                                                            if (!mounted) {
-                                                              return;
-                                                            }
-                                                            setState(() {
-                                                              selectedScheduleClassId =
-                                                                  '';
-                                                            });
-                                                          });
-                                                    }
+                                                        if (!hasSelectedClass &&
+                                                            selectedScheduleClassId
+                                                                .isNotEmpty) {
+                                                          WidgetsBinding
+                                                              .instance
+                                                              .addPostFrameCallback((
+                                                                _,
+                                                              ) {
+                                                                if (!mounted) {
+                                                                  return;
+                                                                }
+                                                                setState(() {
+                                                                  selectedScheduleClassId =
+                                                                      '';
+                                                                });
+                                                              });
+                                                        }
 
-                                                    return DropdownButtonFormField<
-                                                      String
-                                                    >(
-                                                      value: hasSelectedClass
-                                                          ? selectedScheduleClassId
-                                                          : null,
-                                                      isExpanded: true,
-                                                      decoration: InputDecoration(
-                                                        labelText:
-                                                            'Selectează clasa',
-                                                        border: OutlineInputBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                6,
-                                                              ),
-                                                        ),
-                                                        filled: true,
-                                                        fillColor:
-                                                            Colors.grey[50],
-                                                      ),
-                                                      hint: const Text(
-                                                        'Alege clasa',
-                                                      ),
-                                                      items: classOptions
-                                                          .map(
-                                                            (option) =>
-                                                                DropdownMenuItem<
-                                                                  String
-                                                                >(
+                                                        return DropdownButtonFormField<
+                                                          String
+                                                        >(
+                                                          value:
+                                                              hasSelectedClass
+                                                              ? selectedScheduleClassId
+                                                              : null,
+                                                          isExpanded: true,
+                                                          decoration: InputDecoration(
+                                                            labelText:
+                                                                'Selectează clasa',
+                                                            border: OutlineInputBorder(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    6,
+                                                                  ),
+                                                            ),
+                                                            filled: true,
+                                                            fillColor:
+                                                                Colors.grey[50],
+                                                          ),
+                                                          hint: const Text(
+                                                            'Alege clasa',
+                                                          ),
+                                                          items: classOptions
+                                                              .map(
+                                                                (
+                                                                  option,
+                                                                ) => DropdownMenuItem<String>(
                                                                   value:
                                                                       option['id'],
                                                                   child: Text(
                                                                     option['name']!,
                                                                   ),
                                                                 ),
-                                                          )
-                                                          .toList(),
-                                                      onChanged: (value) {
-                                                        setState(() {
-                                                          selectedScheduleClassId =
-                                                              value ?? '';
-                                                        });
+                                                              )
+                                                              .toList(),
+                                                          onChanged: (value) {
+                                                            setState(() {
+                                                              selectedScheduleClassId =
+                                                                  value ?? '';
+                                                            });
+                                                          },
+                                                        );
                                                       },
-                                                    );
-                                                  },
-                                                ),
-                                                const SizedBox(height: 16),
-                                                // Zilele săptămânii
-                                                Text(
-                                                  "Selectează zilele și orele:",
-                                                  style: TextStyle(
-                                                    color: Colors.grey[700],
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 12),
-                                                // Zilele cu time pickers separate
-                                                ...weekDays.map((day) {
-                                                  final isSelected =
-                                                      selectedDays[day] ??
-                                                      false;
-                                                  final times =
-                                                      dayTimes[day] ??
-                                                      {
-                                                        'start':
-                                                            const TimeOfDay(
-                                                              hour: 7,
-                                                              minute: 30,
-                                                            ),
-                                                        'end': const TimeOfDay(
-                                                          hour: 13,
-                                                          minute: 0,
-                                                        ),
-                                                      };
-
-                                                  return Column(
-                                                    children: [
-                                                      Container(
-                                                        padding:
-                                                            const EdgeInsets.all(
-                                                              12,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          color: isSelected
-                                                              ? primaryGreen
-                                                                    .withValues(
-                                                                      alpha:
-                                                                          0.1,
-                                                                    )
-                                                              : Colors
-                                                                    .grey[100],
-                                                          border: Border.all(
-                                                            color: isSelected
-                                                                ? primaryGreen
-                                                                : Colors
-                                                                      .grey[200]!,
-                                                          ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                8,
-                                                              ),
-                                                        ),
-                                                        child: Column(
-                                                          children: [
-                                                            Row(
-                                                              children: [
-                                                                Expanded(
-                                                                  child: Text(
-                                                                    day,
-                                                                    style: TextStyle(
-                                                                      fontSize:
-                                                                          16,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w600,
-                                                                      color:
-                                                                          isSelected
-                                                                          ? primaryGreen
-                                                                          : Colors.grey[600],
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                Checkbox(
-                                                                  value:
-                                                                      isSelected,
-                                                                  onChanged: (value) {
-                                                                    setState(() {
-                                                                      selectedDays[day] =
-                                                                          value ??
-                                                                          false;
-                                                                    });
-                                                                  },
-                                                                  activeColor:
-                                                                      primaryGreen,
-                                                                ),
-                                                              ],
-                                                            ),
-                                                            if (isSelected) ...[
-                                                              const SizedBox(
-                                                                height: 12,
-                                                              ),
-                                                              Row(
-                                                                children: [
-                                                                  Expanded(
-                                                                    child: Column(
-                                                                      crossAxisAlignment:
-                                                                          CrossAxisAlignment
-                                                                              .start,
-                                                                      children: [
-                                                                        Text(
-                                                                          "Ora de inceput:",
-                                                                          style: TextStyle(
-                                                                            fontSize:
-                                                                                12,
-                                                                            color:
-                                                                                Colors.grey[600],
-                                                                          ),
-                                                                        ),
-                                                                        const SizedBox(
-                                                                          height:
-                                                                              4,
-                                                                        ),
-                                                                        GestureDetector(
-                                                                          onTap: () async {
-                                                                            final time = await showTimePicker(
-                                                                              context: context,
-                                                                              initialTime: times['start']!,
-                                                                            );
-                                                                            if (time !=
-                                                                                null) {
-                                                                              setState(
-                                                                                () {
-                                                                                  dayTimes[day]!['start'] = time;
-                                                                                },
-                                                                              );
-                                                                            }
-                                                                          },
-                                                                          child: Container(
-                                                                            padding: const EdgeInsets.all(
-                                                                              8,
-                                                                            ),
-                                                                            decoration: BoxDecoration(
-                                                                              border: Border.all(
-                                                                                color: primaryGreen,
-                                                                              ),
-                                                                              borderRadius: BorderRadius.circular(
-                                                                                4,
-                                                                              ),
-                                                                            ),
-                                                                            child: Text(
-                                                                              _formatTimeOfDay(
-                                                                                times['start']!,
-                                                                              ),
-                                                                              style: TextStyle(
-                                                                                fontSize: 14,
-                                                                                fontWeight: FontWeight.w500,
-                                                                                color: primaryGreen,
-                                                                              ),
-                                                                            ),
-                                                                          ),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                  ),
-                                                                  const SizedBox(
-                                                                    width: 12,
-                                                                  ),
-                                                                  Expanded(
-                                                                    child: Column(
-                                                                      crossAxisAlignment:
-                                                                          CrossAxisAlignment
-                                                                              .start,
-                                                                      children: [
-                                                                        Text(
-                                                                          "Ora de final:",
-                                                                          style: TextStyle(
-                                                                            fontSize:
-                                                                                12,
-                                                                            color:
-                                                                                Colors.grey[600],
-                                                                          ),
-                                                                        ),
-                                                                        const SizedBox(
-                                                                          height:
-                                                                              4,
-                                                                        ),
-                                                                        GestureDetector(
-                                                                          onTap: () async {
-                                                                            final time = await showTimePicker(
-                                                                              context: context,
-                                                                              initialTime: times['end']!,
-                                                                            );
-                                                                            if (time !=
-                                                                                null) {
-                                                                              setState(
-                                                                                () {
-                                                                                  dayTimes[day]!['end'] = time;
-                                                                                },
-                                                                              );
-                                                                            }
-                                                                          },
-                                                                          child: Container(
-                                                                            padding: const EdgeInsets.all(
-                                                                              8,
-                                                                            ),
-                                                                            decoration: BoxDecoration(
-                                                                              border: Border.all(
-                                                                                color: primaryGreen,
-                                                                              ),
-                                                                              borderRadius: BorderRadius.circular(
-                                                                                4,
-                                                                              ),
-                                                                            ),
-                                                                            child: Text(
-                                                                              _formatTimeOfDay(
-                                                                                times['end']!,
-                                                                              ),
-                                                                              style: TextStyle(
-                                                                                fontSize: 14,
-                                                                                fontWeight: FontWeight.w500,
-                                                                                color: primaryGreen,
-                                                                              ),
-                                                                            ),
-                                                                          ),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ],
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      const SizedBox(height: 8),
-                                                    ],
-                                                  );
-                                                }),
-                                                const SizedBox(height: 16),
-                                                Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: _buildButton(
-                                                        label: "Salvează orar",
-                                                        primaryGreen:
-                                                            primaryGreen,
-                                                        onPressed:
-                                                            _isActionBusy(
-                                                              'save-schedule',
-                                                            )
-                                                            ? null
-                                                            : () {
-                                                                _runGuarded(
-                                                                  'save-schedule',
-                                                                  () async {
-                                                                    final shouldProceed = await _confirmMajorAction(
-                                                                      title:
-                                                                          'Confirmare',
-                                                                      message:
-                                                                          'Esti sigur ca vrei sa salvezi acest orar?',
-                                                                    );
-                                                                    if (!shouldProceed) {
-                                                                      return;
-                                                                    }
-
-                                                                    if (selectedScheduleClassId
-                                                                        .isEmpty) {
-                                                                      _logFailure(
-                                                                        'Selectează mai întâi o clasă pentru orar.',
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        'Selectează mai întâi o clasă pentru orar.',
-                                                                      );
-                                                                      return;
-                                                                    }
-                                                                    final selectedDaysList = selectedDays
-                                                                        .entries
-                                                                        .where(
-                                                                          (
-                                                                            e,
-                                                                          ) => e
-                                                                              .value,
-                                                                        )
-                                                                        .map(
-                                                                          (
-                                                                            e,
-                                                                          ) => e
-                                                                              .key,
-                                                                        )
-                                                                        .toList();
-                                                                    if (selectedDaysList
-                                                                        .isEmpty) {
-                                                                      _logFailure(
-                                                                        'Selectează cel puțin o zi pentru orar.',
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        'Selectează cel puțin o zi pentru orar.',
-                                                                      );
-                                                                      return;
-                                                                    }
-                                                                    final dayMapping = {
-                                                                      'Luni': 1,
-                                                                      'Marți':
-                                                                          2,
-                                                                      'Miercuri':
-                                                                          3,
-                                                                      'Joi': 4,
-                                                                      'Vineri':
-                                                                          5,
-                                                                    };
-                                                                    final schedulePerDay =
-                                                                        <
-                                                                          int,
-                                                                          Map<
-                                                                            String,
-                                                                            String
-                                                                          >
-                                                                        >{};
-                                                                    for (final day
-                                                                        in selectedDaysList) {
-                                                                      final dayNum =
-                                                                          dayMapping[day]!;
-                                                                      final times =
-                                                                          dayTimes[day]!;
-                                                                      schedulePerDay[dayNum] = {
-                                                                        'start':
-                                                                            _formatTimeOfDay(
-                                                                              times['start']!,
-                                                                            ),
-                                                                        'end': _formatTimeOfDay(
-                                                                          times['end']!,
-                                                                        ),
-                                                                      };
-                                                                    }
-                                                                    try {
-                                                                      await api.setClassSchedulePerDay(
-                                                                        classId:
-                                                                            selectedScheduleClassId,
-                                                                        schedulePerDay:
-                                                                            schedulePerDay,
-                                                                      );
-                                                                      _logSuccess(
-                                                                        'Orar salvat pentru clasa $selectedScheduleClassId.',
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        'Orarul a fost salvat.',
-                                                                      );
-                                                                    } catch (
-                                                                      e
-                                                                    ) {
-                                                                      final message =
-                                                                          _friendlyError(
-                                                                            'save-schedule',
-                                                                          );
-                                                                      _logFailure(
-                                                                        message,
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        message,
-                                                                      );
-                                                                    }
-                                                                  },
-                                                                );
-                                                              },
+                                                    ),
+                                                    const SizedBox(height: 16),
+                                                    // Zilele săptămânii
+                                                    Text(
+                                                      "Selectează zilele și orele:",
+                                                      style: TextStyle(
+                                                        color: Colors.grey[700],
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w500,
                                                       ),
                                                     ),
-                                                    const SizedBox(width: 12),
-                                                    Expanded(
-                                                      child: _buildButton(
-                                                        label: "Șterge orar",
-                                                        primaryGreen:
-                                                            Colors.red[600]!,
-                                                        onPressed:
-                                                            _isActionBusy(
-                                                              'delete-schedule',
-                                                            )
-                                                            ? null
-                                                            : () {
-                                                                _runGuarded(
-                                                                  'delete-schedule',
-                                                                  () async {
-                                                                    if (selectedScheduleClassId
-                                                                        .isEmpty) {
-                                                                      _logFailure(
-                                                                        'Selectează mai întâi o clasă pentru a șterge orarul.',
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        'Selectează mai întâi o clasă pentru a șterge orarul.',
-                                                                      );
-                                                                      return;
-                                                                    }
+                                                    const SizedBox(height: 12),
+                                                    // Zilele cu time pickers separate
+                                                    ...weekDays.map((day) {
+                                                      final isSelected =
+                                                          selectedDays[day] ??
+                                                          false;
+                                                      final times =
+                                                          dayTimes[day] ??
+                                                          {
+                                                            'start':
+                                                                const TimeOfDay(
+                                                                  hour: 7,
+                                                                  minute: 30,
+                                                                ),
+                                                            'end':
+                                                                const TimeOfDay(
+                                                                  hour: 13,
+                                                                  minute: 0,
+                                                                ),
+                                                          };
 
-                                                                    final shouldProceed = await _confirmMajorAction(
-                                                                      title:
-                                                                          'Confirmare',
-                                                                      message:
-                                                                          'Esti sigur ca vrei sa stergi orarul pentru clasa $selectedScheduleClassId?',
-                                                                    );
-                                                                    if (!shouldProceed) {
-                                                                      return;
-                                                                    }
+                                                      return Column(
+                                                        children: [
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  12,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color: isSelected
+                                                                  ? primaryGreen
+                                                                        .withValues(
+                                                                          alpha:
+                                                                              0.1,
+                                                                        )
+                                                                  : Colors
+                                                                        .grey[100],
+                                                              border: Border.all(
+                                                                color:
+                                                                    isSelected
+                                                                    ? primaryGreen
+                                                                    : Colors
+                                                                          .grey[200]!,
+                                                              ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    8,
+                                                                  ),
+                                                            ),
+                                                            child: Column(
+                                                              children: [
+                                                                Row(
+                                                                  children: [
+                                                                    Expanded(
+                                                                      child: Text(
+                                                                        day,
+                                                                        style: TextStyle(
+                                                                          fontSize:
+                                                                              16,
+                                                                          fontWeight:
+                                                                              FontWeight.w600,
+                                                                          color:
+                                                                              isSelected
+                                                                              ? primaryGreen
+                                                                              : Colors.grey[600],
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                    Checkbox(
+                                                                      value:
+                                                                          isSelected,
+                                                                      onChanged: (value) {
+                                                                        setState(() {
+                                                                          selectedDays[day] =
+                                                                              value ??
+                                                                              false;
+                                                                        });
+                                                                      },
+                                                                      activeColor:
+                                                                          primaryGreen,
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                                if (isSelected) ...[
+                                                                  const SizedBox(
+                                                                    height: 12,
+                                                                  ),
+                                                                  Row(
+                                                                    children: [
+                                                                      Expanded(
+                                                                        child: Column(
+                                                                          crossAxisAlignment:
+                                                                              CrossAxisAlignment.start,
+                                                                          children: [
+                                                                            Text(
+                                                                              "Ora de inceput:",
+                                                                              style: TextStyle(
+                                                                                fontSize: 12,
+                                                                                color: Colors.grey[600],
+                                                                              ),
+                                                                            ),
+                                                                            const SizedBox(
+                                                                              height: 4,
+                                                                            ),
+                                                                            GestureDetector(
+                                                                              onTap: () async {
+                                                                                final time = await showTimePicker(
+                                                                                  context: context,
+                                                                                  initialTime: times['start']!,
+                                                                                );
+                                                                                if (time !=
+                                                                                    null) {
+                                                                                  setState(
+                                                                                    () {
+                                                                                      dayTimes[day]!['start'] = time;
+                                                                                    },
+                                                                                  );
+                                                                                }
+                                                                              },
+                                                                              child: Container(
+                                                                                padding: const EdgeInsets.all(
+                                                                                  8,
+                                                                                ),
+                                                                                decoration: BoxDecoration(
+                                                                                  border: Border.all(
+                                                                                    color: primaryGreen,
+                                                                                  ),
+                                                                                  borderRadius: BorderRadius.circular(
+                                                                                    4,
+                                                                                  ),
+                                                                                ),
+                                                                                child: Text(
+                                                                                  _formatTimeOfDay(
+                                                                                    times['start']!,
+                                                                                  ),
+                                                                                  style: TextStyle(
+                                                                                    fontSize: 14,
+                                                                                    fontWeight: FontWeight.w500,
+                                                                                    color: primaryGreen,
+                                                                                  ),
+                                                                                ),
+                                                                              ),
+                                                                            ),
+                                                                          ],
+                                                                        ),
+                                                                      ),
+                                                                      const SizedBox(
+                                                                        width:
+                                                                            12,
+                                                                      ),
+                                                                      Expanded(
+                                                                        child: Column(
+                                                                          crossAxisAlignment:
+                                                                              CrossAxisAlignment.start,
+                                                                          children: [
+                                                                            Text(
+                                                                              "Ora de final:",
+                                                                              style: TextStyle(
+                                                                                fontSize: 12,
+                                                                                color: Colors.grey[600],
+                                                                              ),
+                                                                            ),
+                                                                            const SizedBox(
+                                                                              height: 4,
+                                                                            ),
+                                                                            GestureDetector(
+                                                                              onTap: () async {
+                                                                                final time = await showTimePicker(
+                                                                                  context: context,
+                                                                                  initialTime: times['end']!,
+                                                                                );
+                                                                                if (time !=
+                                                                                    null) {
+                                                                                  setState(
+                                                                                    () {
+                                                                                      dayTimes[day]!['end'] = time;
+                                                                                    },
+                                                                                  );
+                                                                                }
+                                                                              },
+                                                                              child: Container(
+                                                                                padding: const EdgeInsets.all(
+                                                                                  8,
+                                                                                ),
+                                                                                decoration: BoxDecoration(
+                                                                                  border: Border.all(
+                                                                                    color: primaryGreen,
+                                                                                  ),
+                                                                                  borderRadius: BorderRadius.circular(
+                                                                                    4,
+                                                                                  ),
+                                                                                ),
+                                                                                child: Text(
+                                                                                  _formatTimeOfDay(
+                                                                                    times['end']!,
+                                                                                  ),
+                                                                                  style: TextStyle(
+                                                                                    fontSize: 14,
+                                                                                    fontWeight: FontWeight.w500,
+                                                                                    color: primaryGreen,
+                                                                                  ),
+                                                                                ),
+                                                                              ),
+                                                                            ),
+                                                                          ],
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ],
+                                                              ],
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 8,
+                                                          ),
+                                                        ],
+                                                      );
+                                                    }),
+                                                    const SizedBox(height: 16),
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          child: _buildButton(
+                                                            label:
+                                                                "Salvează orar",
+                                                            primaryGreen:
+                                                                primaryGreen,
+                                                            onPressed:
+                                                                _isActionBusy(
+                                                                  'save-schedule',
+                                                                )
+                                                                ? null
+                                                                : () {
+                                                                    _runGuarded(
+                                                                      'save-schedule',
+                                                                      () async {
+                                                                        final shouldProceed = await _confirmMajorAction(
+                                                                          title:
+                                                                              'Confirmare',
+                                                                          message:
+                                                                              'Esti sigur ca vrei sa salvezi acest orar?',
+                                                                        );
+                                                                        if (!shouldProceed) {
+                                                                          return;
+                                                                        }
 
-                                                                    try {
-                                                                      final classRef = FirebaseFirestore
-                                                                          .instance
-                                                                          .collection(
-                                                                            'classes',
-                                                                          )
-                                                                          .doc(
-                                                                            selectedScheduleClassId,
+                                                                        if (selectedScheduleClassId
+                                                                            .isEmpty) {
+                                                                          _logFailure(
+                                                                            'Selectează mai întâi o clasă pentru orar.',
                                                                           );
-                                                                      final classSnap =
-                                                                          await classRef
-                                                                              .get();
-                                                                      final classData =
-                                                                          classSnap
-                                                                              .data();
-                                                                      final hasSchedule =
-                                                                          classData !=
-                                                                              null &&
-                                                                          classData.containsKey(
-                                                                            'schedule',
-                                                                          ) &&
-                                                                          (classData['schedule']
-                                                                                      as Map?)
-                                                                                  ?.isNotEmpty ==
-                                                                              true;
+                                                                          _showInfoMessage(
+                                                                            'Selectează mai întâi o clasă pentru orar.',
+                                                                          );
+                                                                          return;
+                                                                        }
+                                                                        final selectedDaysList = selectedDays
+                                                                            .entries
+                                                                            .where(
+                                                                              (
+                                                                                e,
+                                                                              ) => e.value,
+                                                                            )
+                                                                            .map(
+                                                                              (
+                                                                                e,
+                                                                              ) => e.key,
+                                                                            )
+                                                                            .toList();
+                                                                        if (selectedDaysList
+                                                                            .isEmpty) {
+                                                                          _logFailure(
+                                                                            'Selectează cel puțin o zi pentru orar.',
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            'Selectează cel puțin o zi pentru orar.',
+                                                                          );
+                                                                          return;
+                                                                        }
+                                                                        final dayMapping = {
+                                                                          'Luni':
+                                                                              1,
+                                                                          'Marți':
+                                                                              2,
+                                                                          'Miercuri':
+                                                                              3,
+                                                                          'Joi':
+                                                                              4,
+                                                                          'Vineri':
+                                                                              5,
+                                                                        };
+                                                                        final schedulePerDay =
+                                                                            <
+                                                                              int,
+                                                                              Map<
+                                                                                String,
+                                                                                String
+                                                                              >
+                                                                            >{};
+                                                                        for (final day
+                                                                            in selectedDaysList) {
+                                                                          final dayNum =
+                                                                              dayMapping[day]!;
+                                                                          final times =
+                                                                              dayTimes[day]!;
+                                                                          schedulePerDay[dayNum] = {
+                                                                            'start': _formatTimeOfDay(
+                                                                              times['start']!,
+                                                                            ),
+                                                                            'end': _formatTimeOfDay(
+                                                                              times['end']!,
+                                                                            ),
+                                                                          };
+                                                                        }
+                                                                        try {
+                                                                          await api.setClassSchedulePerDay(
+                                                                            classId:
+                                                                                selectedScheduleClassId,
+                                                                            schedulePerDay:
+                                                                                schedulePerDay,
+                                                                          );
+                                                                          _logSuccess(
+                                                                            'Orar salvat pentru clasa $selectedScheduleClassId.',
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            'Orarul a fost salvat.',
+                                                                          );
+                                                                        } catch (
+                                                                          e
+                                                                        ) {
+                                                                          final message = _friendlyError(
+                                                                            'save-schedule',
+                                                                          );
+                                                                          _logFailure(
+                                                                            message,
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            message,
+                                                                          );
+                                                                        }
+                                                                      },
+                                                                    );
+                                                                  },
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 12,
+                                                        ),
+                                                        Expanded(
+                                                          child: _buildButton(
+                                                            label:
+                                                                "Șterge orar",
+                                                            primaryGreen: Colors
+                                                                .red[600]!,
+                                                            onPressed:
+                                                                _isActionBusy(
+                                                                  'delete-schedule',
+                                                                )
+                                                                ? null
+                                                                : () {
+                                                                    _runGuarded(
+                                                                      'delete-schedule',
+                                                                      () async {
+                                                                        if (selectedScheduleClassId
+                                                                            .isEmpty) {
+                                                                          _logFailure(
+                                                                            'Selectează mai întâi o clasă pentru a șterge orarul.',
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            'Selectează mai întâi o clasă pentru a șterge orarul.',
+                                                                          );
+                                                                          return;
+                                                                        }
 
-                                                                      if (!hasSchedule) {
-                                                                        _logFailure(
-                                                                          'Clasa selectată nu are orar salvat.',
+                                                                        final shouldProceed = await _confirmMajorAction(
+                                                                          title:
+                                                                              'Confirmare',
+                                                                          message:
+                                                                              'Esti sigur ca vrei sa stergi orarul pentru clasa $selectedScheduleClassId?',
                                                                         );
-                                                                        _showInfoMessage(
-                                                                          'Clasa selectată nu are orar salvat.',
-                                                                        );
-                                                                        return;
-                                                                      }
+                                                                        if (!shouldProceed) {
+                                                                          return;
+                                                                        }
 
-                                                                      await classRef.update({
-                                                                        'schedule':
-                                                                            FieldValue.delete(),
-                                                                      });
-                                                                      _logSuccess(
-                                                                        'Orar șters pentru clasa $selectedScheduleClassId.',
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        'Orarul a fost șters.',
-                                                                      );
-                                                                    } catch (
-                                                                      e
-                                                                    ) {
-                                                                      final message =
-                                                                          _friendlyError(
+                                                                        try {
+                                                                          final classRef = FirebaseFirestore
+                                                                              .instance
+                                                                              .collection(
+                                                                                'classes',
+                                                                              )
+                                                                              .doc(
+                                                                                selectedScheduleClassId,
+                                                                              );
+                                                                          final classSnap =
+                                                                              await classRef.get();
+                                                                          final classData =
+                                                                              classSnap.data();
+                                                                          final hasSchedule =
+                                                                              classData !=
+                                                                                  null &&
+                                                                              classData.containsKey(
+                                                                                'schedule',
+                                                                              ) &&
+                                                                              (classData['schedule']
+                                                                                          as Map?)
+                                                                                      ?.isNotEmpty ==
+                                                                                  true;
+
+                                                                          if (!hasSchedule) {
+                                                                            _logFailure(
+                                                                              'Clasa selectată nu are orar salvat.',
+                                                                            );
+                                                                            _showInfoMessage(
+                                                                              'Clasa selectată nu are orar salvat.',
+                                                                            );
+                                                                            return;
+                                                                          }
+
+                                                                          await classRef.update({
+                                                                            'schedule':
+                                                                                FieldValue.delete(),
+                                                                          });
+                                                                          _logSuccess(
+                                                                            'Orar șters pentru clasa $selectedScheduleClassId.',
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            'Orarul a fost șters.',
+                                                                          );
+                                                                        } catch (
+                                                                          e
+                                                                        ) {
+                                                                          final message = _friendlyError(
                                                                             'delete-schedule',
                                                                           );
-                                                                      _logFailure(
-                                                                        message,
-                                                                      );
-                                                                      _showInfoMessage(
-                                                                        message,
-                                                                      );
-                                                                    }
+                                                                          _logFailure(
+                                                                            message,
+                                                                          );
+                                                                          _showInfoMessage(
+                                                                            message,
+                                                                          );
+                                                                        }
+                                                                      },
+                                                                    );
                                                                   },
-                                                                );
-                                                              },
-                                                      ),
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
                                                   ],
                                                 ),
-                                              ],
-                                            ),
+                                              ),
+                                            ],
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -3622,6 +3424,29 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildEmbeddedPage(String label) {
+    switch (label) {
+      case 'Clase':
+        return const AdminClassesPage();
+      case 'Elevi':
+        return const AdminStudentsPage();
+      case 'Parinti':
+        return const AdminParentsPage();
+      case 'Profesori':
+        return const AdminTeachersPage();
+      case 'Administratori':
+        return const AdminAdminsPage();
+      case 'Turnichete':
+        return const AdminTurnstilesPage();
+      case 'Orare':
+        return const AdminSchedulesPage();
+      case 'Mesagerie globală':
+        return const SecretariatGlobalMessagesPage();
+      default:
+        return const SizedBox.shrink();
+    }
   }
 
   Widget _buildSidebarItem({
@@ -3826,40 +3651,6 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
           ),
         );
       },
-    );
-  }
-}
-
-class _HeaderBadge extends StatelessWidget {
-  const _HeaderBadge({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18, color: const Color(0xFFE4FFF0)),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

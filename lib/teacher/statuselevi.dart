@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../session.dart';
+import '../core/session.dart';
 
 const _kHeaderGreen = Color(0xFF0E6A22);
 const _kPageBg = Color(0xFFF0F3EC);
@@ -99,9 +99,7 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
                         builder: (context, evSnap) {
                           if (evSnap.hasError) {
                             return Center(
-                              child: Text(
-                                'Eroare evenimente: ${evSnap.error}',
-                              ),
+                              child: Text('Eroare evenimente: ${evSnap.error}'),
                             );
                           }
                           if (!evSnap.hasData) {
@@ -123,12 +121,20 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
                           final sortedStudents = [...students]
                             ..sort((a, b) {
                               final aIn =
-                                  (a.data() as Map<String, dynamic>)['inSchool'] ==
+                                  (a.data()
+                                          as Map<
+                                            String,
+                                            dynamic
+                                          >)['inSchool'] ==
                                       true
                                   ? 0
                                   : 1;
                               final bIn =
-                                  (b.data() as Map<String, dynamic>)['inSchool'] ==
+                                  (b.data()
+                                          as Map<
+                                            String,
+                                            dynamic
+                                          >)['inSchool'] ==
                                       true
                                   ? 0
                                   : 1;
@@ -244,16 +250,8 @@ class _TopHeader extends StatelessWidget {
           children: [
             Container(color: _kHeaderGreen),
             CustomPaint(painter: _HeaderDotsPainter()),
-            Positioned(
-              right: 58,
-              top: -40,
-              child: _decorCircle(110),
-            ),
-            Positioned(
-              left: 175,
-              bottom: -28,
-              child: _decorCircle(72),
-            ),
+            Positioned(right: 58, top: -40, child: _decorCircle(110)),
+            Positioned(left: 175, bottom: -28, child: _decorCircle(72)),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 18, 18, 12),
               child: Row(
@@ -339,9 +337,7 @@ class _StudentListCard extends StatelessWidget {
         ? const Color(0xFFB4EDB8)
         : const Color(0xFFFCE9F3);
     final statusText = inSchool ? 'ÎN INCINTĂ' : 'ÎN AFARA INCINTEI';
-    final pillBg = inSchool
-        ? const Color(0xFFE2EFE6)
-        : const Color(0xFFF1E4EC);
+    final pillBg = inSchool ? const Color(0xFFE2EFE6) : const Color(0xFFF1E4EC);
     final pillBorder = inSchool
         ? const Color(0xFFA6C8B0)
         : const Color(0xFFDCB1C5);

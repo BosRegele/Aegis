@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../session.dart';
+import '../core/session.dart';
 
 const _kHeaderGreen = Color(0xFF0D6F1C);
 const _kPageBg = Color(0xFFF1F5EC);
@@ -51,7 +51,8 @@ _MessageCardData _fromLeaveRequest(Map<String, dynamic> d) {
       sourceLabel = 'Prof. Diriginte';
       break;
     default:
-      title = 'Cerere in asteptare - ${studentName.isEmpty ? 'Elev' : studentName}';
+      title =
+          'Cerere in asteptare - ${studentName.isEmpty ? 'Elev' : studentName}';
       statusLabel = 'SISTEM';
       type = _MessageItemType.system;
       sourceLabel = 'Secretariat';
@@ -370,86 +371,94 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
             ),
             Expanded(
               child: FutureBuilder<DocumentSnapshot>(
-          future: teacherDoc.get(),
-          builder: (context, snap) {
-            if (snap.hasError) {
+                future: teacherDoc.get(),
+                builder: (context, snap) {
+                  if (snap.hasError) {
                     return Center(child: Text('Eroare: ${snap.error}'));
-            }
-            if (!snap.hasData) {
+                  }
+                  if (!snap.hasData) {
                     return const Center(child: CircularProgressIndicator());
-            }
-            if (!snap.data!.exists) {
+                  }
+                  if (!snap.data!.exists) {
                     return const Center(child: Text('Teacher not found'));
-            }
+                  }
 
-            final data = snap.data!.data() as Map<String, dynamic>;
+                  final data = snap.data!.data() as Map<String, dynamic>;
                   final classId = (data['classId'] ?? '').toString().trim();
-            if (classId.isEmpty) {
+                  if (classId.isEmpty) {
                     return const Center(
-                child: Text(
+                      child: Text(
                         'Nu ai clasa asignata.\nCere secretariatului sa-ti seteze classId.',
-                ),
-              );
-            }
-
-            final stream = FirebaseFirestore.instance
-                .collection('leaveRequests')
-                .where('classId', isEqualTo: classId)
-                .snapshots();
-
-            return StreamBuilder<QuerySnapshot>(
-              stream: stream,
-              builder: (context, reqSnap) {
-                if (reqSnap.hasError) {
-                        return Center(child: Text('Eroare: ${reqSnap.error}'));
-                }
-                if (!reqSnap.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                }
-
-                final docs = reqSnap.data!.docs;
-
-                    final items = docs
-                        .map((doc) => _fromLeaveRequest(doc.data() as Map<String, dynamic>))
-                        .toList()
-                      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-                    items.add(
-                      _MessageCardData(
-                        statusLabel: 'SISTEM',
-                        title: 'Update Vacanță',
-                        dateText: '',
-                        timeText: '',
-                        message:
-                            'Vă informăm că perioada vacanței de iarnă a fost modificată pentru a include zilele de 22 și 23 decembrie. Programul actualizat este disponibil în secțiunea Vacanțe.',
-                        relativeTime: 'IERI',
-                        sourceLabel: 'Secretariat',
-                        type: _MessageItemType.system,
-                        createdAt: DateTime.fromMillisecondsSinceEpoch(0),
                       ),
                     );
+                  }
 
-                    return Stack(
-                      children: [
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: CustomPaint(painter: _TopDotsPainter()),
+                  final stream = FirebaseFirestore.instance
+                      .collection('leaveRequests')
+                      .where('classId', isEqualTo: classId)
+                      .snapshots();
+
+                  return StreamBuilder<QuerySnapshot>(
+                    stream: stream,
+                    builder: (context, reqSnap) {
+                      if (reqSnap.hasError) {
+                        return Center(child: Text('Eroare: ${reqSnap.error}'));
+                      }
+                      if (!reqSnap.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      final docs = reqSnap.data!.docs;
+
+                      final items =
+                          docs
+                              .map(
+                                (doc) => _fromLeaveRequest(
+                                  doc.data() as Map<String, dynamic>,
+                                ),
+                              )
+                              .toList()
+                            ..sort(
+                              (a, b) => b.createdAt.compareTo(a.createdAt),
+                            );
+
+                      items.add(
+                        _MessageCardData(
+                          statusLabel: 'SISTEM',
+                          title: 'Update Vacanță',
+                          dateText: '',
+                          timeText: '',
+                          message:
+                              'Vă informăm că perioada vacanței de iarnă a fost modificată pentru a include zilele de 22 și 23 decembrie. Programul actualizat este disponibil în secțiunea Vacanțe.',
+                          relativeTime: 'IERI',
+                          sourceLabel: 'Secretariat',
+                          type: _MessageItemType.system,
+                          createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+                        ),
+                      );
+
+                      return Stack(
+                        children: [
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: CustomPaint(painter: _TopDotsPainter()),
+                            ),
                           ),
-                        ),
-                        ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
-                          itemBuilder: (context, index) {
-                            final message = items[index];
-                            return _MessageCard(data: message, onTap: () {});
-                          },
-                          separatorBuilder: (_, __) => const SizedBox(height: 14),
-                          itemCount: items.length,
-                        ),
-                      ],
-                    );
-              },
-            );
-          },
+                          ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
+                            itemBuilder: (context, index) {
+                              final message = items[index];
+                              return _MessageCard(data: message, onTap: () {});
+                            },
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 14),
+                            itemCount: items.length,
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],
@@ -477,16 +486,8 @@ class _TopHeader extends StatelessWidget {
           children: [
             Container(color: _kHeaderGreen),
             CustomPaint(painter: _HeaderDotsPainter()),
-            Positioned(
-              right: 74,
-              top: -44,
-              child: _decorCircle(126),
-            ),
-            Positioned(
-              left: 178,
-              bottom: -36,
-              child: _decorCircle(82),
-            ),
+            Positioned(right: 74, top: -44, child: _decorCircle(126)),
+            Positioned(left: 178, bottom: -36, child: _decorCircle(82)),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 22, 18, 0),
               child: Row(

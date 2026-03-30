@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../session.dart';
+import '../core/session.dart';
 import 'orardir.dart';
 import 'cereriasteptare.dart';
 import 'statuselevi.dart';
@@ -287,30 +287,36 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         for (final doc in pendingDocs.take(1)) {
           final d = doc.data() as Map<String, dynamic>;
           final classId = (d['classId'] ?? '').toString();
-          items.add(_ActivityData(
-            icon: Icons.warning_amber_rounded,
-            iconColor: const Color(0xFFF5A623),
-            title: 'Cerere în așteptare - $classId',
-            time: 'ACUM',
-          ));
+          items.add(
+            _ActivityData(
+              icon: Icons.warning_amber_rounded,
+              iconColor: const Color(0xFFF5A623),
+              title: 'Cerere în așteptare - $classId',
+              time: 'ACUM',
+            ),
+          );
         }
 
-        items.add(const _ActivityData(
-          icon: Icons.campaign_rounded,
-          iconColor: _kGreen,
-          title: 'Anunț școlar nou',
-          time: 'ASTĂZI',
-        ));
+        items.add(
+          const _ActivityData(
+            icon: Icons.campaign_rounded,
+            iconColor: _kGreen,
+            title: 'Anunț școlar nou',
+            time: 'ASTĂZI',
+          ),
+        );
 
         if (pendingDocs.length > 1) {
           final d = pendingDocs[1].data() as Map<String, dynamic>;
           final studentName = (d['studentName'] ?? '').toString();
-          items.add(_ActivityData(
-            icon: Icons.cancel_rounded,
-            iconColor: _kGreen,
-            title: 'Cerere respinsă - $studentName',
-            time: 'ASTĂZI',
-          ));
+          items.add(
+            _ActivityData(
+              icon: Icons.cancel_rounded,
+              iconColor: _kGreen,
+              title: 'Cerere respinsă - $studentName',
+              time: 'ASTĂZI',
+            ),
+          );
         }
 
         return Container(
@@ -589,10 +595,7 @@ class _GridCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: TextStyle(
-                color: subtitleColor,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: subtitleColor, fontSize: 13),
             ),
           ],
         ),
