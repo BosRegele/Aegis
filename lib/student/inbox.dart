@@ -88,33 +88,37 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 
   String _formatRequestDate(DateTime? date) {
-    if (date == null) {
-      return '--';
-    }
+    if (date == null) return '--';
     const months = <String>[
-      'Ian',
-      'Feb',
-      'Mar',
-      'Apr',
+      'Ianuarie',
+      'Februarie',
+      'Martie',
+      'Aprilie',
       'Mai',
-      'Iun',
-      'Iul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Noi',
-      'Dec',
+      'Iunie',
+      'Iulie',
+      'August',
+      'Septembrie',
+      'Octombrie',
+      'Noiembrie',
+      'Decembrie',
     ];
     return '${date.day} ${months[date.month - 1]}';
   }
 
+  String _formatRequestTitle(DateTime? date) {
+    if (date == null) return 'Cerere învoire';
+    final dateStr = _formatRequestDate(date);
+    final hh = date.hour.toString().padLeft(2, '0');
+    final mm = date.minute.toString().padLeft(2, '0');
+    return 'Cerere învoire - $dateStr, $hh:$mm';
+  }
+
   String _formatSentLabel(DateTime? sentAt) {
-    if (sentAt == null) {
-      return '--\n--:--';
-    }
+    if (sentAt == null) return '--:--';
     final hour = sentAt.hour.toString().padLeft(2, '0');
     final minute = sentAt.minute.toString().padLeft(2, '0');
-    return '${_formatRequestDate(sentAt)}\n$hour:$minute';
+    return '$hour:$minute';
   }
 
   _InboxCardData _toInboxCardData(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -127,7 +131,7 @@ class _InboxScreenState extends State<InboxScreen> {
     switch (status) {
       case 'approved':
         return _InboxCardData(
-          title: 'Cerere Învoire - ${_formatRequestDate(requestedForDate)}',
+          title: _formatRequestTitle(requestedForDate),
           topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty ? 'Cererea a fost aprobată.' : message,
           leadingIcon: Icons.description_rounded,
@@ -141,7 +145,7 @@ class _InboxScreenState extends State<InboxScreen> {
         );
       case 'rejected':
         return _InboxCardData(
-          title: 'Cerere Învoire - ${_formatRequestDate(requestedForDate)}',
+          title: _formatRequestTitle(requestedForDate),
           topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty ? 'Cererea a fost respinsă.' : message,
           leadingIcon: Icons.description_rounded,
@@ -155,7 +159,7 @@ class _InboxScreenState extends State<InboxScreen> {
         );
       case 'expired':
         return _InboxCardData(
-          title: 'Cerere Învoire - ${_formatRequestDate(requestedForDate)}',
+          title: _formatRequestTitle(requestedForDate),
           topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty ? 'Cererea a expirat automat.' : message,
           leadingIcon: Icons.history_toggle_off_rounded,
@@ -169,7 +173,7 @@ class _InboxScreenState extends State<InboxScreen> {
         );
       default:
         return _InboxCardData(
-          title: 'Cerere Învoire - ${_formatRequestDate(requestedForDate)}',
+          title: _formatRequestTitle(requestedForDate),
           topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty
               ? 'Cererea este în așteptarea aprobării.'
@@ -178,7 +182,7 @@ class _InboxScreenState extends State<InboxScreen> {
           leadingBackground: const Color(0xFFE6EBDE),
           leadingForeground: const Color(0xFF707B69),
           statusIcon: Icons.watch_later_rounded,
-          statusLabel: 'În analiză',
+          statusLabel: 'În așteptare',
           statusBackground: const Color(0xFFE8ECD9),
           statusForeground: const Color(0xFF404A3A),
           sortAt: requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
@@ -276,7 +280,9 @@ class _InboxScreenState extends State<InboxScreen> {
                 : 18.0;
 
             return ListView(
-              physics: const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
               padding: EdgeInsets.fromLTRB(
                 horizontalPadding,
                 18,
@@ -303,10 +309,9 @@ class _InboxScreenState extends State<InboxScreen> {
                   ),
                 for (final item in items) ...[
                   _InboxRequestTile(data: item),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 12),
                 ],
-                const SizedBox(height: 14),
-                _CreateRequestButton(onTap: () => _openCereri(context)),
+                const SizedBox(height: 4),
               ],
             );
           },
@@ -400,95 +405,109 @@ class _InboxRequestTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final compact = width < 390;
-    final iconBoxSize = compact ? 64.0 : 72.0;
-    final titleSize = compact ? 20.0 : 24.0;
-    final bodySize = compact ? 16.0 : 18.0;
-    final topLabelSize = compact ? 12.0 : 14.0;
-
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        compact ? 16 : 18,
-        compact ? 16 : 18,
-        compact ? 16 : 18,
-        compact ? 16 : 18,
-      ),
       decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(26),
+        color: const Color(0xFF7A8374), // A slightly darker, 3D looking color
+        borderRadius: BorderRadius.circular(16),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x140D631B),
-            blurRadius: 24,
-            offset: Offset(0, 10),
+            color: Color(0x1A000000),
+            blurRadius: 10,
+            offset: Offset(0, 6),
           ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: iconBoxSize,
-            height: iconBoxSize,
-            decoration: BoxDecoration(
-              color: data.leadingBackground,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              data.leadingIcon,
-              color: data.leadingForeground,
-              size: compact ? 34 : 38,
-            ),
-          ),
-          SizedBox(width: compact ? 14 : 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      // Creating the 3D volume (thickness) by exposing the left and slightly bottom edge
+      padding: const EdgeInsets.only(left: 4, bottom: 1),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        data.title,
-                        style: TextStyle(
-                          color: _textDark,
-                          fontSize: titleSize,
-                          fontWeight: FontWeight.w800,
-                          height: 1.12,
+                Expanded(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.white, _card],
+                      ),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Cerere învoire',
+                                    style: TextStyle(
+                                      color: _textDark,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: -0.3,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    data.title.contains(' - ')
+                                        ? data.title.split(' - ').last
+                                        : data.title,
+                                    style: const TextStyle(
+                                      color: _textMuted,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              data.topLabel,
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                color: _textMuted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Text(
+                          data.message,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _textMuted,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            height: 1.45,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _StatusBadge(data: data),
+                      ],
                     ),
-                    SizedBox(width: compact ? 8 : 10),
-                    Text(
-                      data.topLabel,
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        color: _textMuted,
-                        fontSize: topLabelSize,
-                        fontWeight: FontWeight.w700,
-                        height: 1.22,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: compact ? 8 : 10),
-                Text(
-                  data.message,
-                  style: TextStyle(
-                    color: Color(0xFF3A4037),
-                    fontSize: bodySize,
-                    fontWeight: FontWeight.w500,
-                    height: 1.45,
                   ),
                 ),
-                SizedBox(height: compact ? 16 : 18),
-                _StatusBadge(data: data),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -501,13 +520,8 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
-
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 14 : 16,
-        vertical: compact ? 9 : 10,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: data.statusBackground,
         borderRadius: BorderRadius.circular(999),
@@ -515,17 +529,13 @@ class _StatusBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            data.statusIcon,
-            color: data.statusForeground,
-            size: compact ? 20 : 22,
-          ),
-          SizedBox(width: compact ? 8 : 10),
+          Icon(data.statusIcon, color: data.statusForeground, size: 15),
+          const SizedBox(width: 6),
           Text(
             data.statusLabel,
             style: TextStyle(
               color: data.statusForeground,
-              fontSize: compact ? 15 : 16,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
           ),
