@@ -355,23 +355,6 @@ class _TopHeader extends StatelessWidget {
   }
 }
 
-class _HeaderDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.15);
-    const spacing = 18.0;
-    const radius = 1.3;
-    for (double y = 12; y < size.height; y += spacing) {
-      for (double x = 16; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), radius, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 class _StudentListCard extends StatelessWidget {
   final String initials;
   final String name;

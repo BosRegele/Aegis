@@ -307,22 +307,6 @@ class _OrarTopHeader extends StatelessWidget {
   );
 }
 
-class _OrarDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.14);
-    const spacing = 18.0;
-    for (double y = 14; y < size.height; y += spacing) {
-      for (double x = 16; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), 1.3, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 // --- R�nd zi ------------------------------------------------------------------
 
 class _OrarRow extends StatelessWidget {

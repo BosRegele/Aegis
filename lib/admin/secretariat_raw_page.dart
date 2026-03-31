@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../session.dart';
+import '../core/session.dart';
 import 'admin_api.dart';
 import 'admin_classes_page.dart';
 import 'admin_notifications.dart';
@@ -1616,8 +1616,8 @@ class _TopBar extends StatelessWidget {
                             itemBuilder: (context, index) {
                               final item = items[index];
                               final subtitle = item.classId.isEmpty
-                                  ? '${item.username} • ${item.role}'
-                                  : '${item.username} • ${item.role} • ${item.classId}';
+                                  ? '${item.username} â€¢ ${item.role}'
+                                  : '${item.username} â€¢ ${item.role} â€¢ ${item.classId}';
                               return InkWell(
                                 onTap: () => onSelected(item),
                                 child: Padding(

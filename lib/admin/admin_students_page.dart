@@ -8,7 +8,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../session.dart';
+import '../core/session.dart';
 import 'admin_api.dart';
 import 'admin_classes_page.dart';
 import 'admin_notifications.dart';
@@ -17,9 +17,9 @@ import 'admin_teachers_page.dart';
 import 'admin_turnstiles_page.dart';
 import 'admin_vacante.dart' as admin_vacante;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  AdminStudentsPage
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class AdminStudentsPage extends StatefulWidget {
   const AdminStudentsPage({super.key});
@@ -46,7 +46,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     super.dispose();
   }
 
-  // ── Navigation ──────────────────────────────────────────────────────────────
+  // â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _replacePage(Widget page) async {
     if (_sidebarBusy || !mounted) return;
@@ -88,7 +88,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     );
   }
 
-  // ── Create-account helpers (identical to SecretariatRawPage) ────────────────
+  // â”€â”€ Create-account helpers (identical to SecretariatRawPage) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   String _baseFromFullName(String fullName) {
     final parts = fullName
@@ -175,10 +175,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
         final newPassword = _randPassword(10);
 
         try {
-          await _api.resetPassword(
-            username: userId,
-            newPassword: newPassword,
-          );
+          await _api.resetPassword(username: userId, newPassword: newPassword);
 
           resetOk++;
           exported.add({
@@ -227,7 +224,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       await FileSaver.instance.saveFile(
         name: 'student_report_$stamp',
         bytes: Uint8List.fromList(bytes),
-        fileExtension: 'xlsx',
+        ext: 'xlsx',
         mimeType: MimeType.microsoftExcel,
       );
 
@@ -241,9 +238,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Eroare la export: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Eroare la export: $e')));
     }
   }
 
@@ -458,7 +455,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     passwordC.dispose();
   }
 
-  // ── Grade extraction ────────────────────────────────────────────────────────
+  // â”€â”€ Grade extraction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   int? _extractGrade(String classId) {
     final m = RegExp(r'^(\d+)').firstMatch(classId);
@@ -467,7 +464,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     return (n != null && n >= 5 && n <= 12) ? n : null;
   }
 
-  // ── Student status ──────────────────────────────────────────────────────────
+  // â”€â”€ Student status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   String _studentStatus(bool inSchool, bool scannedEntryToday) {
     if (inSchool) return 'active';
@@ -475,7 +472,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     return 'absent';
   }
 
-  // ── Build ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Build â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @override
   Widget build(BuildContext context) {
@@ -497,7 +494,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
             borderRadius: BorderRadius.circular(6),
             child: Row(
               children: [
-                // ── Sidebar ──────────────────────────────────────────────────────────
+                // â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 _StudentsSidebar(
                   selected: 'students',
                   onMenuTap: () {
@@ -509,13 +506,13 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                   onTurnichetiTap: () =>
                       _replacePage(const AdminTurnstilesPage()),
                   onClaseTap: () => _replacePage(const AdminClassesPage()),
-                    onVacanteTap: () =>
+                  onVacanteTap: () =>
                       _replacePage(const admin_vacante.AdminClassesPage()),
                   onParintiTap: () => _replacePage(const AdminParentsPage()),
                   onLogoutTap: _showLogoutDialog,
                 ),
 
-                // ── Content ──────────────────────────────────────────────────────────
+                // â”€â”€ Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 Expanded(
                   child: Container(
                     color: const Color(0xFFF0F3EC),
@@ -531,196 +528,211 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                         ),
                         Expanded(
                           child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('users')
-                          .where('role', isEqualTo: 'student')
-                          .snapshots(),
-                      builder: (context, studSnap) {
-                        return StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('accessEvents')
-                              .where(
-                                'timestamp',
-                                isGreaterThanOrEqualTo: Timestamp.fromDate(
-                                  todayStart,
-                                ),
-                              )
-                              .snapshots(),
-                          builder: (context, evSnap) {
-                            final allStudents =
-                                List<QueryDocumentSnapshot>.from(
-                                  studSnap.data?.docs ?? [],
-                                );
-                            final todayEvents = evSnap.data?.docs ?? [];
+                            stream: FirebaseFirestore.instance
+                                .collection('users')
+                                .where('role', isEqualTo: 'student')
+                                .snapshots(),
+                            builder: (context, studSnap) {
+                              return StreamBuilder<QuerySnapshot>(
+                                stream: FirebaseFirestore.instance
+                                    .collection('accessEvents')
+                                    .where(
+                                      'timestamp',
+                                      isGreaterThanOrEqualTo:
+                                          Timestamp.fromDate(todayStart),
+                                    )
+                                    .snapshots(),
+                                builder: (context, evSnap) {
+                                  final allStudents =
+                                      List<QueryDocumentSnapshot>.from(
+                                        studSnap.data?.docs ?? [],
+                                      );
+                                  final todayEvents = evSnap.data?.docs ?? [];
 
-                            // Construieste setul de userId-uri care au scanat intrarea azi
-                            final entryTodaySet = <String>{};
-                            for (final ev in todayEvents) {
-                              final d = ev.data() as Map<String, dynamic>;
-                              final type = (d['type'] ?? d['scanType'] ?? '')
-                                  .toString()
-                                  .toLowerCase();
-                              if (type == 'entry') {
-                                final uid = (d['userId'] ?? '').toString();
-                                if (uid.isNotEmpty) entryTodaySet.add(uid);
-                              }
-                            }
+                                  // Construieste setul de userId-uri care au scanat intrarea azi
+                                  final entryTodaySet = <String>{};
+                                  for (final ev in todayEvents) {
+                                    final d = ev.data() as Map<String, dynamic>;
+                                    final type =
+                                        (d['type'] ?? d['scanType'] ?? '')
+                                            .toString()
+                                            .toLowerCase();
+                                    if (type == 'entry') {
+                                      final uid = (d['userId'] ?? '')
+                                          .toString();
+                                      if (uid.isNotEmpty)
+                                        entryTodaySet.add(uid);
+                                    }
+                                  }
 
-                            // Statistici campus
-                            final totalRegistered = allStudents.length;
-                            int presentToday = 0;
-                            int onLeaveCount = 0;
-                            for (final s in allStudents) {
-                              final d = s.data() as Map<String, dynamic>;
-                              final inSchool = d['inSchool'] as bool? ?? false;
-                              if (inSchool) {
-                                presentToday++;
-                              } else if (entryTodaySet.contains(s.id)) {
-                                onLeaveCount++;
-                              }
-                            }
+                                  // Statistici campus
+                                  final totalRegistered = allStudents.length;
+                                  int presentToday = 0;
+                                  int onLeaveCount = 0;
+                                  for (final s in allStudents) {
+                                    final d = s.data() as Map<String, dynamic>;
+                                    final inSchool =
+                                        d['inSchool'] as bool? ?? false;
+                                    if (inSchool) {
+                                      presentToday++;
+                                    } else if (entryTodaySet.contains(s.id)) {
+                                      onLeaveCount++;
+                                    }
+                                  }
 
-                            // Available grades (5-12 only)
-                            final gradeSet = <int>{};
-                            for (final s in allStudents) {
-                              final classId =
-                                  ((s.data()
-                                              as Map<
-                                                String,
-                                                dynamic
-                                              >)['classId'] ??
-                                          '')
-                                      .toString();
-                              final g = _extractGrade(classId);
-                              if (g != null) gradeSet.add(g);
-                            }
-                            final availableGrades = gradeSet.toList()..sort();
+                                  // Available grades (5-12 only)
+                                  final gradeSet = <int>{};
+                                  for (final s in allStudents) {
+                                    final classId =
+                                        ((s.data()
+                                                    as Map<
+                                                      String,
+                                                      dynamic
+                                                    >)['classId'] ??
+                                                '')
+                                            .toString();
+                                    final g = _extractGrade(classId);
+                                    if (g != null) gradeSet.add(g);
+                                  }
+                                  final availableGrades = gradeSet.toList()
+                                    ..sort();
 
-                            // Filter (grade + status + search)
-                            final filtered = allStudents.where((s) {
-                              final d = s.data() as Map<String, dynamic>;
-                              // Grade filter
-                              if (_filterGrade != null) {
-                                final classId = (d['classId'] ?? '').toString();
-                                if (_extractGrade(classId) != _filterGrade) {
-                                  return false;
-                                }
-                              }
-                              // Status filter
-                              if (_filterStatus != 'all') {
-                                final inSchool =
-                                    d['inSchool'] as bool? ?? false;
-                                final st = _studentStatus(
-                                  inSchool,
-                                  entryTodaySet.contains(s.id),
-                                );
-                                if (st != _filterStatus) return false;
-                              }
-                              // Text search
-                              if (_searchQuery.isNotEmpty) {
-                                final name = (d['fullName'] ?? '')
-                                    .toString()
-                                    .toLowerCase();
-                                final username = (d['username'] ?? s.id)
-                                    .toString()
-                                    .toLowerCase();
-                                final classId = (d['classId'] ?? '')
-                                    .toString()
-                                    .toLowerCase();
-                                final parentIds = List<String>.from(
-                                  d['parents'] ?? [],
-                                );
-                                final parentEmails = parentIds
-                                    .map((id) =>
-                                        '$id@school.local'.toLowerCase())
-                                    .join(' ');
-                                // status label search
-                                final inSchool =
-                                    d['inSchool'] as bool? ?? false;
-                                final statusLabel = _studentStatus(
-                                  inSchool,
-                                  entryTodaySet.contains(s.id),
-                                ).toLowerCase();
-                                if (!name.contains(_searchQuery) &&
-                                    !username.contains(_searchQuery) &&
-                                    !classId.contains(_searchQuery) &&
-                                    !parentEmails.contains(_searchQuery) &&
-                                    !statusLabel.contains(_searchQuery)) {
-                                  return false;
-                                }
-                              }
-                              return true;
-                            }).toList();
+                                  // Filter (grade + status + search)
+                                  final filtered = allStudents.where((s) {
+                                    final d = s.data() as Map<String, dynamic>;
+                                    // Grade filter
+                                    if (_filterGrade != null) {
+                                      final classId = (d['classId'] ?? '')
+                                          .toString();
+                                      if (_extractGrade(classId) !=
+                                          _filterGrade) {
+                                        return false;
+                                      }
+                                    }
+                                    // Status filter
+                                    if (_filterStatus != 'all') {
+                                      final inSchool =
+                                          d['inSchool'] as bool? ?? false;
+                                      final st = _studentStatus(
+                                        inSchool,
+                                        entryTodaySet.contains(s.id),
+                                      );
+                                      if (st != _filterStatus) return false;
+                                    }
+                                    // Text search
+                                    if (_searchQuery.isNotEmpty) {
+                                      final name = (d['fullName'] ?? '')
+                                          .toString()
+                                          .toLowerCase();
+                                      final username = (d['username'] ?? s.id)
+                                          .toString()
+                                          .toLowerCase();
+                                      final classId = (d['classId'] ?? '')
+                                          .toString()
+                                          .toLowerCase();
+                                      final parentIds = List<String>.from(
+                                        d['parents'] ?? [],
+                                      );
+                                      final parentEmails = parentIds
+                                          .map(
+                                            (id) => '$id@school.local'
+                                                .toLowerCase(),
+                                          )
+                                          .join(' ');
+                                      // status label search
+                                      final inSchool =
+                                          d['inSchool'] as bool? ?? false;
+                                      final statusLabel = _studentStatus(
+                                        inSchool,
+                                        entryTodaySet.contains(s.id),
+                                      ).toLowerCase();
+                                      if (!name.contains(_searchQuery) &&
+                                          !username.contains(_searchQuery) &&
+                                          !classId.contains(_searchQuery) &&
+                                          !parentEmails.contains(
+                                            _searchQuery,
+                                          ) &&
+                                          !statusLabel.contains(_searchQuery)) {
+                                        return false;
+                                      }
+                                    }
+                                    return true;
+                                  }).toList();
 
-                            // Sort by full name
-                            filtered.sort((a, b) {
-                              final an = ((a.data() as Map)['fullName'] ?? '')
-                                  .toString()
-                                  .toLowerCase();
-                              final bn = ((b.data() as Map)['fullName'] ?? '')
-                                  .toString()
-                                  .toLowerCase();
-                              return an.compareTo(bn);
-                            });
+                                  // Sort by full name
+                                  filtered.sort((a, b) {
+                                    final an =
+                                        ((a.data() as Map)['fullName'] ?? '')
+                                            .toString()
+                                            .toLowerCase();
+                                    final bn =
+                                        ((b.data() as Map)['fullName'] ?? '')
+                                            .toString()
+                                            .toLowerCase();
+                                    return an.compareTo(bn);
+                                  });
 
-                            // Paginate (5 per page)
-                            final totalFiltered = filtered.length;
-                            final maxPage = (totalFiltered / _pageSize).ceil();
-                            final safePage = maxPage == 0
-                                ? 0
-                                : _page.clamp(0, maxPage - 1);
-                            final pageStart = safePage * _pageSize;
-                            final pageEnd = (pageStart + _pageSize).clamp(
-                              0,
-                              totalFiltered,
-                            );
-                            final pageStudents = filtered.sublist(
-                              pageStart,
-                              pageEnd,
-                            );
+                                  // Paginate (5 per page)
+                                  final totalFiltered = filtered.length;
+                                  final maxPage = (totalFiltered / _pageSize)
+                                      .ceil();
+                                  final safePage = maxPage == 0
+                                      ? 0
+                                      : _page.clamp(0, maxPage - 1);
+                                  final pageStart = safePage * _pageSize;
+                                  final pageEnd = (pageStart + _pageSize).clamp(
+                                    0,
+                                    totalFiltered,
+                                  );
+                                  final pageStudents = filtered.sublist(
+                                    pageStart,
+                                    pageEnd,
+                                  );
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _PageHeader(
-                                  onAddTap: _showCreateAccountDialog,
-                                  onExportTap: _exportStudentsReport,
-                                ),
-                                _FilterStatsRow(
-                                  availableGrades: availableGrades,
-                                  selectedGrade: _filterGrade,
-                                  selectedStatus: _filterStatus,
-                                  totalRegistered: totalRegistered,
-                                  presentToday: presentToday,
-                                  onLeaveCount: onLeaveCount,
-                                  onGradeChanged: (v) => setState(() {
-                                    _filterGrade = v;
-                                    _page = 0;
-                                  }),
-                                  onStatusChanged: (v) => setState(() {
-                                    _filterStatus = v ?? 'all';
-                                    _page = 0;
-                                  }),
-                                ),
-                                Expanded(
-                                  child: _StudentsTablePanel(
-                                    students: pageStudents,
-                                    entryTodaySet: entryTodaySet,
-                                    studentStatus: _studentStatus,
-                                    pageStart: pageStart,
-                                    pageEnd: pageEnd,
-                                    totalFiltered: totalFiltered,
-                                    totalAll: totalRegistered,
-                                    safePage: safePage,
-                                    maxPage: maxPage,
-                                    onPageTap: (p) => setState(() => _page = p),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _PageHeader(
+                                        onAddTap: _showCreateAccountDialog,
+                                        onExportTap: _exportStudentsReport,
+                                      ),
+                                      _FilterStatsRow(
+                                        availableGrades: availableGrades,
+                                        selectedGrade: _filterGrade,
+                                        selectedStatus: _filterStatus,
+                                        totalRegistered: totalRegistered,
+                                        presentToday: presentToday,
+                                        onLeaveCount: onLeaveCount,
+                                        onGradeChanged: (v) => setState(() {
+                                          _filterGrade = v;
+                                          _page = 0;
+                                        }),
+                                        onStatusChanged: (v) => setState(() {
+                                          _filterStatus = v ?? 'all';
+                                          _page = 0;
+                                        }),
+                                      ),
+                                      Expanded(
+                                        child: _StudentsTablePanel(
+                                          students: pageStudents,
+                                          entryTodaySet: entryTodaySet,
+                                          studentStatus: _studentStatus,
+                                          pageStart: pageStart,
+                                          pageEnd: pageEnd,
+                                          totalFiltered: totalFiltered,
+                                          totalAll: totalRegistered,
+                                          safePage: safePage,
+                                          maxPage: maxPage,
+                                          onPageTap: (p) =>
+                                              setState(() => _page = p),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
                           ),
                         ),
                       ],
@@ -783,7 +795,11 @@ class _StudentsTopBar extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
                     children: [
-                      const Icon(Icons.search, color: Color(0xFF9FDCAD), size: 18),
+                      const Icon(
+                        Icons.search,
+                        color: Color(0xFF9FDCAD),
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: TextField(
@@ -797,7 +813,8 @@ class _StudentsTopBar extends StatelessWidget {
                           decoration: const InputDecoration(
                             border: InputBorder.none,
                             isCollapsed: true,
-                            hintText: 'Cauta dupa nume, ID, clasa, email parinte sau status...',
+                            hintText:
+                                'Cauta dupa nume, ID, clasa, email parinte sau status...',
                             hintStyle: TextStyle(
                               color: Color(0xFF9FDCAD),
                               fontSize: 14,
@@ -821,9 +838,9 @@ class _StudentsTopBar extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _StudentsSidebar
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _StudentsSidebar extends StatelessWidget {
   final String selected;
@@ -1004,9 +1021,9 @@ class _StudentsSidebar extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _SidebarTile
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _SidebarTile extends StatelessWidget {
   final String label;
@@ -1059,18 +1076,15 @@ class _SidebarTile extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _PageHeader
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _PageHeader extends StatelessWidget {
   final VoidCallback onAddTap;
   final VoidCallback onExportTap;
 
-  const _PageHeader({
-    required this.onAddTap,
-    required this.onExportTap,
-  });
+  const _PageHeader({required this.onAddTap, required this.onExportTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1149,9 +1163,9 @@ class _PageHeader extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _FilterStatsRow
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _FilterStatsRow extends StatelessWidget {
   final List<int> availableGrades;
@@ -1180,101 +1194,122 @@ class _FilterStatsRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(32, 0, 32, 16),
       child: IntrinsicHeight(
         child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // AN CLASA
-          SizedBox(
-            width: 180,
-            child: _FilterCard(
-              label: 'AN CLASA',
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<int?>(
-                  value: selectedGrade,
-                  isExpanded: true,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A2F1E),
-                  ),
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: Color(0xFF4A6E52),
-                  ),
-                  items: [
-                    const DropdownMenuItem<int?>(
-                      value: null,
-                      child: Text('Toate clasele'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // AN CLASA
+            SizedBox(
+              width: 180,
+              child: _FilterCard(
+                label: 'AN CLASA',
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int?>(
+                    value: selectedGrade,
+                    isExpanded: true,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A2F1E),
                     ),
-                    for (final g in availableGrades)
-                      DropdownMenuItem<int?>(value: g, child: Text('Clasa $g')),
-                  ],
-                  onChanged: onGradeChanged,
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Color(0xFF4A6E52),
+                    ),
+                    items: [
+                      const DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('Toate clasele'),
+                      ),
+                      for (final g in availableGrades)
+                        DropdownMenuItem<int?>(
+                          value: g,
+                          child: Text('Clasa $g'),
+                        ),
+                    ],
+                    onChanged: onGradeChanged,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
+            const SizedBox(width: 10),
 
-          // STATUS INSCRIERE
-          SizedBox(
-            width: 220,
-            child: _FilterCard(
-              label: 'STATUS INSCRIERE',
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: selectedStatus,
-                  isExpanded: true,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A2F1E),
+            // STATUS INSCRIERE
+            SizedBox(
+              width: 220,
+              child: _FilterCard(
+                label: 'STATUS INSCRIERE',
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedStatus,
+                    isExpanded: true,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A2F1E),
+                    ),
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: Color(0xFF4A6E52),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'all',
+                        child: Text('Toti elevii'),
+                      ),
+                      DropdownMenuItem(value: 'active', child: Text('Activi')),
+                      DropdownMenuItem(value: 'absent', child: Text('Absenti')),
+                      DropdownMenuItem(
+                        value: 'inactive',
+                        child: Text('Invoiti'),
+                      ),
+                    ],
+                    onChanged: onStatusChanged,
                   ),
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: Color(0xFF4A6E52),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'all', child: Text('Toti elevii')),
-                    DropdownMenuItem(value: 'active', child: Text('Activi')),
-                    DropdownMenuItem(value: 'absent', child: Text('Absenti')),
-                    DropdownMenuItem(value: 'inactive', child: Text('Invoiti')),
-                  ],
-                  onChanged: onStatusChanged,
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
+            const SizedBox(width: 10),
 
-          // STATISTICI CAMPUS
-          Expanded(
-            child: _FilterCard(
-              label: 'STATISTICI CAMPUS',
-              centerContent: true,
-              backgroundColor: const Color(0xFFF0F9F1),
-              child: Row(
-                children: [
-                  Expanded(child: _StatItem(value: totalRegistered, label: 'TOTAL INREGISTRATI')),
-                  Expanded(child: _StatItem(value: presentToday, label: 'PREZENTI AZI')),
-                  Expanded(child: _StatItem(value: onLeaveCount, label: 'INVOITI')),
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0A7A21),
-                      borderRadius: BorderRadius.circular(10),
+            // STATISTICI CAMPUS
+            Expanded(
+              child: _FilterCard(
+                label: 'STATISTICI CAMPUS',
+                centerContent: true,
+                backgroundColor: const Color(0xFFF0F9F1),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _StatItem(
+                        value: totalRegistered,
+                        label: 'TOTAL INREGISTRATI',
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.bar_chart_rounded,
-                      color: Colors.white,
-                      size: 24,
+                    Expanded(
+                      child: _StatItem(
+                        value: presentToday,
+                        label: 'PREZENTI AZI',
+                      ),
                     ),
-                  ),
-                ],
+                    Expanded(
+                      child: _StatItem(value: onLeaveCount, label: 'INVOITI'),
+                    ),
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0A7A21),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.bar_chart_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
     );
@@ -1305,8 +1340,9 @@ class _FilterCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment:
-            centerContent ? MainAxisAlignment.center : MainAxisAlignment.start,
+        mainAxisAlignment: centerContent
+            ? MainAxisAlignment.center
+            : MainAxisAlignment.start,
         children: [
           Text(
             label,
@@ -1361,9 +1397,9 @@ class _StatItem extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _StudentsTablePanel
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _StudentsTablePanel extends StatelessWidget {
   final List<QueryDocumentSnapshot> students;
@@ -1427,7 +1463,7 @@ class _StudentsTablePanel extends StatelessWidget {
             ),
           ),
 
-          // Rows — expands to fill available space, pagination pinned below
+          // Rows â€” expands to fill available space, pagination pinned below
           Expanded(
             child: students.isEmpty
                 ? Center(
@@ -1550,9 +1586,9 @@ class _StudentsTablePanel extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  _TH  — table header label
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  _TH  â€” table header label
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TH extends StatelessWidget {
   final String text;
@@ -1572,14 +1608,11 @@ class _TH extends StatelessWidget {
   }
 }
 
-enum _StudentRowAction {
-  settings,
-  deleteUser,
-}
+enum _StudentRowAction { settings, deleteUser }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _StudentRow
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _StudentRow extends StatefulWidget {
   final QueryDocumentSnapshot doc;
@@ -1643,9 +1676,7 @@ class _StudentRowState extends State<_StudentRow> {
       await _api.deleteUser(username: username);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Utilizatorul $username a fost șters.'),
-        ),
+        SnackBar(content: Text('Utilizatorul $username a fost șters.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -1811,11 +1842,11 @@ class _StudentRowState extends State<_StudentRow> {
                               onPressed: renameBusy || moveBusy
                                   ? null
                                   : () async {
-                                      final newFullName =
-                                          fullNameC.text.trim();
+                                      final newFullName = fullNameC.text.trim();
                                       if (newFullName.isEmpty) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
                                             content: Text(
                                               'Introdu un nume valid.',
@@ -1825,8 +1856,9 @@ class _StudentRowState extends State<_StudentRow> {
                                         return;
                                       }
                                       if (newFullName == currentFullName) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
                                             content: Text(
                                               'Numele este deja setat.',
@@ -1847,8 +1879,9 @@ class _StudentRowState extends State<_StudentRow> {
                                           currentFullName = newFullName;
                                           renameBusy = false;
                                         });
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
                                             content: Text(
                                               'Numele elevului a fost actualizat.',
@@ -1857,9 +1890,12 @@ class _StudentRowState extends State<_StudentRow> {
                                         );
                                       } catch (e) {
                                         if (!mounted) return;
-                                        setDialogState(() => renameBusy = false);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
+                                        setDialogState(
+                                          () => renameBusy = false,
+                                        );
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           SnackBar(
                                             content: Text(
                                               'Eroare la actualizarea numelui: $e',
@@ -1937,8 +1973,9 @@ class _StudentRowState extends State<_StudentRow> {
                                   ? null
                                   : () async {
                                       if (selectedClassId.isEmpty) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
                                             content: Text(
                                               'Selectează o clasă.',
@@ -1948,8 +1985,9 @@ class _StudentRowState extends State<_StudentRow> {
                                         return;
                                       }
                                       if (selectedClassId == currentClassId) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
                                             content: Text(
                                               'Elevul este deja în clasa selectată.',
@@ -1970,8 +2008,9 @@ class _StudentRowState extends State<_StudentRow> {
                                           currentClassId = selectedClassId;
                                           moveBusy = false;
                                         });
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
                                             content: Text(
                                               'Clasa elevului a fost actualizată.',
@@ -1981,8 +2020,9 @@ class _StudentRowState extends State<_StudentRow> {
                                       } catch (e) {
                                         if (!mounted) return;
                                         setDialogState(() => moveBusy = false);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           SnackBar(
                                             content: Text(
                                               'Eroare la schimbarea clasei: $e',
@@ -2264,9 +2304,9 @@ class _StudentRowState extends State<_StudentRow> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _StatusChip
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _StatusChip extends StatelessWidget {
   final String status;
