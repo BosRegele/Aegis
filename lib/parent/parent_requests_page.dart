@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/session.dart';
@@ -14,26 +17,65 @@ class ParentRequestsPage extends StatefulWidget {
 }
 
 class _ParentRequestsPageState extends State<ParentRequestsPage> {
-  List<String> _childrenUids = [];
-  bool _isLoadingChildren = true;
+  // UIDs strictly from parent.children array — used for leaveRequests query
+  // (security rule only allows reads for students in this array).
+  List<String> _childrenFromArray = const [];
+  bool _loadedOnce = false;
+  Stream<QuerySnapshot>? _leaveRequestsStream;
+
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _parentDocSub;
 
   @override
   void initState() {
     super.initState();
-    _loadChildren();
+    _setupStream();
   }
 
-  Future<void> _loadChildren() async {
-    if (AppSession.uid != null) {
-      try {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(AppSession.uid).get();
-        final children = doc.data()?['children'];
-        if (children is List) {
-          _childrenUids = List<String>.from(children);
-        }
-      } catch (_) {}
+  void _setupStream() {
+    final parentUid = (AppSession.uid ?? '').trim();
+    if (parentUid.isEmpty) {
+      setState(() => _loadedOnce = true);
+      return;
     }
-    if (mounted) setState(() => _isLoadingChildren = false);
+
+    _parentDocSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(parentUid)
+        .snapshots()
+        .listen(
+      (snap) {
+        if (!mounted) return;
+        final children = ((snap.data() ?? {})['children'] as List? ?? [])
+            .map((v) => v.toString().trim())
+            .where((v) => v.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+        final queryIds = children.take(30).toList(growable: false);
+        if (_loadedOnce && listEquals(_childrenFromArray, children)) {
+          return;
+        }
+        setState(() {
+          _childrenFromArray = children;
+          _leaveRequestsStream = queryIds.isEmpty
+              ? null
+              : FirebaseFirestore.instance
+                    .collection('leaveRequests')
+                    .where('studentUid', whereIn: queryIds)
+                    .snapshots();
+          _loadedOnce = true;
+        });
+      },
+      onError: (_) {
+        if (mounted) setState(() => _loadedOnce = true);
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _parentDocSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _handleRequest(String docId, bool approved) async {
@@ -71,86 +113,84 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
           children: [
             _TopHeader(onBack: () => Navigator.of(context).pop()),
             Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(painter: _BgDotsPainter()),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
-                    child: _isLoadingChildren
-                        ? const Center(child: CircularProgressIndicator())
-                        : _childrenUids.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'Nu exista elevi atribuiti.',
-                                  style: TextStyle(color: Color(0xFF7A8077), fontSize: 16),
-                                ),
-                              )
-                            : StreamBuilder<QuerySnapshot>(
-                                stream: FirebaseFirestore.instance
-                                    .collection('leaveRequests')
-                                    .where('studentUid', whereIn: _childrenUids)
-                                    .snapshots(),
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState == ConnectionState.waiting) {
-                                    return const Center(child: CircularProgressIndicator());
-                                  }
-                                  if (snapshot.hasError) {
-                                    return Center(child: Text('Eroare: ${snapshot.error}'));
-                                  }
-                                  if (!snapshot.hasData) {
-                                    return const SizedBox();
-                                  }
-
-                                  final docs = snapshot.data!.docs.where((doc) {
-                                    final data = doc.data() as Map<String, dynamic>;
-                                    final targetRole = (data['targetRole'] ?? '').toString().trim();
-                                    final status = (data['status'] ?? '').toString().trim();
-                                    final source = (data['source'] ?? '').toString().trim();
-                                    return targetRole == 'parent' && status == 'pending' && source != 'secretariat';
-                                  }).toList()
-                                    ..sort((a, b) {
-                                      final aTs = (a.data() as Map<String, dynamic>)['requestedAt'] as Timestamp?;
-                                      final bTs = (b.data() as Map<String, dynamic>)['requestedAt'] as Timestamp?;
-                                      final aMs = aTs?.millisecondsSinceEpoch ?? 0;
-                                      final bMs = bTs?.millisecondsSinceEpoch ?? 0;
-                                      return bMs.compareTo(aMs);
-                                    });
-
-                                  if (docs.isEmpty) {
-                                    return const Center(
-                                      child: Text(
-                                        'Nu exista cereri noi.',
-                                        style: TextStyle(color: Color(0xFF7A8077), fontSize: 16),
-                                      ),
-                                    );
-                                  }
-
-                                  return ListView.separated(
-                                    physics: const BouncingScrollPhysics(),
-                                    padding: const EdgeInsets.only(top: 2, bottom: 24),
-                                    itemCount: docs.length,
-                                    separatorBuilder: (_, _) => const SizedBox(height: 14),
-                                    itemBuilder: (context, index) {
-                                      final doc = docs[index];
-                                      final data = doc.data() as Map<String, dynamic>? ?? {};
-                                      return _RequestCard(
-                                        data: data,
-                                        onAccept: () => _handleRequest(doc.id, true),
-                                        onReject: () => _handleRequest(doc.id, false),
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+                child: _loadedOnce
+                    ? _buildRequests()
+                    : const Center(child: CircularProgressIndicator()),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildRequests() {
+    final parentUid = (AppSession.uid ?? '').trim();
+    final childIds = _childrenFromArray
+        .where((uid) => uid.isNotEmpty && uid != parentUid)
+        .toList();
+
+    if (childIds.isEmpty) {
+      return const Center(
+        child: Text(
+          'Nu exista elevi atribuiti.',
+          style: TextStyle(color: Color(0xFF7A8077), fontSize: 16),
+        ),
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _leaveRequestsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Eroare: ${snapshot.error}'));
+        }
+
+        final docs = (snapshot.data?.docs ?? [])
+            .where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final status = (data['status'] ?? '').toString().trim();
+              final source = (data['source'] ?? '').toString().trim();
+              return status == 'pending' && source != 'secretariat';
+            })
+            .toList()
+          ..sort((a, b) {
+            final aTs = (a.data() as Map<String, dynamic>)['requestedAt'] as Timestamp?;
+            final bTs = (b.data() as Map<String, dynamic>)['requestedAt'] as Timestamp?;
+            return (bTs?.millisecondsSinceEpoch ?? 0)
+                .compareTo(aTs?.millisecondsSinceEpoch ?? 0);
+          });
+
+        if (docs.isEmpty) {
+          return const Center(
+            child: Text(
+              'Nu exista cereri noi.',
+              style: TextStyle(color: Color(0xFF7A8077), fontSize: 16),
+            ),
+          );
+        }
+
+        return ListView.separated(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.only(top: 2, bottom: 24),
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 14),
+          itemBuilder: (context, index) {
+            final doc = docs[index];
+            final data = doc.data() as Map<String, dynamic>? ?? {};
+            return _RequestCard(
+              data: data,
+              onAccept: () => _handleRequest(doc.id, true),
+              onReject: () => _handleRequest(doc.id, false),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -162,43 +202,41 @@ class _TopHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(46),
+        bottomRight: Radius.circular(46),
+      ),
       child: SizedBox(
         width: double.infinity,
-        height: 176,
+        height: topPadding + 148,
         child: Stack(
-          fit: StackFit.expand,
           children: [
-            Container(color: _kHeaderGreen),
-            CustomPaint(painter: _HeaderDotsPainter()),
-            Positioned(right: 160, top: -42, child: _circle(122)),
-            Positioned(left: 200, bottom: -34, child: _circle(72)),
+            Positioned.fill(child: Container(color: _kHeaderGreen)),
+            Positioned(right: -46, top: -34, child: _circle(122, 0.12)),
+            Positioned(left: 182, top: 104, child: _circle(78, 0.11)),
+            Positioned(right: 24, top: 40 + topPadding, child: _circle(66, 0.14)),
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 24, 20, 0),
+              padding: EdgeInsets.fromLTRB(22, topPadding + 38, 22, 24),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
                     onPressed: onBack,
-                    splashRadius: 22,
                     icon: const Icon(
                       Icons.arrow_back_rounded,
                       color: Colors.white,
                       size: 32,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 10),
-                    child: Text(
-                      'Cereri de invoire',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 23,
-                        fontWeight: FontWeight.w700,
-                        height: 1,
-                      ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Cereri de invoire',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -210,12 +248,12 @@ class _TopHeader extends StatelessWidget {
     );
   }
 
-  Widget _circle(double size) {
+  Widget _circle(double size, double opacity) {
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: Colors.white.withValues(alpha: opacity),
         shape: BoxShape.circle,
       ),
     );
@@ -480,7 +518,7 @@ class _HeaderDotsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = Colors.white.withOpacity(0.12);
-    const spacing = 26.0;
+    const spacing = 28.0;
     for (double y = 16; y < size.height; y += spacing) {
       for (double x = 14; x < size.width; x += spacing) {
         canvas.drawCircle(Offset(x, y), 2, paint);

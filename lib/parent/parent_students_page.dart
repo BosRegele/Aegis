@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
@@ -37,12 +39,94 @@ class ParentStudentsPage extends StatefulWidget {
 }
 
 class _ParentStudentsPageState extends State<ParentStudentsPage> {
-  late final Future<List<_StudentProfileData>> _childrenDataFuture;
+  // All child UIDs accumulated from parallel streams.
+  final Set<String> _studentUids = {};
+  // True once the parent-doc stream has emitted at least once.
+  bool _loadedOnce = false;
+
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _parentDocSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _parentsArraySub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _legacyUidSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _legacyIdSub;
 
   @override
   void initState() {
     super.initState();
-    _childrenDataFuture = _loadChildrenData();
+    _setupStreams();
+  }
+
+  void _setupStreams() {
+    final parentUid = (AppSession.uid ?? '').trim();
+    if (parentUid.isEmpty) {
+      setState(() => _loadedOnce = true);
+      return;
+    }
+
+    final users = FirebaseFirestore.instance.collection('users');
+
+    // 1) Parent's own document — read the 'children' array.
+    _parentDocSub = users.doc(parentUid).snapshots().listen(
+      (snap) {
+        if (!mounted) return;
+        final data = snap.data() ?? {};
+        final children = (data['children'] as List? ?? [])
+            .map((v) => v.toString().trim())
+            .where((v) => v.isNotEmpty)
+            .toSet();
+        setState(() {
+          _studentUids.addAll(children);
+          _loadedOnce = true;
+        });
+      },
+      onError: (_) {
+        if (mounted) setState(() => _loadedOnce = true);
+      },
+    );
+
+    // 2) Modern schema: students whose 'parents' array contains parentUid.
+    _parentsArraySub = users
+        .where('parents', arrayContains: parentUid)
+        .snapshots()
+        .listen(
+      (snap) {
+        if (!mounted) return;
+        setState(() => _studentUids.addAll(snap.docs.map((d) => d.id)));
+      },
+      onError: (_) {},
+    );
+
+    // 3) Legacy schema: students with 'parentUid' == parentUid.
+    _legacyUidSub = users
+        .where('parentUid', isEqualTo: parentUid)
+        .snapshots()
+        .listen(
+      (snap) {
+        if (!mounted) return;
+        setState(() => _studentUids.addAll(snap.docs.map((d) => d.id)));
+      },
+      onError: (_) {},
+    );
+
+    // 4) Legacy schema: students with 'parentId' == parentUid.
+    _legacyIdSub = users
+        .where('parentId', isEqualTo: parentUid)
+        .snapshots()
+        .listen(
+      (snap) {
+        if (!mounted) return;
+        setState(() => _studentUids.addAll(snap.docs.map((d) => d.id)));
+      },
+      onError: (_) {},
+    );
+  }
+
+  @override
+  void dispose() {
+    _parentDocSub?.cancel();
+    _parentsArraySub?.cancel();
+    _legacyUidSub?.cancel();
+    _legacyIdSub?.cancel();
+    super.dispose();
   }
 
   // This function is almost identical to _loadData in orar.dart, but takes a uid
@@ -136,34 +220,55 @@ class _ParentStudentsPageState extends State<ParentStudentsPage> {
     );
   }
 
-  Future<List<_StudentProfileData>> _loadChildrenData() async {
-    final parentUid = AppSession.uid;
-    if (parentUid == null || parentUid.isEmpty) {
-      throw Exception('Părinte neautentificat.');
+  Future<void> _openStudentDetails(BuildContext context, String studentUid) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final data = await _loadStudentData(studentUid);
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => StudentDetailsPage(data: data)),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Nu am putut încărca profilul elevului: $error')),
+      );
     }
+  }
 
-    final parentDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(parentUid)
-        .get();
-    if (!parentDoc.exists) {
-      throw Exception('Profilul părintelui nu a fost găsit.');
-    }
-
-    final parentData = parentDoc.data() ?? {};
-    final childrenUids = List<String>.from(parentData['children'] ?? []);
-
-    if (childrenUids.isEmpty) {
-      return [];
-    }
-
-    final childrenFutures =
-        childrenUids.map((uid) => _loadStudentData(uid)).toList();
-    return await Future.wait(childrenFutures);
+  _StudentProfileData _summaryDataFromDoc(
+    String studentUid,
+    Map<String, dynamic> userData,
+  ) {
+    return _StudentProfileData(
+      uid: studentUid,
+      fullName: (userData['fullName'] ?? '').toString().trim(),
+      username: (userData['username'] ?? '').toString().trim(),
+      role: (userData['role'] ?? '').toString().trim(),
+      classId: (userData['classId'] ?? '').toString().trim().toUpperCase(),
+      teacherName: 'N/A',
+      schedule: const <int, Map<String, String>>{},
+      inSchool: userData['inSchool'] == true,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final parentUid = (AppSession.uid ?? '').trim();
+
+    if (parentUid.isEmpty) {
+      return const Scaffold(
+        backgroundColor: _kPageBg,
+        body: Center(
+          child: Text(
+            'Sesiune invalidă.',
+            style: TextStyle(fontSize: 16, color: Color(0xFF7A8077)),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: _kPageBg,
       body: SafeArea(
@@ -174,57 +279,60 @@ class _ParentStudentsPageState extends State<ParentStudentsPage> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                child: FutureBuilder<List<_StudentProfileData>>(
-                  future: _childrenDataFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text('Eroare: ${snapshot.error}', textAlign: TextAlign.center),
-                        ),
-                      );
-                    }
-
-                    final childrenData = snapshot.data;
-                    if (childrenData == null || childrenData.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'Nu este atribuit niciun elev.',
-                          style: TextStyle(fontSize: 16, color: Color(0xFF7A8077)),
-                        ),
-                      );
-                    }
-
-                    return ListView.separated(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.only(top: 6, bottom: 24),
-                      itemCount: childrenData.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 14),
-                      itemBuilder: (context, index) {
-                        return _StudentSummaryButton(
-                          data: childrenData[index],
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => StudentDetailsPage(data: childrenData[index]),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
+                child: _buildContent(),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (!_loadedOnce) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Filter out any UIDs that belong to the parent account itself.
+    final parentUid = (AppSession.uid ?? '').trim();
+    final validIds = _studentUids
+        .where((uid) => uid.isNotEmpty && uid != parentUid)
+        .toList()
+      ..sort();
+
+    if (validIds.isEmpty) {
+      return const Center(
+        child: Text(
+          'Nu este atribuit niciun elev.',
+          style: TextStyle(fontSize: 16, color: Color(0xFF7A8077)),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(top: 6, bottom: 24),
+      itemCount: validIds.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 14),
+      itemBuilder: (context, index) {
+        final studentUid = validIds[index];
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(studentUid)
+              .snapshots(),
+          builder: (context, childSnapshot) {
+            if (!childSnapshot.hasData) return const _StudentCardSkeleton();
+            if (!childSnapshot.data!.exists) return const SizedBox.shrink();
+            final childData = childSnapshot.data!.data() ?? <String, dynamic>{};
+            final summaryData = _summaryDataFromDoc(studentUid, childData);
+            return _StudentSummaryButton(
+              data: summaryData,
+              onTap: () => _openStudentDetails(context, studentUid),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -236,39 +344,37 @@ class _TopHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(46),
+        bottomRight: Radius.circular(46),
+      ),
       child: SizedBox(
         width: double.infinity,
-        height: 182,
+        height: topPadding + 148,
         child: Stack(
-          fit: StackFit.expand,
           children: [
-            Container(color: _kHeaderGreen),
-            CustomPaint(painter: _HeaderDotsPainter()),
-            Positioned(right: 198, top: -40, child: _circle(150)),
-            Positioned(left: 230, bottom: -42, child: _circle(96)),
+            Positioned.fill(child: Container(color: _kHeaderGreen)),
+            Positioned(right: -46, top: -34, child: _circle(122, 0.12)),
+            Positioned(left: 182, top: 104, child: _circle(78, 0.11)),
+            Positioned(right: 24, top: 40 + topPadding, child: _circle(66, 0.14)),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 24, 18, 0),
+              padding: EdgeInsets.fromLTRB(22, topPadding + 38, 22, 24),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
                     onPressed: onBack,
-                    splashRadius: 22,
                     icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 34),
                   ),
                   const SizedBox(width: 8),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 10),
-                    child: Text(
-                      'Elevii Mei',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        height: 1,
-                      ),
+                  const Text(
+                    'Copiii mei',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -280,12 +386,12 @@ class _TopHeader extends StatelessWidget {
     );
   }
 
-  Widget _circle(double size) {
+  Widget _circle(double size, double opacity) {
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.11),
+        color: Colors.white.withValues(alpha: opacity),
         shape: BoxShape.circle,
       ),
     );
@@ -297,7 +403,7 @@ class _HeaderDotsPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = Colors.white.withOpacity(0.14);
     const spacing = 28.0;
-    for (double y = 14; y < size.height; y += spacing) {
+    for (double y = 16; y < size.height; y += spacing) {
       for (double x = 14; x < size.width; x += spacing) {
         canvas.drawCircle(Offset(x, y), 2, paint);
       }
@@ -1013,6 +1119,78 @@ class _OrarRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _StudentCardSkeleton extends StatelessWidget {
+  const _StudentCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F7F7),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE3E8DF)),
+      ),
+      child: const Row(
+        children: [
+          SizedBox(
+            width: 116,
+            height: 116,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Color(0xFFDDE5D8),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Color(0xFFDDE5D8),
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
+                  ),
+                  child: SizedBox(width: 180, height: 22),
+                ),
+                SizedBox(height: 10),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Color(0xFFE7ECE1),
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
+                  ),
+                  child: SizedBox(width: 140, height: 18),
+                ),
+                SizedBox(height: 16),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Color(0xFFE7ECE1),
+                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                  ),
+                  child: SizedBox(width: 160, height: 34),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 12),
+          SizedBox(
+            width: 74,
+            height: 74,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Color(0xFFD5DBD1),
+                borderRadius: BorderRadius.all(Radius.circular(18)),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
