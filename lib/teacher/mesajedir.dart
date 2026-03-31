@@ -564,35 +564,3 @@ class _TopHeader extends StatelessWidget {
     );
   }
 }
-
-class _HeaderDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.14);
-    const spacing = 18.0;
-    for (double y = 14; y < size.height; y += spacing) {
-      for (double x = 16; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), 1.3, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _TopDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFFC8D8C4);
-    const spacing = 32.0;
-    for (double y = 12; y < 82; y += spacing) {
-      for (double x = 16; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), 2.1, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
