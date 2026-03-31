@@ -32,7 +32,8 @@ class _CereriScreenState extends State<CereriScreen> {
   TimeOfDay? _scheduleStart;
   TimeOfDay? _scheduleEnd;
   bool _loadingSchedule = false;
-  String _targetRole = 'teacher';
+  bool _targetTeacher = true;
+  bool _targetParent = false;
 
   @override
   void dispose() {
@@ -60,7 +61,7 @@ class _CereriScreenState extends State<CereriScreen> {
       lastDate: DateTime(now.year + 2),
       initialEntryMode: DatePickerEntryMode.calendarOnly,
       helpText: 'Selecteaza data',
-      fieldHintText: 'MM/DD/YYYY',
+      fieldHintText: 'ZZ/LL/AAAA',
       fieldLabelText: 'Data',
       cancelText: 'Anuleaza',
       confirmText: 'OK',
@@ -156,7 +157,7 @@ class _CereriScreenState extends State<CereriScreen> {
   String _formatDateMmDdYyyy(DateTime dt) {
     final mm = dt.month.toString().padLeft(2, '0');
     final dd = dt.day.toString().padLeft(2, '0');
-    return '$mm/$dd/${dt.year}';
+    return '$dd/$mm/${dt.year}';
   }
 
   String _formatTime12h(TimeOfDay t) {
@@ -325,57 +326,24 @@ class _CereriScreenState extends State<CereriScreen> {
     });
   }
 
-  Future<Map<String, String>> _resolveRecipient() async {
+  Future<Map<String, String>> _resolveTeacher() async {
     final uid = AppSession.uid ?? '';
-    if (uid.isEmpty) {
-      return const <String, String>{};
-    }
-
+    if (uid.isEmpty) return const <String, String>{};
     final userData = await _loadCurrentUserData();
-
-    if (_targetRole == 'parent') {
-      final parents = List<String>.from(
-        userData['parents'] ?? const <String>[],
-      );
-      if (parents.isEmpty) {
-        return const <String, String>{};
-      }
-
-      final parentUid = parents.first;
-      final parentSnap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(parentUid)
-          .get();
-      final parentData = parentSnap.data() ?? const <String, dynamic>{};
-
-      return <String, String>{
-        'uid': parentUid,
-        'name': (parentData['fullName'] ?? parentData['username'] ?? '')
-            .toString()
-            .trim(),
-        'username': (parentData['username'] ?? '').toString().trim(),
-      };
-    }
-
     final classId = (userData['classId'] ?? AppSession.classId ?? '')
         .toString()
         .trim();
-    if (classId.isEmpty) {
-      return const <String, String>{};
-    }
-
+    if (classId.isEmpty) return const <String, String>{};
     final classSnap = await FirebaseFirestore.instance
         .collection('classes')
         .doc(classId)
         .get();
     final classData = classSnap.data() ?? const <String, dynamic>{};
-
     String teacherUid = (classData['teacherUid'] ?? '').toString().trim();
     String teacherUsername = (classData['teacherUsername'] ?? '')
         .toString()
         .trim();
     String teacherName = '';
-
     if (teacherUid.isNotEmpty) {
       final teacherSnap = await FirebaseFirestore.instance
           .collection('users')
@@ -388,51 +356,32 @@ class _CereriScreenState extends State<CereriScreen> {
       teacherName = (teacherData['fullName'] ?? teacherUsername)
           .toString()
           .trim();
-    } else if (teacherUsername.isNotEmpty) {
-      final teacherQuery = await FirebaseFirestore.instance
-          .collection('users')
-          .where('username', isEqualTo: teacherUsername.toLowerCase())
-          .limit(1)
-          .get();
-
-      if (teacherQuery.docs.isNotEmpty) {
-        final doc = teacherQuery.docs.first;
-        final teacherData = doc.data();
-        teacherUid = doc.id;
-        teacherUsername = (teacherData['username'] ?? teacherUsername)
-            .toString()
-            .trim();
-        teacherName = (teacherData['fullName'] ?? teacherUsername)
-            .toString()
-            .trim();
-      }
     }
-
-    if (teacherUid.isEmpty) {
-      final teacherByClassQuery = await FirebaseFirestore.instance
-          .collection('users')
-          .where('role', isEqualTo: 'teacher')
-          .where('classId', isEqualTo: classId)
-          .limit(1)
-          .get();
-
-      if (teacherByClassQuery.docs.isNotEmpty) {
-        final doc = teacherByClassQuery.docs.first;
-        final teacherData = doc.data();
-        teacherUid = doc.id;
-        teacherUsername = (teacherData['username'] ?? teacherUsername)
-            .toString()
-            .trim();
-        teacherName = (teacherData['fullName'] ?? teacherUsername)
-            .toString()
-            .trim();
-      }
-    }
-
     return <String, String>{
       'uid': teacherUid,
       'name': teacherName.isNotEmpty ? teacherName : 'Diriginte',
       'username': teacherUsername,
+    };
+  }
+
+  Future<Map<String, String>> _resolveParent() async {
+    final uid = AppSession.uid ?? '';
+    if (uid.isEmpty) return const <String, String>{};
+    final userData = await _loadCurrentUserData();
+    final parents = List<String>.from(userData['parents'] ?? const <String>[]);
+    if (parents.isEmpty) return const <String, String>{};
+    final parentUid = parents.first;
+    final parentSnap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(parentUid)
+        .get();
+    final parentData = parentSnap.data() ?? const <String, dynamic>{};
+    return <String, String>{
+      'uid': parentUid,
+      'name': (parentData['fullName'] ?? parentData['username'] ?? '')
+          .toString()
+          .trim(),
+      'username': (parentData['username'] ?? '').toString().trim(),
     };
   }
 
@@ -444,6 +393,13 @@ class _CereriScreenState extends State<CereriScreen> {
         const SnackBar(
           content: Text('Completeaza data, ora si mesajul cererii.'),
         ),
+      );
+      return;
+    }
+
+    if (!_targetTeacher && !_targetParent) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecteaza cel putin un destinatar.')),
       );
       return;
     }
@@ -462,12 +418,6 @@ class _CereriScreenState extends State<CereriScreen> {
 
     try {
       final userData = await _loadCurrentUserData();
-      final recipient = await _resolveRecipient();
-      final targetUid = (recipient['uid'] ?? '').trim();
-      if (_targetRole == 'parent' && targetUid.isEmpty) {
-        throw Exception('Nu a fost gasit destinatarul selectat.');
-      }
-
       final classId = (userData['classId'] ?? AppSession.classId ?? '')
           .toString()
           .trim();
@@ -478,11 +428,10 @@ class _CereriScreenState extends State<CereriScreen> {
               .toString()
               .trim();
 
-      if (classId.isEmpty) {
+      if (classId.isEmpty)
         throw Exception('Elevul nu are clasa setata in profil.');
-      }
 
-      await FirebaseFirestore.instance.collection('leaveRequests').add({
+      final baseDoc = {
         'studentUid': studentUid,
         'studentUsername': studentUsername,
         'studentName': studentName,
@@ -490,12 +439,6 @@ class _CereriScreenState extends State<CereriScreen> {
         'dateText': _dateController.text,
         'timeText': _timeController.text,
         'message': message,
-        'targetRole': _targetRole,
-        'targetUid': targetUid,
-        'targetName':
-            (recipient['name'] ?? (_targetRole == 'teacher' ? 'Diriginte' : ''))
-                .trim(),
-        'targetUsername': (recipient['username'] ?? '').trim(),
         'status': 'pending',
         'requestedAt': Timestamp.now(),
         'requestedForDate': Timestamp.fromDate(
@@ -511,7 +454,39 @@ class _CereriScreenState extends State<CereriScreen> {
         'reviewedByUid': null,
         'reviewedByName': null,
         'viewedByParent': false,
-      });
+      };
+
+      final futures = <Future>[];
+
+      if (_targetTeacher) {
+        final teacher = await _resolveTeacher();
+        futures.add(
+          FirebaseFirestore.instance.collection('leaveRequests').add({
+            ...baseDoc,
+            'targetRole': 'teacher',
+            'targetUid': (teacher['uid'] ?? '').trim(),
+            'targetName': (teacher['name'] ?? 'Diriginte').trim(),
+            'targetUsername': (teacher['username'] ?? '').trim(),
+          }),
+        );
+      }
+
+      if (_targetParent) {
+        final parent = await _resolveParent();
+        if (parent['uid']?.isNotEmpty == true) {
+          futures.add(
+            FirebaseFirestore.instance.collection('leaveRequests').add({
+              ...baseDoc,
+              'targetRole': 'parent',
+              'targetUid': (parent['uid'] ?? '').trim(),
+              'targetName': (parent['name'] ?? '').trim(),
+              'targetUsername': (parent['username'] ?? '').trim(),
+            }),
+          );
+        }
+      }
+
+      await Future.wait(futures);
 
       await FirebaseFirestore.instance.collection('users').doc(studentUid).set({
         'unreadCount': FieldValue.increment(1),
@@ -549,7 +524,145 @@ class _CereriScreenState extends State<CereriScreen> {
     }
   }
 
-  void _goBack() {
+  void _resetForm() {
+    setState(() {
+      _selectedDate = null;
+      _selectedTime = null;
+      _scheduleStart = null;
+      _scheduleEnd = null;
+      _dateController.clear();
+      _timeController.clear();
+      _messageController.clear();
+    });
+  }
+
+  bool get _hasUnsavedData =>
+      _selectedDate != null ||
+      _selectedTime != null ||
+      _messageController.text.trim().isNotEmpty;
+
+  Future<void> _goBack() async {
+    if (_hasUnsavedData) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.4),
+        builder: (ctx) => Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Container(
+            decoration: BoxDecoration(
+              color: _card,
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x24000000),
+                  blurRadius: 32,
+                  offset: Offset(0, 12),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0EBE1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: _primary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Renunți la cerere?',
+                        style: TextStyle(
+                          color: _textDark,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 17,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Cererea nu a fost trimisă și datele vor fi șterse.',
+                  style: TextStyle(
+                    color: _textMuted,
+                    fontSize: 13.5,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFEAEA),
+                          foregroundColor: const Color(0xFFB71C1C),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: const Text(
+                          'Renunț',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        style: TextButton.styleFrom(
+                          backgroundColor: _primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: const Text(
+                          'Rămân',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (confirmed != true) return;
+    }
+
+    if (!mounted) return;
+
+    _resetForm();
+
     if (widget.onNavigateTab != null) {
       widget.onNavigateTab!(0);
       return;
@@ -572,296 +685,305 @@ class _CereriScreenState extends State<CereriScreen> {
     final headerHeight = compact ? 138.0 : 146.0;
     final titleSize = compact ? 29.0 : 33.0;
 
-    return Scaffold(
-      backgroundColor: _surface,
-      body: SafeArea(
-        top: false,
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(54),
-                    bottomRight: Radius.circular(54),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _goBack();
+      },
+      child: Scaffold(
+        backgroundColor: _surface,
+        body: SafeArea(
+          top: false,
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(54),
+                      bottomRight: Radius.circular(54),
+                    ),
+                    child: Container(
+                      height: headerHeight,
+                      width: double.infinity,
+                      color: _primary,
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            top: -72,
+                            right: -52,
+                            child: _HeaderCircle(size: 220, opacity: 0.08),
+                          ),
+                          Positioned(
+                            top: 44,
+                            right: 34,
+                            child: _HeaderCircle(size: 72, opacity: 0.07),
+                          ),
+                          Positioned(
+                            left: 156,
+                            bottom: -28,
+                            child: _HeaderCircle(size: 82, opacity: 0.08),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 18),
+                            child: Center(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  _HeaderIconButton(
+                                    icon: Icons.arrow_back_rounded,
+                                    onTap: _goBack,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      'Cereri de invoire',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: titleSize,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: -0.6,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: Container(
-                    height: headerHeight,
-                    width: double.infinity,
-                    color: _primary,
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          top: -72,
-                          right: -52,
-                          child: _HeaderCircle(size: 220, opacity: 0.08),
-                        ),
-                        Positioned(
-                          top: 44,
-                          right: 34,
-                          child: _HeaderCircle(size: 72, opacity: 0.07),
-                        ),
-                        Positioned(
-                          left: 156,
-                          bottom: -28,
-                          child: _HeaderCircle(size: 82, opacity: 0.08),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          child: Center(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                _HeaderIconButton(
-                                  icon: Icons.arrow_back_rounded,
-                                  onTap: _goBack,
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _RecipientCard(
+                                  selected: _targetTeacher,
+                                  icon: Icons.school_rounded,
+                                  title: 'Diriginte',
+                                  onTap: () => setState(
+                                    () => _targetTeacher = !_targetTeacher,
+                                  ),
                                 ),
-                                const SizedBox(width: 16),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: _RecipientCard(
+                                  selected: _targetParent,
+                                  icon: Icons.family_restroom,
+                                  title: 'Parinte',
+                                  onTap: () => setState(
+                                    () => _targetParent = !_targetParent,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 34),
+                          const Text(
+                            'DATA',
+                            style: TextStyle(
+                              color: _primary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 2.2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _LabeledInputBox(
+                            controller: _dateController,
+                            hintText: 'ZZ/LL/AAAA',
+                            icon: Icons.calendar_month_rounded,
+                            onTap: _pickDate,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'ORA DE INCEPUT',
+                            style: TextStyle(
+                              color: _primary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 2.2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _LabeledInputBox(
+                            controller: _timeController,
+                            hintText: '08:00',
+                            icon: Icons.access_time_filled_rounded,
+                            onTap: _loadingSchedule ? null : _pickTime,
+                          ),
+                          if (_loadingSchedule)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 8),
+                              child: LinearProgressIndicator(color: _primary),
+                            )
+                          else if (_scheduleStart != null &&
+                              _scheduleEnd != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                'Interval valid: '
+                                '${_scheduleStart!.hour.toString().padLeft(2, '0')}:${_scheduleStart!.minute.toString().padLeft(2, '0')}'
+                                ' - '
+                                '${_scheduleEnd!.hour.toString().padLeft(2, '0')}:${_scheduleEnd!.minute.toString().padLeft(2, '0')}',
+                                style: const TextStyle(
+                                  color: _primary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'MOTIVUL ABSENTEI',
+                            style: TextStyle(
+                              color: _primary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 2.2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _ReasonBox(controller: _messageController),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _submitting ? null : _submitRequest,
+                              icon: _submitting
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.send_rounded, size: 30),
+                              label: const Text(
+                                'Trimite Cererea',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _primary,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: _primary,
+                                disabledForegroundColor: Colors.white,
+                                minimumSize: const Size.fromHeight(74),
+                                elevation: 6,
+                                shadowColor: const Color(0x660D631B),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(22),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 34),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                            decoration: BoxDecoration(
+                              color: _card,
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                            child: const Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(width: 6),
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: Color(0xFFF3D0DD),
+                                  child: Icon(
+                                    Icons.alarm_rounded,
+                                    color: Color(0xFF8A2D52),
+                                    size: 24,
+                                  ),
+                                ),
+                                SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    'Cereri de invoire',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                    'Cererile trimise expira automat dupa ora 00:00 in ziua respectiva.',
                                     style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: titleSize,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: -0.6,
+                                      color: Color(0xFF283028),
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w500,
+                                      height: 1.38,
                                     ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _RecipientCard(
-                                selected: _targetRole == 'teacher',
-                                icon: Icons.school_rounded,
-                                title: 'Diriginte',
-                                onTap: () =>
-                                    setState(() => _targetRole = 'teacher'),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: _RecipientCard(
-                                selected: _targetRole == 'parent',
-                                icon: Icons.family_restroom,
-                                title: 'Parinte',
-                                onTap: () =>
-                                    setState(() => _targetRole = 'parent'),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 34),
-                        const Text(
-                          'DATA',
-                          style: TextStyle(
-                            color: _primary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 2.2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _LabeledInputBox(
-                          controller: _dateController,
-                          hintText: 'MM/DD/YYYY',
-                          icon: Icons.calendar_month_rounded,
-                          onTap: _pickDate,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'ORA DE INCEPUT',
-                          style: TextStyle(
-                            color: _primary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 2.2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _LabeledInputBox(
-                          controller: _timeController,
-                          hintText: '08:00 AM',
-                          icon: Icons.access_time_filled_rounded,
-                          onTap: _loadingSchedule ? null : _pickTime,
-                        ),
-                        if (_loadingSchedule)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 8),
-                            child: LinearProgressIndicator(color: _primary),
-                          )
-                        else if (_scheduleStart != null && _scheduleEnd != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              'Interval valid: '
-                              '${_scheduleStart!.hour.toString().padLeft(2, '0')}:${_scheduleStart!.minute.toString().padLeft(2, '0')}'
-                              ' - '
-                              '${_scheduleEnd!.hour.toString().padLeft(2, '0')}:${_scheduleEnd!.minute.toString().padLeft(2, '0')}',
-                              style: const TextStyle(
-                                color: _primary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'MOTIVUL ABSENTEI',
-                          style: TextStyle(
-                            color: _primary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 2.2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _ReasonBox(controller: _messageController),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _submitting ? null : _submitRequest,
-                            icon: _submitting
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.send_rounded, size: 30),
-                            label: const Text(
-                              'Trimite Cererea',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _primary,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: _primary,
-                              disabledForegroundColor: Colors.white,
-                              minimumSize: const Size.fromHeight(74),
-                              elevation: 6,
-                              shadowColor: const Color(0x660D631B),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(22),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 34),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                ],
+              ),
+              if (_submitting)
+                Positioned.fill(
+                  child: AbsorbPointer(
+                    child: Container(
+                      color: Colors.white.withValues(alpha: 0.62),
+                      child: Center(
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 28),
+                          padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
                           decoration: BoxDecoration(
-                            color: _card,
-                            borderRadius: BorderRadius.circular(22),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x16000000),
+                                blurRadius: 18,
+                                offset: Offset(0, 8),
+                              ),
+                            ],
                           ),
                           child: const Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              SizedBox(width: 6),
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: Color(0xFFF3D0DD),
-                                child: Icon(
-                                  Icons.alarm_rounded,
-                                  color: Color(0xFF8A2D52),
-                                  size: 24,
+                              SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  color: _primary,
                                 ),
                               ),
-                              SizedBox(width: 12),
-                              Expanded(
+                              SizedBox(width: 14),
+                              Flexible(
                                 child: Text(
-                                  'Cererile trimise expira automat dupa ora 00:00 in ziua respectiva.',
+                                  'Se trimite cererea...',
                                   style: TextStyle(
-                                    color: Color(0xFF283028),
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.38,
+                                    color: _textDark,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (_submitting)
-              Positioned.fill(
-                child: AbsorbPointer(
-                  child: Container(
-                    color: Colors.white.withValues(alpha: 0.62),
-                    child: Center(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 28),
-                        padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x16000000),
-                              blurRadius: 18,
-                              offset: Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                color: _primary,
-                              ),
-                            ),
-                            SizedBox(width: 14),
-                            Flexible(
-                              child: Text(
-                                'Se trimite cererea...',
-                                style: TextStyle(
-                                  color: _textDark,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

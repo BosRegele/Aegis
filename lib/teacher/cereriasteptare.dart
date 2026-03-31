@@ -63,8 +63,6 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
     }
   }
 
-  // ---------------------------------------------------------
-
   Future<void> _showRequestDialog(
     BuildContext context,
     String requestId,

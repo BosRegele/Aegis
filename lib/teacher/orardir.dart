@@ -307,7 +307,7 @@ class _OrarTopHeader extends StatelessWidget {
   );
 }
 
-// ─── Rând zi ──────────────────────────────────────────────────────────────────
+// --- R�nd zi ------------------------------------------------------------------
 
 class _OrarRow extends StatelessWidget {
   final String day;

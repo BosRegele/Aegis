@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../session.dart';
+import '../core/session.dart';
 import 'admin_notifications.dart';
 import 'admin_parents_page.dart';
 import 'admin_students_page.dart';
@@ -85,8 +85,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                       _openSidebarPage(const AdminTeachersPage()),
                   onTurnichetiTap: () =>
                       _openSidebarPage(const AdminTurnstilesPage()),
-                  onClaseTap: () =>
-                      _openSidebarPage(const AdminClassesPage()),
+                  onClaseTap: () => _openSidebarPage(const AdminClassesPage()),
                   onVacanteTap: () {},
                   onParintiTap: () =>
                       _openSidebarPage(const AdminParentsPage()),
@@ -98,9 +97,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                     child: Column(
                       children: [
                         const _TopBar(),
-                        Expanded(
-                          child: _VacanciesContent(),
-                        ),
+                        Expanded(child: _VacanciesContent()),
                       ],
                     ),
                   ),
@@ -235,9 +232,7 @@ class _Sidebar extends StatelessWidget {
                   ),
                   alignment: Alignment.center,
                   child: Text(
-                    displayName.isNotEmpty
-                        ? displayName[0].toUpperCase()
-                        : 'A',
+                    displayName.isNotEmpty ? displayName[0].toUpperCase() : 'A',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF7A4A10),
@@ -421,18 +416,20 @@ class _VacanciesContentState extends State<_VacanciesContent> {
 
   String _formatDateLong(DateTime date) {
     const months = [
-      'ian', 'feb', 'mar', 'apr', 'mai', 'iun',
-      'iul', 'aug', 'sep', 'oct', 'noi', 'dec'
+      'ian',
+      'feb',
+      'mar',
+      'apr',
+      'mai',
+      'iun',
+      'iul',
+      'aug',
+      'sep',
+      'oct',
+      'noi',
+      'dec',
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
-  }
-
-  String _formatMonthYear(DateTime date) {
-    const months = [
-      'ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
-      'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'
-    ];
-    return '${months[date.month - 1]} ${date.year}';
   }
 
   void _resetForm() {
@@ -455,31 +452,35 @@ class _VacanciesContentState extends State<_VacanciesContent> {
     if (_startDate == null || _endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content:
-                Text('Va rugam selectati data de inceput si de sfarsit')),
+          content: Text('Va rugam selectati data de inceput si de sfarsit'),
+        ),
       );
       return;
     }
 
-    FirebaseFirestore.instance.collection('vacancies').add({
-      'name': _nameController.text,
-      'startDate': _startDate,
-      'endDate': _endDate,
-      'createdAt': FieldValue.serverTimestamp(),
-    }).then((_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vacanta adaugata cu succes')),
-      );
-      _resetForm();
-    }).catchError((e) {
-      final message =
-          e is FirebaseException && e.code == 'permission-denied'
+    FirebaseFirestore.instance
+        .collection('vacancies')
+        .add({
+          'name': _nameController.text,
+          'startDate': _startDate,
+          'endDate': _endDate,
+          'createdAt': FieldValue.serverTimestamp(),
+        })
+        .then((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Vacanta adaugata cu succes')),
+          );
+          _resetForm();
+        })
+        .catchError((e) {
+          final message =
+              e is FirebaseException && e.code == 'permission-denied'
               ? 'Nu ai permisiuni sa creezi vacante'
               : 'Eroare la salvare vacanta';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    });
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
+        });
   }
 
   void _showModifyDialog() async {
@@ -505,10 +506,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
         await FirebaseFirestore.instance
             .collection('vacancies')
             .doc(_selectedDocId)
-            .update({
-          'startDate': result['start'],
-          'endDate': result['end'],
-        });
+            .update({'startDate': result['start'], 'endDate': result['end']});
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Vacanta modificata cu succes')),
         );
@@ -541,8 +539,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
             children: [
               for (final doc in snap.docs)
                 ListTile(
-                  title: Text(
-                      (doc.data() as Map<String, dynamic>)['name'] ?? 'Vacanță'),
+                  title: Text(doc.data()['name'] ?? 'Vacanță'),
                   onTap: () => Navigator.of(ctx).pop(doc),
                 ),
             ],
@@ -565,10 +562,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
       await FirebaseFirestore.instance
           .collection('vacancies')
           .doc(selected.id)
-          .update({
-        'startDate': result['start'],
-        'endDate': result['end'],
-      });
+          .update({'startDate': result['start'], 'endDate': result['end']});
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vacanta modificata cu succes')),
       );
@@ -605,15 +599,9 @@ class _VacanciesContentState extends State<_VacanciesContent> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 3,
-                  child: _buildFormSection(),
-                ),
+                Expanded(flex: 3, child: _buildFormSection()),
                 const SizedBox(width: 24),
-                Expanded(
-                  flex: 3,
-                  child: _buildUpcomingVacancies(),
-                ),
+                Expanded(flex: 3, child: _buildUpcomingVacancies()),
               ],
             ),
             const SizedBox(height: 24),
@@ -715,7 +703,8 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                           setState(() {
                             _startDate = picked;
                             _displayMonth = picked;
-                            if (_endDate != null && _endDate!.isBefore(picked)) {
+                            if (_endDate != null &&
+                                _endDate!.isBefore(picked)) {
                               _endDate = null;
                             }
                           });
@@ -725,7 +714,9 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFF3F7EE),
                           border: Border.all(
-                              color: const Color(0xFFDDE7D7), width: 1),
+                            color: const Color(0xFFDDE7D7),
+                            width: 1,
+                          ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         padding: const EdgeInsets.symmetric(
@@ -780,7 +771,9 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFF3F7EE),
                           border: Border.all(
-                              color: const Color(0xFFDDE7D7), width: 1),
+                            color: const Color(0xFFDDE7D7),
+                            width: 1,
+                          ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         padding: const EdgeInsets.symmetric(
@@ -838,10 +831,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text(
                     'Adaugă Vacanță',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -851,8 +841,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                   onPressed: _resetForm,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.black87,
-                    side: const BorderSide(
-                        color: Color(0xFFBDBDBD), width: 1),
+                    side: const BorderSide(color: Color(0xFFBDBDBD), width: 1),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -861,10 +850,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                   icon: const Icon(Icons.close, size: 18),
                   label: const Text(
                     'Anulează',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -886,10 +872,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
               icon: const Icon(Icons.edit, size: 18),
               label: const Text(
                 'Modifică Vacanță',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -906,7 +889,20 @@ class _VacanciesContentState extends State<_VacanciesContent> {
     final daysInMonth = lastDay.day;
     final firstWeekday = firstDay.weekday;
 
-    const monthNames =  ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
+    const monthNames = [
+      'ianuarie',
+      'februarie',
+      'martie',
+      'aprilie',
+      'mai',
+      'iunie',
+      'iulie',
+      'august',
+      'septembrie',
+      'octombrie',
+      'noiembrie',
+      'decembrie',
+    ];
     const dayNames = ['L', 'Ma', 'Mi', 'J', 'V', 'S', 'D'];
 
     return Container(
@@ -986,9 +982,9 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                 final date = DateTime(year, month, day);
                 final isStart =
                     _startDate != null && _isSameDay(date, _startDate!);
-                final isEnd =
-                    _endDate != null && _isSameDay(date, _endDate!);
-                final isBetween = _startDate != null &&
+                final isEnd = _endDate != null && _isSameDay(date, _endDate!);
+                final isBetween =
+                    _startDate != null &&
                     _endDate != null &&
                     date.isAfter(_startDate!) &&
                     date.isBefore(_endDate!);
@@ -1016,8 +1012,8 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                       color: isStart || isEnd
                           ? const Color(0xFF2E7D32)
                           : isBetween
-                              ? const Color(0xFFC8E6C9)
-                              : Colors.transparent,
+                          ? const Color(0xFFC8E6C9)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     alignment: Alignment.center,
@@ -1026,8 +1022,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w500,
-                        color:
-                            isStart || isEnd ? Colors.white : Colors.black,
+                        color: isStart || isEnd ? Colors.white : Colors.black,
                       ),
                     ),
                   ),
@@ -1069,10 +1064,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
           const SizedBox(height: 4),
           const Text(
             'Total 5 perioade active',
-            style: TextStyle(
-              fontSize: 13,
-              color: Color(0xFF999999),
-            ),
+            style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
           ),
           const SizedBox(height: 20),
           StreamBuilder<QuerySnapshot>(
@@ -1087,10 +1079,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                   child: Center(
                     child: Text(
                       'Nu exista vacante create',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF999999),
-                      ),
+                      style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
                     ),
                   ),
                 );
@@ -1098,10 +1087,11 @@ class _VacanciesContentState extends State<_VacanciesContent> {
 
               if (!snapshot.hasData) {
                 return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(12),
-                      child: CircularProgressIndicator(),
-                    ));
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
               }
 
               final vacancies = snapshot.data!.docs.toList();
@@ -1112,10 +1102,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                   child: Center(
                     child: Text(
                       'Nu exista vacante create',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF999999),
-                      ),
+                      style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
                     ),
                   ),
                 );
@@ -1125,7 +1112,11 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                 child: Column(
                   children: [
                     for (var i = 0; i < vacancies.length; i++)
-                      _buildVacancyCard(vacancies[i], i == 0, vacancies[i].id == _selectedDocId),
+                      _buildVacancyCard(
+                        vacancies[i],
+                        i == 0,
+                        vacancies[i].id == _selectedDocId,
+                      ),
                   ],
                 ),
               );
@@ -1212,18 +1203,11 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(
-                        Icons.calendar_today,
-                        size: 12,
-                        color: iconColor,
-                      ),
+                      Icon(Icons.calendar_today, size: 12, color: iconColor),
                       const SizedBox(width: 6),
                       Text(
                         '${_formatDateLong(startDate)} - ${_formatDateLong(endDate)}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: dateColor,
-                        ),
+                        style: TextStyle(fontSize: 11, color: dateColor),
                       ),
                     ],
                   ),
@@ -1237,8 +1221,8 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                 color: isSelected || isFirst
                     ? Colors.white.withValues(alpha: 0.85)
                     : isFinished
-                        ? const Color(0xFFAAAAAA)
-                        : const Color(0xFFD32F2F),
+                    ? const Color(0xFFAAAAAA)
+                    : const Color(0xFFD32F2F),
               ),
               padding: EdgeInsets.zero,
               splashRadius: 18,
@@ -1331,11 +1315,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: const Icon(
-              Icons.info,
-              color: Colors.white,
-              size: 20,
-            ),
+            child: const Icon(Icons.info, color: Colors.white, size: 20),
           ),
           const SizedBox(width: 16),
           const Expanded(
