@@ -1,5 +1,4 @@
 import 'package:firster/student/meniu.dart';
-import 'package:firster/student/orar.dart';
 import 'package:firster/core/session.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -565,17 +564,6 @@ class _CereriScreenState extends State<CereriScreen> {
     navigator.pushReplacement(
       MaterialPageRoute(builder: (_) => const MeniuScreen()),
     );
-  }
-
-  void _openProfil() {
-    if (widget.onNavigateTab != null) {
-      widget.onNavigateTab!(1);
-      return;
-    }
-
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const OrarScreen()));
   }
 
   @override
