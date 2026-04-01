@@ -25,7 +25,7 @@ class AdminStore {
         (classId == null || classId.trim().isEmpty)) {
       throw Exception("classId obligatoriu pentru $role");
     }
-    // ✅ Dacă e student/teacher, clasa TREBUIE să existe deja în /classes
+    // âœ… Dacă e student/teacher, clasa TREBUIE să existe deja în /classes
     if (role == "student" || role == "teacher") {
       final cId = classId!.trim().toUpperCase();
       final classSnap = await _db.collection('classes').doc(cId).get();
@@ -164,7 +164,7 @@ class AdminStore {
       final tRef = _db.collection('users').doc(teacherUsername);
       batch.delete(tRef);
 
-      // alternativ mai safe (nu ștergi profesorul, doar îl “dezasignezi”):
+      // alternativ mai safe (nu ștergi profesorul, doar îl â€œdezasigneziâ€):
       // batch.update(tRef, {"classId": FieldValue.delete()});
     }
 

@@ -193,74 +193,91 @@ class _MeniuScreenState extends State<MeniuScreen> {
                     final topSectionHeight = compactHeight ? 544.0 : 580.0;
                     final accessTop = compactHeight ? 180.0 : 190.0;
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SizedBox(
-                          height: topSectionHeight,
-                          child: Stack(
-                            clipBehavior: Clip.none,
+                    return CustomScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      slivers: [
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _TopHeroHeader(
-                                displayName: resolvedName,
-                                className: resolvedClassName,
-                              ),
-                              Positioned(
-                                top: accessTop,
-                                left: 20,
-                                right: 20,
-                                child: _AccessHubCard(
-                                  inSchool:
-                                      (data['inSchool'] as bool?) ?? false,
-                                  lastInAt: data['lastInAt'],
-                                  lastScanStream: _lastScanStream,
+                              SizedBox(
+                                height: topSectionHeight,
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    _TopHeroHeader(
+                                      displayName: resolvedName,
+                                      className: resolvedClassName,
+                                    ),
+                                    Positioned(
+                                      top: accessTop,
+                                      left: 20,
+                                      right: 20,
+                                      child: _AccessHubCard(
+                                        inSchool:
+                                            (data['inSchool'] as bool?) ??
+                                            false,
+                                        lastInAt: data['lastInAt'],
+                                        lastScanStream: _lastScanStream,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                SizedBox(height: compactHeight ? 0 : 2),
-                                IntrinsicHeight(
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    20,
+                                    0,
+                                    20,
+                                    12,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.start,
                                     children: [
-                                      Expanded(
-                                        child: _CereriCard(
-                                          onTap: () => _openCereri(context),
+                                      SizedBox(height: compactHeight ? 0 : 2),
+                                      IntrinsicHeight(
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            Expanded(
+                                              child: _CereriCard(
+                                                onTap: () =>
+                                                    _openCereri(context),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 14),
+                                            Expanded(
+                                              child: _MesajeCard(
+                                                studentUid:
+                                                    FirebaseAuth
+                                                        .instance
+                                                        .currentUser
+                                                        ?.uid ??
+                                                    '',
+                                                inboxLastOpenedAt:
+                                                    inboxLastOpenedAt,
+                                                onTap: () =>
+                                                    _openMesaje(context),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: _MesajeCard(
-                                          studentUid:
-                                              FirebaseAuth
-                                                  .instance
-                                                  .currentUser
-                                                  ?.uid ??
-                                              '',
-                                          inboxLastOpenedAt: inboxLastOpenedAt,
-                                          onTap: () => _openMesaje(context),
-                                        ),
+                                      const SizedBox(height: 14),
+                                      _LeaveStatusCard(
+                                        classDocStream: classStream,
+                                        leaveActiveStream: _leaveActiveStream,
+                                        isWithinSchedule: _isWithinSchedule,
+                                        onTap: () => _openCereri(context),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 14),
-                                _LeaveStatusCard(
-                                  classDocStream: classStream,
-                                  leaveActiveStream: _leaveActiveStream,
-                                  isWithinSchedule: _isWithinSchedule,
-                                  onTap: () => _openCereri(context),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -283,10 +300,7 @@ class _TopHeroHeader extends StatelessWidget {
   final String displayName;
   final String className;
 
-  const _TopHeroHeader({
-    required this.displayName,
-    required this.className,
-  });
+  const _TopHeroHeader({required this.displayName, required this.className});
 
   @override
   Widget build(BuildContext context) {
@@ -648,7 +662,7 @@ class _AccessHubCardState extends State<_AccessHubCard> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: _StatCard(
-                      label: 'Intrare',
+                      label: 'Scanare',
                       value: timeText,
                       valueColor: _onSurface,
                     ),
@@ -1076,4 +1090,3 @@ class _LeaveStatusCard extends StatelessWidget {
     );
   }
 }
-

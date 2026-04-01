@@ -17,9 +17,9 @@ import 'admin_students_page.dart';
 import 'admin_turnstiles_page.dart';
 import 'admin_vacante.dart' as admin_vacante;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  AdminTeachersPage
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class AdminTeachersPage extends StatefulWidget {
   const AdminTeachersPage({super.key});
@@ -39,7 +39,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
   int _page = 0;
   static const int _pageSize = 8;
 
-  // classId → 'inSchool' | 'outside'  (computed from classes stream)
+  // classId â†’ 'inSchool' | 'outside'  (computed from classes stream)
   Map<String, String> _classScheduleStatus = {};
 
   @override
@@ -48,7 +48,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
     super.dispose();
   }
 
-  // ── Navigation ─────────────────────────────────────────────────────────────
+  // â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _replacePage(Widget page) async {
     if (_sidebarBusy || !mounted) return;
@@ -178,10 +178,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
         final newPassword = _randPassword(10);
 
         try {
-          await _api.resetPassword(
-            username: userId,
-            newPassword: newPassword,
-          );
+          await _api.resetPassword(username: userId, newPassword: newPassword);
 
           resetOk++;
           exported.add({
@@ -248,9 +245,9 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Eroare la export: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Eroare la export: $e')));
     }
   }
 
@@ -465,15 +462,15 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
     passwordC.dispose();
   }
 
-  // ── Schedule status ─────────────────────────────────────────────────────────
+  // â”€â”€ Schedule status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /// Returns 'inSchool' if the current time is within the class schedule for
   /// today, or 'outside' otherwise.  Ignores disabled users (handled separately).
   static String _scheduleActive(Map<String, dynamic> schedule) {
     if (schedule.isEmpty) return 'outside';
     final now = DateTime.now();
-    // DateTime.weekday: Monday=1 … Sunday=7
-    // Firestore schedule keys: '1'=Monday … '5'=Friday
+    // DateTime.weekday: Monday=1 â€¦ Sunday=7
+    // Firestore schedule keys: '1'=Monday â€¦ '5'=Friday
     final dayKey = now.weekday.toString();
     final today = schedule[dayKey] as Map<String, dynamic>?;
     if (today == null) return 'outside';
@@ -518,7 +515,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
     }
   }
 
-  // ── Build ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Build â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @override
   Widget build(BuildContext context) {
@@ -531,7 +528,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
             borderRadius: BorderRadius.circular(6),
             child: Row(
               children: [
-                // ── Sidebar ──────────────────────────────────────────────────────
+                // â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 _TeachersSidebar(
                   selected: 'personal',
                   onMenuTap: () => Navigator.of(context).pop(),
@@ -546,7 +543,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                   onLogoutTap: _showLogoutDialog,
                 ),
 
-                // ── Content ──────────────────────────────────────────────────────
+                // â”€â”€ Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 Expanded(
                   child: Container(
                     color: const Color(0xFFF0F3EC),
@@ -562,71 +559,83 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                         ),
                         Expanded(
                           child: StreamBuilder<QuerySnapshot>(
-                      // Teachers
-                      stream: FirebaseFirestore.instance
-                          .collection('users')
-                          .where('role', isEqualTo: 'teacher')
-                          .snapshots(),
-                      builder: (context, teacherSnap) {
-                        return StreamBuilder<QuerySnapshot>(
-                          // Classes (for schedule status)
-                          stream: FirebaseFirestore.instance
-                              .collection('classes')
-                              .snapshots(),
-                          builder: (context, classSnap) {
-                            // Rebuild classScheduleStatus map from classes
-                            final newMap = <String, String>{};
-                            for (final cd in classSnap.data?.docs ?? []) {
-                              final d = cd.data() as Map<String, dynamic>;
-                              final sched =
-                                  d['schedule'] as Map<String, dynamic>? ?? {};
-                              newMap[cd.id] = _scheduleActive(sched);
-                            }
-                            if (newMap.isNotEmpty) {
-                              _classScheduleStatus = newMap;
-                            }
+                            // Teachers
+                            stream: FirebaseFirestore.instance
+                                .collection('users')
+                                .where('role', isEqualTo: 'teacher')
+                                .snapshots(),
+                            builder: (context, teacherSnap) {
+                              return StreamBuilder<QuerySnapshot>(
+                                // Classes (for schedule status)
+                                stream: FirebaseFirestore.instance
+                                    .collection('classes')
+                                    .snapshots(),
+                                builder: (context, classSnap) {
+                                  // Rebuild classScheduleStatus map from classes
+                                  final newMap = <String, String>{};
+                                  for (final cd in classSnap.data?.docs ?? []) {
+                                    final d = cd.data() as Map<String, dynamic>;
+                                    final sched =
+                                        d['schedule']
+                                            as Map<String, dynamic>? ??
+                                        {};
+                                    newMap[cd.id] = _scheduleActive(sched);
+                                  }
+                                  if (newMap.isNotEmpty) {
+                                    _classScheduleStatus = newMap;
+                                  }
 
-                            final teachers =
-                                List<QueryDocumentSnapshot>.from(
-                              teacherSnap.data?.docs ?? [],
-                            );
-                            teachers.sort((a, b) {
-                              final an =
-                                  ((a.data() as Map)['fullName'] ?? '')
-                                      .toString()
-                                      .toLowerCase();
-                              final bn =
-                                  ((b.data() as Map)['fullName'] ?? '')
-                                      .toString()
-                                      .toLowerCase();
-                              return an.compareTo(bn);
-                            });
+                                  final teachers =
+                                      List<QueryDocumentSnapshot>.from(
+                                        teacherSnap.data?.docs ?? [],
+                                      );
+                                  teachers.sort((a, b) {
+                                    final an =
+                                        ((a.data() as Map)['fullName'] ?? '')
+                                            .toString()
+                                            .toLowerCase();
+                                    final bn =
+                                        ((b.data() as Map)['fullName'] ?? '')
+                                            .toString()
+                                            .toLowerCase();
+                                    return an.compareTo(bn);
+                                  });
 
-                            final availableClasses = teachers
-                                .map(
-                                  (d) => (d.data() as Map<String, dynamic>)[
-                                          'classId']
-                                      .toString()
-                                      .trim(),
-                                )
-                                .where((classId) => classId.isNotEmpty)
-                                .toSet()
-                                .toList()
-                              ..sort();
+                                  final availableClasses =
+                                      teachers
+                                          .map(
+                                            (d) =>
+                                                (d.data()
+                                                        as Map<
+                                                          String,
+                                                          dynamic
+                                                        >)['classId']
+                                                    .toString()
+                                                    .trim(),
+                                          )
+                                          .where(
+                                            (classId) => classId.isNotEmpty,
+                                          )
+                                          .toSet()
+                                          .toList()
+                                        ..sort();
 
-                            if (_filterClassId != null &&
-                                !availableClasses.contains(_filterClassId)) {
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                if (!mounted) return;
-                                setState(() {
-                                  _filterClassId = null;
-                                  _page = 0;
-                                });
-                              });
-                            }
+                                  if (_filterClassId != null &&
+                                      !availableClasses.contains(
+                                        _filterClassId,
+                                      )) {
+                                    WidgetsBinding.instance
+                                        .addPostFrameCallback((_) {
+                                          if (!mounted) return;
+                                          setState(() {
+                                            _filterClassId = null;
+                                            _page = 0;
+                                          });
+                                        });
+                                  }
 
-                            // Apply search filter
-                            final filtered = teachers.where((d) {
+                                  // Apply search filter
+                                  final filtered = teachers.where((d) {
                                     final data =
                                         d.data() as Map<String, dynamic>;
                                     final name = (data['fullName'] ?? '')
@@ -666,74 +675,79 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                     return true;
                                   }).toList();
 
-                            final activeCount = teachers
-                                .where(
-                                  (teacher) =>
-                                      _computeTeacherStatus(teacher) == 'inSchool',
-                                )
-                                .length;
-                            final inactiveCount = teachers
-                                .where(
-                                  (teacher) =>
-                                      _computeTeacherStatus(teacher) == 'outside',
-                                )
-                                .length;
-                            final disabledCount = teachers
-                                .where(
-                                  (teacher) =>
-                                      _computeTeacherStatus(teacher) == 'disabled',
-                                )
-                                .length;
+                                  final activeCount = teachers
+                                      .where(
+                                        (teacher) =>
+                                            _computeTeacherStatus(teacher) ==
+                                            'inSchool',
+                                      )
+                                      .length;
+                                  final inactiveCount = teachers
+                                      .where(
+                                        (teacher) =>
+                                            _computeTeacherStatus(teacher) ==
+                                            'outside',
+                                      )
+                                      .length;
+                                  final disabledCount = teachers
+                                      .where(
+                                        (teacher) =>
+                                            _computeTeacherStatus(teacher) ==
+                                            'disabled',
+                                      )
+                                      .length;
 
-                            if (teacherSnap.connectionState ==
-                                    ConnectionState.waiting &&
-                                teachers.isEmpty) {
-                              return const Center(
-                                child: CircularProgressIndicator(
-                                  color: Color(0xFF0A7A21),
-                                ),
+                                  if (teacherSnap.connectionState ==
+                                          ConnectionState.waiting &&
+                                      teachers.isEmpty) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Color(0xFF0A7A21),
+                                      ),
+                                    );
+                                  }
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _TeachersPageHeader(
+                                        onAddTap: _showCreateProfessorDialog,
+                                        onExportTap: _exportTeachersReport,
+                                      ),
+                                      _TeacherFilterStatsRow(
+                                        availableClasses: availableClasses,
+                                        selectedClassId: _filterClassId,
+                                        selectedStatus: _filterStatus,
+                                        totalRegistered: teachers.length,
+                                        activeCount: activeCount,
+                                        disabledCount: disabledCount,
+                                        inactiveCount: inactiveCount,
+                                        onClassChanged: (value) => setState(() {
+                                          _filterClassId = value;
+                                          _page = 0;
+                                        }),
+                                        onStatusChanged: (value) =>
+                                            setState(() {
+                                              _filterStatus = value ?? 'all';
+                                              _page = 0;
+                                            }),
+                                      ),
+                                      Expanded(
+                                        child: _TeachersTablePanel(
+                                          teachers: filtered,
+                                          teacherStatus: _computeTeacherStatus,
+                                          page: _page,
+                                          pageSize: _pageSize,
+                                          onPageChanged: (p) =>
+                                              setState(() => _page = p),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
                               );
-                            }
-
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _TeachersPageHeader(
-                                  onAddTap: _showCreateProfessorDialog,
-                                  onExportTap: _exportTeachersReport,
-                                ),
-                                _TeacherFilterStatsRow(
-                                  availableClasses: availableClasses,
-                                  selectedClassId: _filterClassId,
-                                  selectedStatus: _filterStatus,
-                                  totalRegistered: teachers.length,
-                                  activeCount: activeCount,
-                                  disabledCount: disabledCount,
-                                  inactiveCount: inactiveCount,
-                                  onClassChanged: (value) => setState(() {
-                                    _filterClassId = value;
-                                    _page = 0;
-                                  }),
-                                  onStatusChanged: (value) => setState(() {
-                                    _filterStatus = value ?? 'all';
-                                    _page = 0;
-                                  }),
-                                ),
-                                Expanded(
-                                  child: _TeachersTablePanel(
-                                    teachers: filtered,
-                                    teacherStatus: _computeTeacherStatus,
-                                    page: _page,
-                                    pageSize: _pageSize,
-                                    onPageChanged: (p) =>
-                                        setState(() => _page = p),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
+                            },
                           ),
                         ),
                       ],
@@ -749,9 +763,9 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _TeachersSidebar
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TeachersSidebar extends StatelessWidget {
   final String selected;
@@ -890,9 +904,7 @@ class _TeachersSidebar extends StatelessWidget {
                   ),
                   alignment: Alignment.center,
                   child: Text(
-                    displayName.isNotEmpty
-                        ? displayName[0].toUpperCase()
-                        : 'A',
+                    displayName.isNotEmpty ? displayName[0].toUpperCase() : 'A',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF7A4A10),
@@ -934,9 +946,9 @@ class _TeachersSidebar extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _SidebarTile
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _SidebarTile extends StatelessWidget {
   final String label;
@@ -989,9 +1001,9 @@ class _SidebarTile extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _TeachersTopBar
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TeachersTopBar extends StatelessWidget {
   final String displayName;
@@ -1040,7 +1052,11 @@ class _TeachersTopBar extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
                     children: [
-                      const Icon(Icons.search, color: Color(0xFF9FDCAD), size: 18),
+                      const Icon(
+                        Icons.search,
+                        color: Color(0xFF9FDCAD),
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: TextField(
@@ -1078,9 +1094,9 @@ class _TeachersTopBar extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _TeachersPageHeader
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TeachersPageHeader extends StatelessWidget {
   final VoidCallback onAddTap;
@@ -1345,8 +1361,9 @@ class _TeacherFilterCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment:
-            centerContent ? MainAxisAlignment.center : MainAxisAlignment.start,
+        mainAxisAlignment: centerContent
+            ? MainAxisAlignment.center
+            : MainAxisAlignment.start,
         children: [
           Text(
             label,
@@ -1360,8 +1377,9 @@ class _TeacherFilterCard extends StatelessWidget {
           const SizedBox(height: 8),
           Expanded(
             child: Align(
-              alignment:
-                  centerContent ? Alignment.center : Alignment.centerLeft,
+              alignment: centerContent
+                  ? Alignment.center
+                  : Alignment.centerLeft,
               child: child,
             ),
           ),
@@ -1409,9 +1427,9 @@ class _TeacherStatItem extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _TeachersTablePanel
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TeachersTablePanel extends StatelessWidget {
   final List<QueryDocumentSnapshot> teachers;
@@ -1511,8 +1529,7 @@ class _TeachersTablePanel extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: const BoxDecoration(
               color: Color(0xFFF9FCF9),
-              borderRadius:
-                  BorderRadius.vertical(bottom: Radius.circular(16)),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
               border: Border(top: BorderSide(color: Color(0xFFE2EAE0))),
             ),
             child: Row(
@@ -1536,37 +1553,50 @@ class _TeachersTablePanel extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 ...List.generate(totalPages, (i) => i)
-                    .where((i) =>
-                        i == 0 ||
-                        i == totalPages - 1 ||
-                        (i - safePage).abs() <= 1)
+                    .where(
+                      (i) =>
+                          i == 0 ||
+                          i == totalPages - 1 ||
+                          (i - safePage).abs() <= 1,
+                    )
                     .fold<List<Widget>>([], (acc, i) {
-                  if (acc.isNotEmpty) {
-                    final prev = int.parse(
-                      (acc.last as _PageBtn).key
-                          .toString()
-                          .replaceAll(RegExp(r'[^0-9]'), ''),
-                    );
-                    if (i - prev > 1) {
-                      acc.add(const SizedBox(
-                        width: 28,
-                        child: Center(
-                          child: Text('…',
-                              style: TextStyle(
-                                  color: Color(0xFF7B9E84), fontSize: 12)),
+                      if (acc.isNotEmpty) {
+                        final prev = int.parse(
+                          (acc.last as _PageBtn).key.toString().replaceAll(
+                            RegExp(r'[^0-9]'),
+                            '',
+                          ),
+                        );
+                        if (i - prev > 1) {
+                          acc.add(
+                            const SizedBox(
+                              width: 28,
+                              child: Center(
+                                child: Text(
+                                  'â€¦',
+                                  style: TextStyle(
+                                    color: Color(0xFF7B9E84),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                      acc.add(
+                        _PageBtn(
+                          key: ValueKey('pb$i'),
+                          child: Text(
+                            '${i + 1}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          selected: i == safePage,
+                          onTap: () => onPageChanged(i),
                         ),
-                      ));
-                    }
-                  }
-                  acc.add(_PageBtn(
-                    key: ValueKey('pb$i'),
-                    child: Text('${i + 1}',
-                        style: const TextStyle(fontSize: 12)),
-                    selected: i == safePage,
-                    onTap: () => onPageChanged(i),
-                  ));
-                  return acc;
-                }),
+                      );
+                      return acc;
+                    }),
                 const SizedBox(width: 4),
                 _PageBtn(
                   child: const Icon(Icons.chevron_right_rounded, size: 16),
@@ -1582,9 +1612,9 @@ class _TeachersTablePanel extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  _TH  — table header label
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//  _TH  â€” table header label
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TH extends StatelessWidget {
   final String text;
@@ -1604,9 +1634,9 @@ class _TH extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _PageBtn
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _PageBtn extends StatelessWidget {
   final Widget child;
@@ -1637,8 +1667,8 @@ class _PageBtn extends StatelessWidget {
             color: selected
                 ? const Color(0xFF0A7A21)
                 : (!enabled
-                    ? const Color(0xFFDDE8DD)
-                    : const Color(0xFFCCDDCC)),
+                      ? const Color(0xFFDDE8DD)
+                      : const Color(0xFFCCDDCC)),
           ),
         ),
         child: DefaultTextStyle(
@@ -1646,8 +1676,8 @@ class _PageBtn extends StatelessWidget {
             color: selected
                 ? Colors.white
                 : (!enabled
-                    ? const Color(0xFFBBCDBE)
-                    : const Color(0xFF3A5240)),
+                      ? const Color(0xFFBBCDBE)
+                      : const Color(0xFF3A5240)),
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
@@ -1656,8 +1686,8 @@ class _PageBtn extends StatelessWidget {
               color: selected
                   ? Colors.white
                   : (!enabled
-                      ? const Color(0xFFBBCDBE)
-                      : const Color(0xFF3A5240)),
+                        ? const Color(0xFFBBCDBE)
+                        : const Color(0xFF3A5240)),
               size: 16,
             ),
             child: child,
@@ -1668,14 +1698,11 @@ class _PageBtn extends StatelessWidget {
   }
 }
 
-enum _TeacherRowAction {
-  settings,
-  deleteUser,
-}
+enum _TeacherRowAction { settings, deleteUser }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _TeacherRow
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TeacherRow extends StatefulWidget {
   final QueryDocumentSnapshot doc;
@@ -1713,7 +1740,7 @@ class _TeacherRowState extends State<_TeacherRow> {
       if (!mounted) return;
 
       final reviewed = snap.docs.where((d) {
-        final m = d.data() as Map<String, dynamic>;
+        final m = d.data();
         return m['reviewedAt'] != null;
       }).toList();
 
@@ -1723,17 +1750,12 @@ class _TeacherRowState extends State<_TeacherRow> {
       }
 
       reviewed.sort((a, b) {
-        final at =
-            ((a.data() as Map<String, dynamic>)['reviewedAt'] as Timestamp)
-                .seconds;
-        final bt =
-            ((b.data() as Map<String, dynamic>)['reviewedAt'] as Timestamp)
-                .seconds;
+        final at = (a.data()['reviewedAt'] as Timestamp).seconds;
+        final bt = (b.data()['reviewedAt'] as Timestamp).seconds;
         return bt.compareTo(at);
       });
 
-      final ts = (reviewed.first.data()
-          as Map<String, dynamic>)['reviewedAt'] as Timestamp;
+      final ts = reviewed.first.data()['reviewedAt'] as Timestamp;
       final dt = ts.toDate();
       final now = DateTime.now();
       final diff = now.difference(dt);
@@ -1768,9 +1790,7 @@ class _TeacherRowState extends State<_TeacherRow> {
       await _api.deleteUser(username: username);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Utilizatorul $username a fost șters.'),
-        ),
+        SnackBar(content: Text('Utilizatorul $username a fost șters.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -1938,17 +1958,25 @@ class _TeacherRowState extends State<_TeacherRow> {
                                   : () async {
                                       final newFullName = fullNameC.text.trim();
                                       if (newFullName.isEmpty) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
-                                            content: Text('Introdu un nume valid.'),
+                                            content: Text(
+                                              'Introdu un nume valid.',
+                                            ),
                                           ),
                                         );
                                         return;
                                       }
                                       if (newFullName == currentFullName) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
-                                            content: Text('Numele este deja setat.'),
+                                            content: Text(
+                                              'Numele este deja setat.',
+                                            ),
                                           ),
                                         );
                                         return;
@@ -1965,17 +1993,27 @@ class _TeacherRowState extends State<_TeacherRow> {
                                           currentFullName = newFullName;
                                           renameBusy = false;
                                         });
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
-                                            content: Text('Numele dirigintelui a fost actualizat.'),
+                                            content: Text(
+                                              'Numele dirigintelui a fost actualizat.',
+                                            ),
                                           ),
                                         );
                                       } catch (e) {
                                         if (!mounted) return;
-                                        setDialogState(() => renameBusy = false);
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        setDialogState(
+                                          () => renameBusy = false,
+                                        );
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           SnackBar(
-                                            content: Text('Eroare la actualizarea numelui: $e'),
+                                            content: Text(
+                                              'Eroare la actualizarea numelui: $e',
+                                            ),
                                           ),
                                         );
                                       }
@@ -1991,7 +2029,9 @@ class _TeacherRowState extends State<_TeacherRow> {
                                     )
                                   : const Icon(Icons.edit_rounded),
                               label: Text(
-                                renameBusy ? 'Se salvează...' : 'Salvează numele',
+                                renameBusy
+                                    ? 'Se salvează...'
+                                    : 'Salvează numele',
                               ),
                             ),
                           ),
@@ -2019,7 +2059,8 @@ class _TeacherRowState extends State<_TeacherRow> {
                                       (doc) => DropdownMenuItem<String>(
                                         value: doc.id,
                                         child: Text(
-                                          (doc.data()['name'] ?? doc.id).toString(),
+                                          (doc.data()['name'] ?? doc.id)
+                                              .toString(),
                                         ),
                                       ),
                                     )
@@ -2046,17 +2087,25 @@ class _TeacherRowState extends State<_TeacherRow> {
                                   ? null
                                   : () async {
                                       if (selectedClassId.isEmpty) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
-                                            content: Text('Selectează o clasă.'),
+                                            content: Text(
+                                              'Selectează o clasă.',
+                                            ),
                                           ),
                                         );
                                         return;
                                       }
                                       if (selectedClassId == currentClassId) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
-                                            content: Text('Dirigintele este deja în clasa selectată.'),
+                                            content: Text(
+                                              'Dirigintele este deja în clasa selectată.',
+                                            ),
                                           ),
                                         );
                                         return;
@@ -2073,17 +2122,25 @@ class _TeacherRowState extends State<_TeacherRow> {
                                           currentClassId = selectedClassId;
                                           moveBusy = false;
                                         });
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
-                                            content: Text('Clasa dirigintelui a fost actualizată.'),
+                                            content: Text(
+                                              'Clasa dirigintelui a fost actualizată.',
+                                            ),
                                           ),
                                         );
                                       } catch (e) {
                                         if (!mounted) return;
                                         setDialogState(() => moveBusy = false);
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           SnackBar(
-                                            content: Text('Eroare la schimbarea clasei: $e'),
+                                            content: Text(
+                                              'Eroare la schimbarea clasei: $e',
+                                            ),
                                           ),
                                         );
                                       }
@@ -2099,7 +2156,9 @@ class _TeacherRowState extends State<_TeacherRow> {
                                     )
                                   : const Icon(Icons.swap_horiz_rounded),
                               label: Text(
-                                moveBusy ? 'Se actualizează...' : 'Actualizează clasa',
+                                moveBusy
+                                    ? 'Se actualizează...'
+                                    : 'Actualizează clasa',
                               ),
                             ),
                           ),
@@ -2145,7 +2204,7 @@ class _TeacherRowState extends State<_TeacherRow> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         children: [
-          // ── NUME DIRIGINTE ────────────────────────────────────────────────
+          // â”€â”€ NUME DIRIGINTE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Expanded(
             flex: 26,
             child: Row(
@@ -2196,7 +2255,7 @@ class _TeacherRowState extends State<_TeacherRow> {
             ),
           ),
 
-          // ── CLASĂ ────────────────────────────────────────────────────────
+          // â”€â”€ CLASĂ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Expanded(
             flex: 12,
             child: classId.isEmpty
@@ -2226,7 +2285,7 @@ class _TeacherRowState extends State<_TeacherRow> {
                   ),
           ),
 
-          // ── EMAIL ────────────────────────────────────────────────────────
+          // â”€â”€ EMAIL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Expanded(
             flex: 20,
             child: Text(
@@ -2237,7 +2296,7 @@ class _TeacherRowState extends State<_TeacherRow> {
             ),
           ),
 
-          // ── ULTIMA ACTIVITATE ────────────────────────────────────────────
+          // â”€â”€ ULTIMA ACTIVITATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Expanded(
             flex: 14,
             child: _lastActivity == null
@@ -2250,29 +2309,23 @@ class _TeacherRowState extends State<_TeacherRow> {
                     ),
                   )
                 : _lastActivity!.isEmpty
-                    ? const Text(
-                        '—',
-                        style: TextStyle(
-                          color: Color(0xFF9DB8A0),
-                          fontSize: 13,
-                        ),
-                      )
-                    : Text(
-                        _lastActivity!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF4A6E52),
-                        ),
-                      ),
+                ? const Text(
+                    'â€”',
+                    style: TextStyle(color: Color(0xFF9DB8A0), fontSize: 13),
+                  )
+                : Text(
+                    _lastActivity!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF4A6E52),
+                    ),
+                  ),
           ),
 
-          // ── STATUS ──────────────────────────────────────────────────────
-          Expanded(
-            flex: 18,
-            child: _TeacherStatusChip(status: widget.status),
-          ),
+          // â”€â”€ STATUS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          Expanded(flex: 18, child: _TeacherStatusChip(status: widget.status)),
 
-          // ── SETĂRI ──────────────────────────────────────────────────────
+          // â”€â”€ SETĂRI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           Expanded(
             flex: 10,
             child: PopupMenuButton<_TeacherRowAction>(
@@ -2347,9 +2400,9 @@ class _TeacherRowState extends State<_TeacherRow> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 //  _TeacherStatusChip
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TeacherStatusChip extends StatelessWidget {
   final String status; // 'inSchool' | 'outside' | 'disabled'

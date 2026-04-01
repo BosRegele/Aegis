@@ -98,7 +98,8 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
   ) {
     final out = <String, Map<String, String>>{};
     for (final key in _dayNames.keys) {
-      final day = (schedule?[key] as Map<String, dynamic>?) ??
+      final day =
+          (schedule?[key] as Map<String, dynamic>?) ??
           const <String, dynamic>{};
       out[key] = {
         'start': (day['start'] ?? '08:00').toString(),
@@ -174,7 +175,8 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
     selectedDoc ??= docs.first;
 
     final selectedData = selectedDoc.data() as Map<String, dynamic>;
-    final shouldUpdate = selectedClassId != selectedDoc.id ||
+    final shouldUpdate =
+        selectedClassId != selectedDoc.id ||
         !_sameMapRef(selectedClassData, selectedData);
 
     if (!shouldUpdate) return;
@@ -209,8 +211,9 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
     final picked = await showTimePicker(
       context: context,
       initialTime: _toTimeOfDay(currentValue),
-      helpText:
-          field == 'start' ? 'Selecteaza ora de intrare' : 'Selecteaza ora de iesire',
+      helpText: field == 'start'
+          ? 'Selecteaza ora de intrare'
+          : 'Selecteaza ora de iesire',
     );
     if (picked == null) return;
 
@@ -351,9 +354,9 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Eroare la export: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Eroare la export: $e')));
     } finally {
       if (mounted) setState(() => _exportBusy = false);
     }
@@ -380,8 +383,10 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                 children: [
                   _ClassesSidebar(
                     onMenuTap: () => Navigator.of(context).pop(),
-                    onStudentsTap: () => _replacePage(const AdminStudentsPage()),
-                    onPersonalTap: () => _replacePage(const AdminTeachersPage()),
+                    onStudentsTap: () =>
+                        _replacePage(const AdminStudentsPage()),
+                    onPersonalTap: () =>
+                        _replacePage(const AdminTeachersPage()),
                     onTurnichetiTap: () =>
                         _replacePage(const AdminTurnstilesPage()),
                     onClaseTap: () {},
@@ -416,10 +421,12 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                 }
 
                                 final docs = [...snap.data!.docs]
-                                  ..sort((a, b) => _compareClassLabels(
-                                        _classLabelFromDoc(a),
-                                        _classLabelFromDoc(b),
-                                      ));
+                                  ..sort(
+                                    (a, b) => _compareClassLabels(
+                                      _classLabelFromDoc(a),
+                                      _classLabelFromDoc(b),
+                                    ),
+                                  );
 
                                 _syncSelectedClass(docs);
 
@@ -434,7 +441,8 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
 
                                 final activeClassId = selectedDoc?.id;
                                 final activeClassData =
-                                    selectedDoc?.data() as Map<String, dynamic>?;
+                                    selectedDoc?.data()
+                                        as Map<String, dynamic>?;
                                 final activeClassName = selectedDoc == null
                                     ? null
                                     : _classLabelFromDoc(selectedDoc);
@@ -460,7 +468,8 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                   ),
                                   child: LayoutBuilder(
                                     builder: (context, constraints) {
-                                      final vertical = constraints.maxWidth < 1080;
+                                      final vertical =
+                                          constraints.maxWidth < 1080;
 
                                       return Column(
                                         crossAxisAlignment:
@@ -501,12 +510,18 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                                 }
                                                 setState(() {
                                                   selectedClassId = doc?.id;
-                                                  selectedClassData = doc == null
+                                                  selectedClassData =
+                                                      doc == null
                                                       ? null
-                                                      : Map<String, dynamic>.from(
+                                                      : Map<
+                                                          String,
+                                                          dynamic
+                                                        >.from(
                                                           doc.data()
-                                                              as Map<String,
-                                                                  dynamic>,
+                                                              as Map<
+                                                                String,
+                                                                dynamic
+                                                              >,
                                                         );
                                                 });
                                               },
@@ -519,28 +534,31 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                             const SizedBox(height: 14),
                                             _ScheduleCard(
                                               classId: activeClassId,
-                                              selectedClassData: activeClassData,
+                                              selectedClassData:
+                                                  activeClassData,
                                               dayNames: _dayNames,
                                               scheduleBuilder:
                                                   _normalizedSchedule,
                                               onPickStart: activeClassId == null
                                                   ? null
                                                   : (day, value) =>
-                                                      _pickAndSaveTime(
-                                                        classId: activeClassId,
-                                                        dayKey: day,
-                                                        field: 'start',
-                                                        currentValue: value,
-                                                      ),
+                                                        _pickAndSaveTime(
+                                                          classId:
+                                                              activeClassId,
+                                                          dayKey: day,
+                                                          field: 'start',
+                                                          currentValue: value,
+                                                        ),
                                               onPickEnd: activeClassId == null
                                                   ? null
                                                   : (day, value) =>
-                                                      _pickAndSaveTime(
-                                                        classId: activeClassId,
-                                                        dayKey: day,
-                                                        field: 'end',
-                                                        currentValue: value,
-                                                      ),
+                                                        _pickAndSaveTime(
+                                                          classId:
+                                                              activeClassId,
+                                                          dayKey: day,
+                                                          field: 'end',
+                                                          currentValue: value,
+                                                        ),
                                             ),
                                           ] else
                                             Row(
@@ -559,8 +577,9 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                                             _classLabelFromDoc,
                                                         onChanged: (newClassId) {
                                                           QueryDocumentSnapshot?
-                                                              doc;
-                                                          for (final d in docs) {
+                                                          doc;
+                                                          for (final d
+                                                              in docs) {
                                                             if (d.id ==
                                                                 newClassId) {
                                                               doc = d;
@@ -573,16 +592,22 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                                             selectedClassData =
                                                                 doc == null
                                                                 ? null
-                                                                : Map<String,
-                                                                        dynamic>.from(
+                                                                : Map<
+                                                                    String,
+                                                                    dynamic
+                                                                  >.from(
                                                                     doc.data()
-                                                                        as Map<String,
-                                                                            dynamic>,
+                                                                        as Map<
+                                                                          String,
+                                                                          dynamic
+                                                                        >,
                                                                   );
                                                           });
                                                         },
                                                       ),
-                                                      const SizedBox(height: 14),
+                                                      const SizedBox(
+                                                        height: 14,
+                                                      ),
                                                       _ClassStudentsCard(
                                                         classId: activeClassId,
                                                         className:
@@ -604,27 +629,29 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                                     onPickStart:
                                                         activeClassId == null
                                                         ? null
-                                                        : (day, value) =>
-                                                            _pickAndSaveTime(
-                                                              classId:
-                                                                  activeClassId,
-                                                              dayKey: day,
-                                                              field: 'start',
-                                                              currentValue:
-                                                                  value,
-                                                            ),
+                                                        : (
+                                                            day,
+                                                            value,
+                                                          ) => _pickAndSaveTime(
+                                                            classId:
+                                                                activeClassId,
+                                                            dayKey: day,
+                                                            field: 'start',
+                                                            currentValue: value,
+                                                          ),
                                                     onPickEnd:
                                                         activeClassId == null
                                                         ? null
-                                                        : (day, value) =>
-                                                            _pickAndSaveTime(
-                                                              classId:
-                                                                  activeClassId,
-                                                              dayKey: day,
-                                                              field: 'end',
-                                                              currentValue:
-                                                                  value,
-                                                            ),
+                                                        : (
+                                                            day,
+                                                            value,
+                                                          ) => _pickAndSaveTime(
+                                                            classId:
+                                                                activeClassId,
+                                                            dayKey: day,
+                                                            field: 'end',
+                                                            currentValue: value,
+                                                          ),
                                                   ),
                                                 ),
                                               ],
@@ -664,7 +691,9 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
     String? classId,
     required String fullName,
   }) async {
-    final callable = FirebaseFunctions.instance.httpsCallable('adminCreateUser');
+    final callable = FirebaseFunctions.instance.httpsCallable(
+      'adminCreateUser',
+    );
 
     await callable.call({
       'username': username,
@@ -1004,8 +1033,10 @@ class _ClassSelectorCard extends StatelessWidget {
             decoration: InputDecoration(
               filled: true,
               fillColor: const Color(0xFFF5F8F2),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 10,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: Color(0xFFDAE8D0)),
@@ -1039,7 +1070,7 @@ class _ScheduleCard extends StatelessWidget {
   final Map<String, dynamic>? selectedClassData;
   final Map<String, String> dayNames;
   final Map<String, Map<String, String>> Function(Map<String, dynamic>?)
-      scheduleBuilder;
+  scheduleBuilder;
   final Future<void> Function(String day, String currentValue)? onPickStart;
   final Future<void> Function(String day, String currentValue)? onPickEnd;
 
@@ -1054,8 +1085,9 @@ class _ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final schedule =
-        scheduleBuilder(selectedClassData?['schedule'] as Map<String, dynamic>?);
+    final schedule = scheduleBuilder(
+      selectedClassData?['schedule'] as Map<String, dynamic>?,
+    );
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -1184,8 +1216,9 @@ class _ScheduleCard extends StatelessWidget {
                   Expanded(
                     flex: 4,
                     child: OutlinedButton.icon(
-                      onPressed:
-                          onPickEnd == null ? null : () => onPickEnd!(dayKey, end),
+                      onPressed: onPickEnd == null
+                          ? null
+                          : () => onPickEnd!(dayKey, end),
                       icon: const Icon(Icons.access_time_rounded, size: 14),
                       label: Text(end),
                       style: OutlinedButton.styleFrom(
@@ -1247,8 +1280,10 @@ class _ClassStudentsCard extends StatelessWidget {
                 const Spacer(),
                 if (className != null)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEAF6E0),
                       borderRadius: BorderRadius.circular(999),
@@ -1312,8 +1347,12 @@ class _ClassStudentsList extends StatelessWidget {
 
         final docs = [...snap.data!.docs];
         docs.sort((a, b) {
-          final an = ((a.data() as Map)['fullName'] ?? '').toString().toLowerCase();
-          final bn = ((b.data() as Map)['fullName'] ?? '').toString().toLowerCase();
+          final an = ((a.data() as Map)['fullName'] ?? '')
+              .toString()
+              .toLowerCase();
+          final bn = ((b.data() as Map)['fullName'] ?? '')
+              .toString()
+              .toLowerCase();
           return an.compareTo(bn);
         });
 
@@ -1397,8 +1436,10 @@ class _ClassStudentsList extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: inSchool
                           ? const Color(0xFFE8F5E9)

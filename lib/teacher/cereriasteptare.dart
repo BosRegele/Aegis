@@ -63,44 +63,6 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
     }
   }
 
-  // --- Funcție nouă pentru aprobare/respingere în masă ---
-  Future<void> _reviewAllRequests(
-    List<QueryDocumentSnapshot> docs,
-    String status,
-  ) async {
-    final teacherUid = AppSession.uid;
-    if (teacherUid == null || teacherUid.isEmpty) return;
-
-    final batch = FirebaseFirestore.instance.batch();
-    final now = Timestamp.now();
-    final reviewerName = (AppSession.username ?? '').toString();
-
-    for (var doc in docs) {
-      batch.update(doc.reference, {
-        'status': status,
-        'reviewedAt': now,
-        'reviewedByUid': teacherUid,
-        'reviewedByName': reviewerName,
-      });
-    }
-
-    await batch.commit();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            status == 'approved'
-                ? 'Toate cererile au fost aprobate'
-                : 'Toate cererile au fost respinse',
-          ),
-          backgroundColor: status == 'approved' ? Colors.green : Colors.red,
-        ),
-      );
-    }
-  }
-  // ---------------------------------------------------------
-
   Future<void> _showRequestDialog(
     BuildContext context,
     String requestId,
@@ -591,38 +553,6 @@ class _TopHeader extends StatelessWidget {
       ),
     );
   }
-}
-
-class _HeaderDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.14);
-    const spacing = 18.0;
-    for (double y = 14; y < size.height; y += spacing) {
-      for (double x = 16; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), 1.3, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _BgDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFFC8D8C4);
-    const spacing = 32.0;
-    for (double y = 16; y < 72; y += spacing) {
-      for (double x = 16; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), 2.1, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _RequestCard extends StatelessWidget {

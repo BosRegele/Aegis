@@ -133,138 +133,93 @@ class _OrarScreenState extends State<OrarScreen> {
                     .toString()
                     .trim();
 
-                return SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _OrarHeroHeader(onBack: _goBack, onLogout: _logout),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-                        child: _ProfileIdentityCard(
-                          displayName: displayName,
-                          className: resolvedClassName,
-                          teacherUid: teacherUid,
-                          teacherUsername: teacherUsername,
-                          onLogout: _logout,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 38,
-                          vertical: 8,
-                        ),
-                        child:
-                            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                              stream: _lastScanStream,
-                              builder: (context, lastScanSnapshot) {
-                                final lastScanData =
-                                    lastScanSnapshot.data?.docs.isNotEmpty ==
-                                        true
-                                    ? lastScanSnapshot.data!.docs.first.data()
-                                    : null;
-                                final lastScanDisplay = _formatLastScan(
-                                  lastScanData?['timestamp'],
-                                );
-
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                    vertical: 16,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _surfaceContainerLow,
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.qr_code_2_rounded,
-                                        color: _primary,
-                                        size: 22,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      const Text(
-                                        'Ultima Scanare',
-                                        style: TextStyle(
-                                          color: _outline,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Flexible(
-                                        child: Text(
-                                          lastScanDisplay,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: _onSurface,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-                          decoration: BoxDecoration(
-                            color: _surfaceLowest,
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(
-                              color: _outlineVariant.withValues(alpha: 0.18),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Orar Săptămanal',
-                                style: TextStyle(
-                                  color: _onSurface,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _OrarHeroHeader(onBack: _goBack, onLogout: _logout),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                              child: _ProfileIdentityCard(
+                                displayName: displayName,
+                                className: resolvedClassName,
+                                teacherUid: teacherUid,
+                                teacherUsername: teacherUsername,
+                                onLogout: _logout,
                               ),
-                              const SizedBox(height: 14),
-                              if (scheduleRows.isEmpty)
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(14),
-                                  decoration: BoxDecoration(
-                                    color: _surfaceContainerLow,
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                  child: const Text(
-                                    'Nu există orar definit pe server pentru clasa ta.',
-                                    style: TextStyle(
-                                      color: _outline,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
+                            ),
+                            const SizedBox(height: 16),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                              child: Container(
+                                padding: const EdgeInsets.fromLTRB(
+                                  18,
+                                  18,
+                                  18,
+                                  18,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _surfaceLowest,
+                                  borderRadius: BorderRadius.circular(30),
+                                  border: Border.all(
+                                    color: _outlineVariant.withValues(
+                                      alpha: 0.18,
                                     ),
                                   ),
                                 ),
-                              for (final row in scheduleRows) ...[
-                                _ScheduleRow(
-                                  dayName: row.dayName,
-                                  intervalText: row.intervalText,
-                                  rowDayNumber: row.dayNumber,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Orar Săptămanal',
+                                      style: TextStyle(
+                                        color: _onSurface,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    if (scheduleRows.isEmpty)
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.all(14),
+                                        decoration: BoxDecoration(
+                                          color: _surfaceContainerLow,
+                                          borderRadius: BorderRadius.circular(
+                                            18,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Nu există orar definit pe server pentru clasa ta.',
+                                          style: TextStyle(
+                                            color: _outline,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    for (final row in scheduleRows) ...[
+                                      _ScheduleRow(
+                                        dayName: row.dayName,
+                                        intervalText: row.intervalText,
+                                        rowDayNumber: row.dayNumber,
+                                      ),
+                                      const SizedBox(height: 10),
+                                    ],
+                                  ],
                                 ),
-                                const SizedBox(height: 10),
-                              ],
-                            ],
-                          ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 );
               },
             );
@@ -417,78 +372,15 @@ class _ProfileIdentityCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Container(
-                width: 168,
-                height: 160,
-                decoration: BoxDecoration(
-                  color: _surfaceContainerLow.withValues(alpha: 0.82),
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(38),
-                    bottomLeft: Radius.circular(78),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _showSettingsSheet(context),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.settings_outlined,
-                      color: _primary,
-                      size: 22,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _showSettingsSheet(context),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.settings_outlined,
-                      color: _primary,
-                      size: 22,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
-              child: Column(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 112),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -513,21 +405,42 @@ class _ProfileIdentityCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 26),
-                  Container(height: 1, color: const Color(0xFFF0F1EA)),
-                  const SizedBox(height: 22),
-                  _PersonInfoBox(
-                    label: 'DIRIGINTE',
-                    icon: Icons.school,
-                    teacherUid: teacherUid,
-                    teacherUsername: teacherUsername,
+                  const SizedBox(width: 12),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => _showSettingsSheet(context),
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: _surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.settings_outlined,
+                          color: _primary,
+                          size: 26,
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  const _ParentInfoBox(),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 26),
+              Container(height: 1, color: const Color(0xFFF0F1EA)),
+              const SizedBox(height: 22),
+              _PersonInfoBox(
+                label: 'DIRIGINTE',
+                icon: Icons.school,
+                teacherUid: teacherUid,
+                teacherUsername: teacherUsername,
+              ),
+              const SizedBox(height: 12),
+              const _ParentInfoBox(),
+            ],
+          ),
         ),
       ),
     );
@@ -579,11 +492,11 @@ class _SettingsSheet extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           _SettingsTile(
-            icon: Icons.lock_outline,
-            label: 'Schimbă parola',
+            icon: Icons.edit_outlined,
+            label: 'Editare profil',
             onTap: () {
               Navigator.pop(ctx);
-              _sendPasswordReset(ctx);
+              _showEditProfileSheet(ctx);
             },
           ),
           const SizedBox(height: 10),
@@ -598,6 +511,15 @@ class _SettingsSheet extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showEditProfileSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _EditProfileSheet(),
     );
   }
 
@@ -627,6 +549,147 @@ class _SettingsSheet extends StatelessWidget {
         );
       }
     }
+  }
+}
+
+class _EditProfileSheet extends StatefulWidget {
+  @override
+  State<_EditProfileSheet> createState() => _EditProfileSheetState();
+}
+
+class _EditProfileSheetState extends State<_EditProfileSheet> {
+  final _controller = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      FirebaseFirestore.instance.collection('users').doc(uid).get().then((doc) {
+        if (mounted) {
+          _controller.text = (doc.data()?['fullName'] ?? '').toString();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    setState(() => _saving = true);
+    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      'fullName': _controller.text.trim(),
+    });
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profil actualizat.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: _surfaceLowest,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.fromLTRB(24, 8, 24, 24 + bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: _outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const Text(
+            'Editare profil',
+            style: TextStyle(
+              color: _onSurface,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'NUME COMPLET',
+            style: TextStyle(
+              color: _outline,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            style: const TextStyle(color: _onSurface, fontSize: 16),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: _surfaceContainerLow,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _saving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
+              ),
+              child: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      'Salvează',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
