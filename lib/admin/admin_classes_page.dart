@@ -18,7 +18,8 @@ import 'admin_turnstiles_page.dart';
 import 'admin_vacante.dart' as admin_vacante;
 
 class AdminClassesPage extends StatefulWidget {
-  const AdminClassesPage({super.key});
+  const AdminClassesPage({super.key, this.embedded = false});
+  final bool embedded;
 
   @override
   State<AdminClassesPage> createState() => _AdminClassesPageState();
@@ -202,6 +203,85 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
     return name.isEmpty ? doc.id : name;
   }
 
+  Future<void> _showCreateClassDialog() async {
+    final controller = TextEditingController();
+    String? errorText;
+    bool busy = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              title: const Text('Creează Clasă Nouă'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: 'Numele clasei (ex: 9A, 10B)',
+                      errorText: errorText,
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (_) {
+                      if (errorText != null) {
+                        setDialogState(() => errorText = null);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: busy ? null : () => Navigator.of(ctx).pop(),
+                  child: const Text('Anul'),
+                ),
+                FilledButton(
+                  onPressed: busy
+                      ? null
+                      : () async {
+                          final name = controller.text.trim().toUpperCase();
+                          if (name.isEmpty) {
+                            setDialogState(
+                              () => errorText = 'Introdu numele clasei',
+                            );
+                            return;
+                          }
+                          setDialogState(() => busy = true);
+                          try {
+                            await api.createClass(name: name);
+                            if (ctx.mounted) Navigator.of(ctx).pop();
+                          } catch (e) {
+                            setDialogState(() {
+                              busy = false;
+                              errorText = e.toString().replaceAll(
+                                RegExp(r'\[.*?\]\s*'),
+                                '',
+                              );
+                            });
+                          }
+                        },
+                  child: busy
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Creează'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    controller.dispose();
+  }
+
   Future<void> _pickAndSaveTime({
     required String classId,
     required String dayKey,
@@ -370,6 +450,350 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
       );
     }
 
+    final body = Container(
+      color: const Color(0xFFF0F3EC),
+      child: Column(
+        children: [
+          if (!widget.embedded) const _ClassesTopBar(),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('classes')
+                  .snapshots(),
+              builder: (context, snap) {
+                if (snap.hasError) {
+                  return Center(
+                    child: SelectableText('Eroare clase:\n${snap.error}'),
+                  );
+                }
+                if (!snap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final docs = [...snap.data!.docs]
+                  ..sort(
+                    (a, b) => _compareClassLabels(
+                      _classLabelFromDoc(a),
+                      _classLabelFromDoc(b),
+                    ),
+                  );
+
+                _syncSelectedClass(docs);
+
+                final selectedId = selectedClassId;
+                QueryDocumentSnapshot? selectedDoc;
+                for (final d in docs) {
+                  if (d.id == selectedId) {
+                    selectedDoc = d;
+                    break;
+                  }
+                }
+
+                final activeClassId = selectedDoc?.id;
+                final activeClassData =
+                    selectedDoc?.data() as Map<String, dynamic>?;
+                final activeClassName = selectedDoc == null
+                    ? null
+                    : _classLabelFromDoc(selectedDoc);
+
+                if (docs.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'Nu exista clase configurate.',
+                      style: TextStyle(fontSize: 16, color: Color(0xFF5B6B58)),
+                    ),
+                  );
+                }
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(22, 28, 22, 24),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final vertical = constraints.maxWidth < 1080;
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (vertical) ...[
+                            const Text(
+                              'Gestiune Clase',
+                              style: TextStyle(
+                                fontSize: 44,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF223624),
+                                letterSpacing: -0.4,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Administrarea elevilor si configurarea programului operational.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF5C6D58),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ] else
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Gestiune Clase',
+                                        style: TextStyle(
+                                          fontSize: 44,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF223624),
+                                          letterSpacing: -0.4,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        'Administrarea elevilor si configurarea programului operational.',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Color(0xFF5C6D58),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ElevatedButton.icon(
+                                      onPressed: _showCreateClassDialog,
+                                      icon: const Icon(
+                                        Icons.add_circle_outline_rounded,
+                                        size: 22,
+                                      ),
+                                      label: const Text('Creează Clasă Nouă'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFF0F7422,
+                                        ),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                          vertical: 22,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                        textStyle: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          const SizedBox(height: 12),
+                          if (vertical) ...[
+                            _ClassSelectorCard(
+                              selectedClassId: activeClassId,
+                              classDocs: docs,
+                              classLabelBuilder: _classLabelFromDoc,
+                              onChanged: (newClassId) {
+                                QueryDocumentSnapshot? doc;
+                                for (final d in docs) {
+                                  if (d.id == newClassId) {
+                                    doc = d;
+                                    break;
+                                  }
+                                }
+                                setState(() {
+                                  selectedClassId = doc?.id;
+                                  selectedClassData = doc == null
+                                      ? null
+                                      : Map<String, dynamic>.from(
+                                          doc.data() as Map<String, dynamic>,
+                                        );
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            _ClassTeacherCard(
+                              classId: activeClassId,
+                              teacherUsername:
+                                  (activeClassData?['teacherUsername'] ?? '')
+                                      .toString(),
+                            ),
+                            const SizedBox(height: 14),
+                            _ClassStudentsCard(
+                              classId: activeClassId,
+                              className: activeClassName,
+                            ),
+                            const SizedBox(height: 14),
+                            ElevatedButton.icon(
+                              onPressed: _showCreateClassDialog,
+                              icon: const Icon(
+                                Icons.add_circle_outline_rounded,
+                                size: 22,
+                              ),
+                              label: const Text('Creează Clasă Nouă'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0F7422),
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size.fromHeight(56),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 22,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _ScheduleCard(
+                              classId: activeClassId,
+                              selectedClassData: activeClassData,
+                              dayNames: _dayNames,
+                              scheduleBuilder: _normalizedSchedule,
+                              onPickStart: activeClassId == null
+                                  ? null
+                                  : (day, value) => _pickAndSaveTime(
+                                      classId: activeClassId,
+                                      dayKey: day,
+                                      field: 'start',
+                                      currentValue: value,
+                                    ),
+                              onPickEnd: activeClassId == null
+                                  ? null
+                                  : (day, value) => _pickAndSaveTime(
+                                      classId: activeClassId,
+                                      dayKey: day,
+                                      field: 'end',
+                                      currentValue: value,
+                                    ),
+                            ),
+                            const SizedBox(height: 14),
+                            _ExportBar(
+                              enabled: activeClassId != null,
+                              busy: _exportBusy,
+                              onExport: _exportSelectedClassStudentsReport,
+                            ),
+                          ] else ...[
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: Column(
+                                    children: [
+                                      _ClassSelectorCard(
+                                        selectedClassId: activeClassId,
+                                        classDocs: docs,
+                                        classLabelBuilder: _classLabelFromDoc,
+                                        onChanged: (newClassId) {
+                                          QueryDocumentSnapshot? doc;
+                                          for (final d in docs) {
+                                            if (d.id == newClassId) {
+                                              doc = d;
+                                              break;
+                                            }
+                                          }
+                                          setState(() {
+                                            selectedClassId = doc?.id;
+                                            selectedClassData = doc == null
+                                                ? null
+                                                : Map<String, dynamic>.from(
+                                                    doc.data()
+                                                        as Map<String, dynamic>,
+                                                  );
+                                          });
+                                        },
+                                      ),
+                                      const SizedBox(height: 14),
+                                      _ClassTeacherCard(
+                                        classId: activeClassId,
+                                        teacherUsername:
+                                            (activeClassData?['teacherUsername'] ??
+                                                    '')
+                                                .toString(),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      _ClassStudentsCard(
+                                        classId: activeClassId,
+                                        className: activeClassName,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  flex: 5,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      _ScheduleCard(
+                                        classId: activeClassId,
+                                        selectedClassData: activeClassData,
+                                        dayNames: _dayNames,
+                                        scheduleBuilder: _normalizedSchedule,
+                                        onPickStart: activeClassId == null
+                                            ? null
+                                            : (day, value) => _pickAndSaveTime(
+                                                classId: activeClassId,
+                                                dayKey: day,
+                                                field: 'start',
+                                                currentValue: value,
+                                              ),
+                                        onPickEnd: activeClassId == null
+                                            ? null
+                                            : (day, value) => _pickAndSaveTime(
+                                                classId: activeClassId,
+                                                dayKey: day,
+                                                field: 'end',
+                                                currentValue: value,
+                                              ),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      _ExportBar(
+                                        enabled: activeClassId != null,
+                                        busy: _exportBusy,
+                                        onExport:
+                                            _exportSelectedClassStudentsReport,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (widget.embedded) return body;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0B7A21),
       body: SafeArea(
@@ -395,286 +819,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                     onParintiTap: () => _replacePage(const AdminParentsPage()),
                     onLogoutTap: _showLogoutDialog,
                   ),
-                  Expanded(
-                    child: Container(
-                      color: const Color(0xFFF0F3EC),
-                      child: Column(
-                        children: [
-                          const _ClassesTopBar(),
-                          Expanded(
-                            child: StreamBuilder<QuerySnapshot>(
-                              stream: FirebaseFirestore.instance
-                                  .collection('classes')
-                                  .snapshots(),
-                              builder: (context, snap) {
-                                if (snap.hasError) {
-                                  return Center(
-                                    child: SelectableText(
-                                      'Eroare clase:\n${snap.error}',
-                                    ),
-                                  );
-                                }
-                                if (!snap.hasData) {
-                                  return const Center(
-                                    child: CircularProgressIndicator(),
-                                  );
-                                }
-
-                                final docs = [...snap.data!.docs]
-                                  ..sort(
-                                    (a, b) => _compareClassLabels(
-                                      _classLabelFromDoc(a),
-                                      _classLabelFromDoc(b),
-                                    ),
-                                  );
-
-                                _syncSelectedClass(docs);
-
-                                final selectedId = selectedClassId;
-                                QueryDocumentSnapshot? selectedDoc;
-                                for (final d in docs) {
-                                  if (d.id == selectedId) {
-                                    selectedDoc = d;
-                                    break;
-                                  }
-                                }
-
-                                final activeClassId = selectedDoc?.id;
-                                final activeClassData =
-                                    selectedDoc?.data()
-                                        as Map<String, dynamic>?;
-                                final activeClassName = selectedDoc == null
-                                    ? null
-                                    : _classLabelFromDoc(selectedDoc);
-
-                                if (docs.isEmpty) {
-                                  return const Center(
-                                    child: Text(
-                                      'Nu exista clase configurate.',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Color(0xFF5B6B58),
-                                      ),
-                                    ),
-                                  );
-                                }
-
-                                return SingleChildScrollView(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    22,
-                                    18,
-                                    22,
-                                    24,
-                                  ),
-                                  child: LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      final vertical =
-                                          constraints.maxWidth < 1080;
-
-                                      return Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            'Gestiune Clase',
-                                            style: TextStyle(
-                                              fontSize: 44,
-                                              fontWeight: FontWeight.w800,
-                                              color: Color(0xFF223624),
-                                              letterSpacing: -0.4,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          const Text(
-                                            'Administrarea elevilor si configurarea programului operational.',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Color(0xFF5C6D58),
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          if (vertical) ...[
-                                            _ClassSelectorCard(
-                                              selectedClassId: activeClassId,
-                                              classDocs: docs,
-                                              classLabelBuilder:
-                                                  _classLabelFromDoc,
-                                              onChanged: (newClassId) {
-                                                QueryDocumentSnapshot? doc;
-                                                for (final d in docs) {
-                                                  if (d.id == newClassId) {
-                                                    doc = d;
-                                                    break;
-                                                  }
-                                                }
-                                                setState(() {
-                                                  selectedClassId = doc?.id;
-                                                  selectedClassData =
-                                                      doc == null
-                                                      ? null
-                                                      : Map<
-                                                          String,
-                                                          dynamic
-                                                        >.from(
-                                                          doc.data()
-                                                              as Map<
-                                                                String,
-                                                                dynamic
-                                                              >,
-                                                        );
-                                                });
-                                              },
-                                            ),
-                                            const SizedBox(height: 14),
-                                            _ClassStudentsCard(
-                                              classId: activeClassId,
-                                              className: activeClassName,
-                                            ),
-                                            const SizedBox(height: 14),
-                                            _ScheduleCard(
-                                              classId: activeClassId,
-                                              selectedClassData:
-                                                  activeClassData,
-                                              dayNames: _dayNames,
-                                              scheduleBuilder:
-                                                  _normalizedSchedule,
-                                              onPickStart: activeClassId == null
-                                                  ? null
-                                                  : (day, value) =>
-                                                        _pickAndSaveTime(
-                                                          classId:
-                                                              activeClassId,
-                                                          dayKey: day,
-                                                          field: 'start',
-                                                          currentValue: value,
-                                                        ),
-                                              onPickEnd: activeClassId == null
-                                                  ? null
-                                                  : (day, value) =>
-                                                        _pickAndSaveTime(
-                                                          classId:
-                                                              activeClassId,
-                                                          dayKey: day,
-                                                          field: 'end',
-                                                          currentValue: value,
-                                                        ),
-                                            ),
-                                          ] else
-                                            Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Expanded(
-                                                  flex: 6,
-                                                  child: Column(
-                                                    children: [
-                                                      _ClassSelectorCard(
-                                                        selectedClassId:
-                                                            activeClassId,
-                                                        classDocs: docs,
-                                                        classLabelBuilder:
-                                                            _classLabelFromDoc,
-                                                        onChanged: (newClassId) {
-                                                          QueryDocumentSnapshot?
-                                                          doc;
-                                                          for (final d
-                                                              in docs) {
-                                                            if (d.id ==
-                                                                newClassId) {
-                                                              doc = d;
-                                                              break;
-                                                            }
-                                                          }
-                                                          setState(() {
-                                                            selectedClassId =
-                                                                doc?.id;
-                                                            selectedClassData =
-                                                                doc == null
-                                                                ? null
-                                                                : Map<
-                                                                    String,
-                                                                    dynamic
-                                                                  >.from(
-                                                                    doc.data()
-                                                                        as Map<
-                                                                          String,
-                                                                          dynamic
-                                                                        >,
-                                                                  );
-                                                          });
-                                                        },
-                                                      ),
-                                                      const SizedBox(
-                                                        height: 14,
-                                                      ),
-                                                      _ClassStudentsCard(
-                                                        classId: activeClassId,
-                                                        className:
-                                                            activeClassName,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 14),
-                                                Expanded(
-                                                  flex: 5,
-                                                  child: _ScheduleCard(
-                                                    classId: activeClassId,
-                                                    selectedClassData:
-                                                        activeClassData,
-                                                    dayNames: _dayNames,
-                                                    scheduleBuilder:
-                                                        _normalizedSchedule,
-                                                    onPickStart:
-                                                        activeClassId == null
-                                                        ? null
-                                                        : (
-                                                            day,
-                                                            value,
-                                                          ) => _pickAndSaveTime(
-                                                            classId:
-                                                                activeClassId,
-                                                            dayKey: day,
-                                                            field: 'start',
-                                                            currentValue: value,
-                                                          ),
-                                                    onPickEnd:
-                                                        activeClassId == null
-                                                        ? null
-                                                        : (
-                                                            day,
-                                                            value,
-                                                          ) => _pickAndSaveTime(
-                                                            classId:
-                                                                activeClassId,
-                                                            dayKey: day,
-                                                            field: 'end',
-                                                            currentValue: value,
-                                                          ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          const SizedBox(height: 16),
-                                          _ExportBar(
-                                            enabled: activeClassId != null,
-                                            busy: _exportBusy,
-                                            onExport:
-                                                _exportSelectedClassStudentsReport,
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  Expanded(child: body),
                 ],
               ),
             ),
@@ -1090,7 +1235,264 @@ class _ScheduleCard extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2EBDD)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Interval Operational',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1B2819),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              classId == null
+                  ? 'Configureaza orele de intrare si iesire pentru fiecare zi'
+                  : 'Configureaza orele de intrare si iesire pentru clasa selectata',
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF6B7868),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: Text(
+                    'Ziua saptamanii',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF6D7B6A),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 4,
+                  child: Text(
+                    'Ora intrare',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF6D7B6A),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  flex: 4,
+                  child: Text(
+                    'Ora iesire',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF6D7B6A),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 16, thickness: 1, color: Color(0xFFE2EBDD)),
+          ...() {
+            final todayKey = DateTime.now().weekday.toString(); // 1=Mon..5=Fri
+            final entries = dayNames.entries.toList();
+            final widgets = <Widget>[];
+            for (var i = 0; i < entries.length; i++) {
+              final entry = entries[i];
+              final dayKey = entry.key;
+              final isToday = dayKey == todayKey;
+              final start = schedule[dayKey]?['start'] ?? '08:00';
+              final end = schedule[dayKey]?['end'] ?? '14:00';
+              widgets.add(
+                Container(
+                  decoration: isToday
+                      ? BoxDecoration(color: const Color(0xFFE8F5E9))
+                      : null,
+                  padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        child: isToday
+                            ? const Icon(
+                                Icons.play_arrow_rounded,
+                                size: 14,
+                                color: Color(0xFF2E7D32),
+                              )
+                            : null,
+                      ),
+                      Expanded(
+                        flex: 5,
+                        child: Text(
+                          entry.value,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: isToday
+                                ? const Color(0xFF1B5E20)
+                                : const Color(0xFF1B5E20),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 4,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: GestureDetector(
+                            onTap: onPickStart == null
+                                ? null
+                                : () => onPickStart!(dayKey, start),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0F4EE),
+                                borderRadius: BorderRadius.circular(8),
+                                border: isToday
+                                    ? Border.all(
+                                        color: const Color(0xFFCFDFCC),
+                                        width: 1,
+                                      )
+                                    : null,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    start,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF0D0D0D),
+                                      fontWeight: FontWeight.w400,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Icon(
+                                    Icons.access_time_rounded,
+                                    size: 14,
+                                    color: Color(0xFF0D0D0D),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 4,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: GestureDetector(
+                            onTap: onPickEnd == null
+                                ? null
+                                : () => onPickEnd!(dayKey, end),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0F4EE),
+                                borderRadius: BorderRadius.circular(8),
+                                border: isToday
+                                    ? Border.all(
+                                        color: const Color(0xFFCFDFCC),
+                                        width: 1,
+                                      )
+                                    : null,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    end,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF0D0D0D),
+                                      fontWeight: FontWeight.w400,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Icon(
+                                    Icons.access_time_rounded,
+                                    size: 14,
+                                    color: Color(0xFF0D0D0D),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+              if (i < entries.length - 1) {
+                widgets.add(
+                  const Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Color(0xFFE2EBDD),
+                  ),
+                );
+              }
+            }
+            return widgets;
+          }(),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClassTeacherCard extends StatelessWidget {
+  final String? classId;
+  final String teacherUsername;
+
+  const _ClassTeacherCard({
+    required this.classId,
+    required this.teacherUsername,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -1107,134 +1509,100 @@ class _ScheduleCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Interval Operational',
+            'DIRIGINTELE CLASEI',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 10,
+              color: Color(0xFF6D7B6A),
               fontWeight: FontWeight.w800,
-              color: Color(0xFF1B2819),
+              letterSpacing: 1,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            classId == null
-                ? 'Configureaza orele de intrare si iesire pentru fiecare zi'
-                : 'Configureaza orele de intrare si iesire pentru clasa selectata',
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF6B7868),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Row(
-            children: [
-              Expanded(
-                flex: 5,
-                child: Text(
-                  'Ziua saptamanii',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF6D7B6A),
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+          const SizedBox(height: 10),
+          if (classId == null || teacherUsername.isEmpty)
+            const Text(
+              'Neselectat',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF9BAA97),
+                fontStyle: FontStyle.italic,
               ),
-              Expanded(
-                flex: 4,
-                child: Text(
-                  'Ora intrare',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF6D7B6A),
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                flex: 4,
-                child: Text(
-                  'Ora iesire',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF6D7B6A),
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ...dayNames.entries.map((entry) {
-            final dayKey = entry.key;
-            final start = schedule[dayKey]?['start'] ?? '08:00';
-            final end = schedule[dayKey]?['end'] ?? '14:00';
+            )
+          else
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .where('username', isEqualTo: teacherUsername.toLowerCase())
+                  .limit(1)
+                  .snapshots(),
+              builder: (context, snap) {
+                String fullName = teacherUsername;
+                if (snap.hasData && snap.data!.docs.isNotEmpty) {
+                  final u =
+                      snap.data!.docs.first.data() as Map<String, dynamic>;
+                  final fn = (u['fullName'] ?? '').toString().trim();
+                  if (fn.isNotEmpty) fullName = fn;
+                }
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FBF4),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE4EEDE)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 5,
-                    child: Text(
-                      entry.value,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1E2A1B),
+                final initials = fullName
+                    .trim()
+                    .split(RegExp(r'\s+'))
+                    .where((p) => p.isNotEmpty)
+                    .take(2)
+                    .map((p) => p[0].toUpperCase())
+                    .join();
+
+                return Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDFF0D5),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 4,
-                    child: OutlinedButton.icon(
-                      onPressed: onPickStart == null
-                          ? null
-                          : () => onPickStart!(dayKey, start),
-                      icon: const Icon(Icons.access_time_rounded, size: 14),
-                      label: Text(start),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF2F7D3A),
-                        side: const BorderSide(color: Color(0xFFBDD5B2)),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                      child: Text(
+                        initials.isEmpty ? '?' : initials,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF2C6E30),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 4,
-                    child: OutlinedButton.icon(
-                      onPressed: onPickEnd == null
-                          ? null
-                          : () => onPickEnd!(dayKey, end),
-                      icon: const Icon(Icons.access_time_rounded, size: 14),
-                      label: Text(end),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF2F7D3A),
-                        side: const BorderSide(color: Color(0xFFBDD5B2)),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fullName,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1F2F1E),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Username: $teacherUsername',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF6A7B68),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }),
+                    IconButton(
+                      onPressed: null,
+                      icon: const Icon(Icons.settings_outlined, size: 18),
+                      color: const Color(0xFF7D8E79),
+                    ),
+                  ],
+                );
+              },
+            ),
         ],
       ),
     );
@@ -1491,60 +1859,45 @@ class _ExportBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F7422),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.file_download_outlined, color: Colors.white),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Export Date Academice',
-                  style: TextStyle(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 24),
+        FilledButton.icon(
+          onPressed: !enabled || busy ? null : onExport,
+          icon: busy
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
                     color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
                   ),
-                ),
-                Text(
-                  'Exporta numele, utilizatorul si parola pentru clasa selectata.',
-                  style: TextStyle(color: Color(0xFFD8F0D1), fontSize: 12),
-                ),
-              ],
+                )
+              : const Icon(Icons.description_outlined, size: 18),
+          label: Text(busy ? 'Export...' : 'Exportă Excel'),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF0F7422),
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: const Color(0xFFDDE8D7),
+            disabledForegroundColor: const Color(0xFF8B9486),
+            padding: const EdgeInsets.symmetric(vertical: 28),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
             ),
           ),
-          FilledButton.icon(
-            onPressed: !enabled || busy ? null : onExport,
-            icon: busy
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Color(0xFF166B2B),
-                    ),
-                  )
-                : const Icon(Icons.download_rounded, size: 16),
-            label: Text(busy ? 'Export...' : 'Exporta Excel'),
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF145A24),
-              disabledBackgroundColor: const Color(0xFFE5E9E1),
-              disabledForegroundColor: const Color(0xFF8B9486),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Exportă lista completă a elevilor, inclusiv username-urile și parolele generate pentru accesul în aplicație.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 11, color: Color(0xFF7A8F77)),
+        ),
+      ],
     );
   }
 }

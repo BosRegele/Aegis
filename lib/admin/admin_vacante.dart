@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../core/session.dart';
-import 'admin_notifications.dart';
+
 import 'admin_parents_page.dart';
 import 'admin_students_page.dart';
 import 'admin_teachers_page.dart';
@@ -79,8 +79,9 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                 _Sidebar(
                   displayName: displayName,
                   onMenuTap: () {},
-                  onStudentsTap: () =>
-                      _openSidebarPage(const AdminStudentsPage()),
+                  onStudentsTap: () => _openSidebarPage(
+                    const AdminStudentsPage(key: ValueKey('students-page-v2')),
+                  ),
                   onPersonalTap: () =>
                       _openSidebarPage(const AdminTeachersPage()),
                   onTurnichetiTap: () =>
@@ -383,7 +384,6 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          const AdminNotificationBell(),
         ],
       ),
     );

@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../core/session.dart';
 
 class AdminSchedulesPage extends StatefulWidget {
-  const AdminSchedulesPage({super.key});
+  const AdminSchedulesPage({super.key, this.embedded = false});
+  final bool embedded;
 
   @override
   State<AdminSchedulesPage> createState() => _AdminSchedulesPageState();
@@ -105,6 +106,251 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
       );
     }
 
+    final body = StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('classes').snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        final allDocs = snapshot.data?.docs ?? [];
+        final classesWithSchedule =
+            allDocs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              return data.containsKey('schedule') &&
+                  (data['schedule'] as Map?)?.isNotEmpty == true;
+            }).toList()..sort((a, b) {
+              final aData = a.data() as Map<String, dynamic>;
+              final bData = b.data() as Map<String, dynamic>;
+              final aLabel = (aData['name'] ?? a.id).toString();
+              final bLabel = (bData['name'] ?? b.id).toString();
+              return _compareClassLabels(aLabel, bLabel);
+            });
+
+        // Filter classes based on search query
+        final filteredClasses = classesWithSchedule.where((doc) {
+          final classId = doc.id.toLowerCase();
+          return classId.contains(_classQuery);
+        }).toList();
+
+        return Row(
+          children: [
+            // LEFT SIDEBAR - Classes List
+            Container(
+              width: 280,
+              color: const Color(0xFF5C8B42),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: TextField(
+                      controller: _classSearchC,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Caută clasă...',
+                        hintStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.60),
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: Colors.white.withValues(alpha: 0.60),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _classQuery = value.toLowerCase().trim();
+                        });
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: filteredClasses.length,
+                      itemBuilder: (context, index) {
+                        final doc = filteredClasses[index];
+                        final data = doc.data() as Map<String, dynamic>;
+                        final classId = doc.id;
+                        final teacherU = (data['teacherUsername'] ?? '')
+                            .toString()
+                            .trim()
+                            .toLowerCase();
+                        final isSelected = selectedClassId == classId;
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  selectedClassId = classId;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(18),
+                              hoverColor: Colors.white.withValues(alpha: 0.05),
+                              splashColor: Colors.white.withValues(alpha: 0.04),
+                              highlightColor: Colors.white.withValues(
+                                alpha: 0.03,
+                              ),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 160),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? const Color(0xFFEAF6DE)
+                                      : Colors.white.withValues(alpha: 0.03),
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? const Color(0xFFB6D89B)
+                                        : Colors.white.withValues(alpha: 0.07),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      classId,
+                                      style: TextStyle(
+                                        color: isSelected
+                                            ? const Color(0xFF40632D)
+                                            : Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w600,
+                                      ),
+                                    ),
+                                    teacherU.isEmpty
+                                        ? Text(
+                                            'Diriginte: (nepus)',
+                                            style: TextStyle(
+                                              color: isSelected
+                                                  ? const Color(0xFF355126)
+                                                  : Colors.white.withValues(
+                                                      alpha: 0.70,
+                                                    ),
+                                              fontSize: 11,
+                                            ),
+                                          )
+                                        : StreamBuilder<QuerySnapshot>(
+                                            stream: FirebaseFirestore.instance
+                                                .collection('users')
+                                                .where(
+                                                  'username',
+                                                  isEqualTo: teacherU,
+                                                )
+                                                .limit(1)
+                                                .snapshots(),
+                                            builder: (context, snap) {
+                                              String displayName = teacherU;
+                                              if (snap.hasData &&
+                                                  snap.data!.docs.isNotEmpty) {
+                                                final u =
+                                                    snap.data!.docs.first.data()
+                                                        as Map<String, dynamic>;
+                                                final fn = (u['fullName'] ?? '')
+                                                    .toString()
+                                                    .trim();
+                                                if (fn.isNotEmpty)
+                                                  displayName = fn;
+                                              }
+                                              return Text(
+                                                'Diriginte: $displayName',
+                                                style: TextStyle(
+                                                  color: isSelected
+                                                      ? const Color(0xFF355126)
+                                                      : Colors.white.withValues(
+                                                          alpha: 0.70,
+                                                        ),
+                                                  fontSize: 11,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const VerticalDivider(width: 1),
+            // RIGHT CONTENT AREA
+            Expanded(
+              child: selectedClassId == null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: primaryGreen.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(50),
+                            ),
+                            child: Icon(
+                              Icons.schedule,
+                              size: 50,
+                              color: primaryGreen.withValues(alpha: 0.50),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          const Text(
+                            'Selectează o clasă din stânga',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Alege o clasă din lista din stânga pentru\na vedea orarul.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF777777),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _buildScheduleDetail(selectedClassId!, allDocs),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (widget.embedded) return body;
+
     return Scaffold(
       backgroundColor: lightGreen,
       appBar: AppBar(
@@ -132,266 +378,7 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
           ),
         ),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('classes').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-
-          final allDocs = snapshot.data?.docs ?? [];
-          final classesWithSchedule =
-              allDocs.where((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                return data.containsKey('schedule') &&
-                    (data['schedule'] as Map?)?.isNotEmpty == true;
-              }).toList()..sort((a, b) {
-                final aData = a.data() as Map<String, dynamic>;
-                final bData = b.data() as Map<String, dynamic>;
-                final aLabel = (aData['name'] ?? a.id).toString();
-                final bLabel = (bData['name'] ?? b.id).toString();
-                return _compareClassLabels(aLabel, bLabel);
-              });
-
-          // Filter classes based on search query
-          final filteredClasses = classesWithSchedule.where((doc) {
-            final classId = doc.id.toLowerCase();
-            return classId.contains(_classQuery);
-          }).toList();
-
-          return Row(
-            children: [
-              // LEFT SIDEBAR - Classes List
-              Container(
-                width: 280,
-                color: const Color(0xFF5C8B42),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: TextField(
-                        controller: _classSearchC,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Caută clasă...',
-                          hintStyle: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.60),
-                          ),
-                          prefixIcon: Icon(
-                            Icons.search,
-                            color: Colors.white.withValues(alpha: 0.60),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.10),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            _classQuery = value.toLowerCase().trim();
-                          });
-                        },
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: filteredClasses.length,
-                        itemBuilder: (context, index) {
-                          final doc = filteredClasses[index];
-                          final data = doc.data() as Map<String, dynamic>;
-                          final classId = doc.id;
-                          final teacherU = (data['teacherUsername'] ?? '')
-                              .toString()
-                              .trim()
-                              .toLowerCase();
-                          final isSelected = selectedClassId == classId;
-
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    selectedClassId = classId;
-                                  });
-                                },
-                                borderRadius: BorderRadius.circular(18),
-                                hoverColor: Colors.white.withValues(
-                                  alpha: 0.05,
-                                ),
-                                splashColor: Colors.white.withValues(
-                                  alpha: 0.04,
-                                ),
-                                highlightColor: Colors.white.withValues(
-                                  alpha: 0.03,
-                                ),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 160),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? const Color(0xFFEAF6DE)
-                                        : Colors.white.withValues(alpha: 0.03),
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? const Color(0xFFB6D89B)
-                                          : Colors.white.withValues(
-                                              alpha: 0.07,
-                                            ),
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        classId,
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? const Color(0xFF40632D)
-                                              : Colors.white,
-                                          fontSize: 15,
-                                          fontWeight: isSelected
-                                              ? FontWeight.w700
-                                              : FontWeight.w600,
-                                        ),
-                                      ),
-                                      teacherU.isEmpty
-                                          ? Text(
-                                              'Diriginte: (nepus)',
-                                              style: TextStyle(
-                                                color: isSelected
-                                                    ? const Color(0xFF355126)
-                                                    : Colors.white.withValues(
-                                                        alpha: 0.70,
-                                                      ),
-                                                fontSize: 11,
-                                              ),
-                                            )
-                                          : StreamBuilder<QuerySnapshot>(
-                                              stream: FirebaseFirestore.instance
-                                                  .collection('users')
-                                                  .where(
-                                                    'username',
-                                                    isEqualTo: teacherU,
-                                                  )
-                                                  .limit(1)
-                                                  .snapshots(),
-                                              builder: (context, snap) {
-                                                String displayName = teacherU;
-                                                if (snap.hasData &&
-                                                    snap
-                                                        .data!
-                                                        .docs
-                                                        .isNotEmpty) {
-                                                  final u =
-                                                      snap.data!.docs.first
-                                                              .data()
-                                                          as Map<
-                                                            String,
-                                                            dynamic
-                                                          >;
-                                                  final fn =
-                                                      (u['fullName'] ?? '')
-                                                          .toString()
-                                                          .trim();
-                                                  if (fn.isNotEmpty)
-                                                    displayName = fn;
-                                                }
-                                                return Text(
-                                                  'Diriginte: $displayName',
-                                                  style: TextStyle(
-                                                    color: isSelected
-                                                        ? const Color(
-                                                            0xFF355126,
-                                                          )
-                                                        : Colors.white
-                                                              .withValues(
-                                                                alpha: 0.70,
-                                                              ),
-                                                    fontSize: 11,
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const VerticalDivider(width: 1),
-              // RIGHT CONTENT AREA
-              Expanded(
-                child: selectedClassId == null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                color: primaryGreen.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(50),
-                              ),
-                              child: Icon(
-                                Icons.schedule,
-                                size: 50,
-                                color: primaryGreen.withValues(alpha: 0.50),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            const Text(
-                              'Selectează o clasă din stânga',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF333333),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Alege o clasă din lista din stânga pentru\na vedea orarul.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF777777),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : _buildScheduleDetail(selectedClassId!, allDocs),
-              ),
-            ],
-          );
-        },
-      ),
+      body: body,
     );
   }
 
