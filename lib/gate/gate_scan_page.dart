@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 
 class GateScanPage extends StatefulWidget {
   const GateScanPage({super.key});
@@ -14,6 +18,41 @@ class _GateScanPageState extends State<GateScanPage> {
   String _status = "Scanează un QR...";
   bool _isAllowed = false;
   bool _lock = false;
+  Timer? _soundTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startLoopingSound();
+  }
+
+  @override
+  void dispose() {
+    _soundTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startLoopingSound() {
+    // Play immediately, then repeat every 3 seconds
+    _playScanSound();
+    _soundTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _playScanSound();
+    });
+  }
+
+  Future<void> _playScanSound() async {
+    try {
+      await FlutterRingtonePlayer().playNotification();
+    } catch (_) {}
+  }
+
+  Future<void> _playSuccessSound() async {
+    try {
+      await FlutterRingtonePlayer().playNotification();
+    } catch (_) {
+      await SystemSound.play(SystemSoundType.alert);
+    }
+  }
 
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
@@ -24,7 +63,9 @@ class _GateScanPageState extends State<GateScanPage> {
 
     final res = await callable.call(<String, dynamic>{'token': tokenId});
 
-    return Map<String, dynamic>.from(res.data as Map);
+    final data = res.data;
+    if (data is! Map) throw Exception('Răspuns invalid de la server');
+    return Map<String, dynamic>.from(data);
   }
 
   // Logging is now handled in the backend (Cloud Function)
@@ -71,6 +112,10 @@ class _GateScanPageState extends State<GateScanPage> {
         _isAllowed = ok;
         _status = statusMessage;
       });
+
+      if (true) {
+        await _playSuccessSound();
+      }
     } catch (e) {
       setState(() {
         _isAllowed = false;

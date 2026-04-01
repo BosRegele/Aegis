@@ -8,7 +8,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../session.dart';
+import '../core/session.dart';
 import 'admin_api.dart';
 import 'admin_classes_page.dart';
 import 'admin_notifications.dart';
@@ -227,7 +227,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       await FileSaver.instance.saveFile(
         name: 'student_report_$stamp',
         bytes: Uint8List.fromList(bytes),
-        fileExtension: 'xlsx',
+        ext: 'xlsx',
         mimeType: MimeType.microsoftExcel,
       );
 

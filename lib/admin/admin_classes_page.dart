@@ -8,7 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 
-import '../session.dart';
+import '../core/session.dart';
 import 'admin_api.dart';
 import 'admin_notifications.dart';
 import 'admin_parents_page.dart';
@@ -337,7 +337,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
       await FileSaver.instance.saveFile(
         name: 'student_report_${classId}_$stamp',
         bytes: Uint8List.fromList(bytes),
-        fileExtension: 'xlsx',
+        ext: 'xlsx',
         mimeType: MimeType.microsoftExcel,
       );
 

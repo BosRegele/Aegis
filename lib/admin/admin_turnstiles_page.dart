@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../session.dart';
+import '../core/session.dart';
 import 'admin_api.dart';
 import 'admin_classes_page.dart';
 import 'admin_notifications.dart';
