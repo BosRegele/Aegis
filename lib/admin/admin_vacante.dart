@@ -79,8 +79,9 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                 _Sidebar(
                   displayName: displayName,
                   onMenuTap: () {},
-                  onStudentsTap: () =>
-                      _openSidebarPage(const AdminStudentsPage()),
+                  onStudentsTap: () => _openSidebarPage(
+                    const AdminStudentsPage(key: ValueKey('students-page-v2')),
+                  ),
                   onPersonalTap: () =>
                       _openSidebarPage(const AdminTeachersPage()),
                   onTurnichetiTap: () =>
@@ -431,24 +432,6 @@ class _VacanciesContentState extends State<_VacanciesContent> {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  String _formatMonthYear(DateTime date) {
-    const months = [
-      'ianuarie',
-      'februarie',
-      'martie',
-      'aprilie',
-      'mai',
-      'iunie',
-      'iulie',
-      'august',
-      'septembrie',
-      'octombrie',
-      'noiembrie',
-      'decembrie',
-    ];
-    return '${months[date.month - 1]} ${date.year}';
-  }
-
   void _resetForm() {
     setState(() {
       _nameController.clear();
@@ -556,9 +539,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
             children: [
               for (final doc in snap.docs)
                 ListTile(
-                  title: Text(
-                    (doc.data() as Map<String, dynamic>)['name'] ?? 'Vacanță',
-                  ),
+                  title: Text(doc.data()['name'] ?? 'Vacanță'),
                   onTap: () => Navigator.of(ctx).pop(doc),
                 ),
             ],

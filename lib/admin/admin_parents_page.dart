@@ -12,19 +12,9 @@ class AdminParentsPage extends StatefulWidget {
 
 class _AdminParentsPageState extends State<AdminParentsPage> {
   final store = AdminStore();
-  final searchC = TextEditingController();
-  String q = "";
-
-  @override
-  void dispose() {
-    searchC.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryGreen = Color(0xFF7AAF5B);
-
     if (!AppSession.isAdmin) {
       return const Scaffold(
         body: Center(child: Text("Access denied (admin only)")),
@@ -33,251 +23,328 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FFF5),
-      appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF7AAF5B), Color(0xFF5A9641)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .where('role', isEqualTo: 'parent')
-              .snapshots(),
-          builder: (context, snapshot) {
-            final count = snapshot.data?.docs.length ?? 0;
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  "Părinți",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 20,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '$count',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-      body: Column(
-        children: [
-          /// SEARCH BAR
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: searchC,
-              decoration: InputDecoration(
-                hintText: "Caută după utilizator sau nume...",
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF7AAF5B)),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Colors.green.withValues(alpha: 0.30),
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Colors.green.withValues(alpha: 0.30),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(
-                    color: Color(0xFF7AAF5B),
-                    width: 2,
-                  ),
-                ),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Părinți',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A2E1A),
               ),
-              onChanged: (v) => setState(() => q = v.trim().toLowerCase()),
             ),
-          ),
-
-          const Divider(height: 1, color: Color(0xFFCDE8B0)),
-
-          /// PARENTS LIST
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .where('role', isEqualTo: 'parent')
-                  .snapshots(),
-              builder: (context, snap) {
-                if (snap.hasError)
-                  return Center(
-                    child: SelectableText("Eroare:\n${snap.error}"),
-                  );
-                if (!snap.hasData)
-                  return const Center(child: CircularProgressIndicator());
-
-                final docs = [...snap.data!.docs];
-                docs.sort((a, b) {
-                  final an = ((a.data() as Map)['fullName'] ?? '')
-                      .toString()
-                      .toLowerCase();
-                  final bn = ((b.data() as Map)['fullName'] ?? '')
-                      .toString()
-                      .toLowerCase();
-                  return an.compareTo(bn);
-                });
-
-                final filtered = docs.where((d) {
-                  if (q.isEmpty) return true;
-                  final data = d.data() as Map<String, dynamic>;
-                  final fullName = (data['fullName'] ?? '')
-                      .toString()
-                      .toLowerCase();
-                  final username = (data['username'] ?? d.id)
-                      .toString()
-                      .toLowerCase();
-                  return fullName.contains(q) || username.contains(q);
-                }).toList();
-
-                if (filtered.isEmpty)
-                  return const Center(child: Text("Nu există rezultate"));
-
-                return ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (_, i) {
-                    final d = filtered[i];
-                    final data = d.data() as Map<String, dynamic>;
-                    final username = (data['username'] ?? d.id).toString();
-                    final fullName = (data['fullName'] ?? username).toString();
-                    final status = (data['status'] ?? 'active').toString();
-                    final onboarded =
-                        data['onboardingComplete'] as bool? ?? false;
-
-                    return Container(
-                      margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xFFCDE8B0)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
+            const SizedBox(height: 6),
+            const Text(
+              'Gestionează și monitorizează activitatea părinților, copiii înscriși și detaliile de contact într-o vizualizare centrală.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF5A8040)),
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFCDE8B0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                      child: Row(
+                        children: [
+                          Expanded(flex: 5, child: _colHeader('NUME PĂRINTE')),
+                          Expanded(flex: 3, child: _colHeader('ELEVI')),
+                          Expanded(flex: 4, child: _colHeader('EMAIL')),
+                          Expanded(
+                            flex: 1,
+                            child: Center(child: _colHeader('SETĂRI')),
                           ),
                         ],
                       ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: primaryGreen.withValues(alpha: 0.20),
-                          child: const Icon(
-                            Icons.family_restroom,
-                            color: primaryGreen,
-                          ),
-                        ),
-                        title: Text(
-                          fullName,
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        subtitle: Text("user: $username"),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: onboarded
-                                    ? const Color(0xFFE8F5E9)
-                                    : const Color(0xFFFFF3E0),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: onboarded
-                                      ? const Color(0xFF4CAF50)
-                                      : const Color(0xFFFF9800),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    onboarded
-                                        ? Icons.how_to_reg
-                                        : Icons.hourglass_top,
-                                    size: 13,
-                                    color: onboarded
-                                        ? const Color(0xFF4CAF50)
-                                        : const Color(0xFFFF9800),
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    'OB',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: onboarded
-                                          ? const Color(0xFF4CAF50)
-                                          : const Color(0xFFFF9800),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                    ),
+                    const Divider(height: 1, color: Color(0xFFCDE8B0)),
+                    Expanded(
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .where('role', isEqualTo: 'parent')
+                            .snapshots(),
+                        builder: (context, snap) {
+                          if (snap.hasError) {
+                            return Center(
+                              child: SelectableText("Eroare:\n${snap.error}"),
+                            );
+                          }
+                          if (!snap.hasData) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
+
+                          final docs = [...snap.data!.docs];
+                          docs.sort((a, b) {
+                            final an = ((a.data() as Map)['fullName'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            final bn = ((b.data() as Map)['fullName'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            return an.compareTo(bn);
+                          });
+
+                          if (docs.isEmpty) {
+                            return const Center(
+                              child: Text("Nu există părinți"),
+                            );
+                          }
+
+                          return ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                            itemCount: docs.length,
+                            separatorBuilder: (_, __) => const Divider(
+                              height: 1,
+                              color: Color(0xFFE8F5E0),
                             ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.chevron_right, color: Colors.grey),
-                          ],
-                        ),
-                        onTap: () => _openParentDialog(
-                          context,
-                          username: username,
-                          fullName: fullName,
-                          status: status,
-                          childrenIds: List<String>.from(
-                            data['children'] ?? [],
-                          ),
-                        ),
+                            itemBuilder: (_, i) {
+                              final d = docs[i];
+                              final data = d.data() as Map<String, dynamic>;
+                              final username = (data['username'] ?? d.id)
+                                  .toString();
+                              final fullName = (data['fullName'] ?? username)
+                                  .toString();
+                              final email = data['email']?.toString();
+                              final childrenIds = List<String>.from(
+                                data['children'] ?? [],
+                              );
+                              final status = (data['status'] ?? 'active')
+                                  .toString();
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      flex: 5,
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 20,
+                                            backgroundColor: _avatarColor(
+                                              fullName,
+                                            ),
+                                            child: Text(
+                                              _initials(fullName),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Flexible(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  fullName,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14,
+                                                    color: Color(0xFF1A2E1A),
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                Text(
+                                                  'Username: $username',
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: Color(0xFF7AAF5B),
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 3,
+                                      child: childrenIds.isEmpty
+                                          ? const Text(
+                                              '-',
+                                              style: TextStyle(
+                                                color: Colors.black38,
+                                              ),
+                                            )
+                                          : FutureBuilder<
+                                              List<DocumentSnapshot>
+                                            >(
+                                              future: Future.wait(
+                                                childrenIds.map(
+                                                  (id) => FirebaseFirestore
+                                                      .instance
+                                                      .collection('users')
+                                                      .doc(id)
+                                                      .get(),
+                                                ),
+                                              ),
+                                              builder: (context, csnap) {
+                                                if (!csnap.hasData)
+                                                  return const SizedBox.shrink();
+                                                return Wrap(
+                                                  spacing: 4,
+                                                  runSpacing: 4,
+                                                  children: csnap.data!.map((
+                                                    ds,
+                                                  ) {
+                                                    final md =
+                                                        ds.data()
+                                                            as Map<
+                                                              String,
+                                                              dynamic
+                                                            >? ??
+                                                        {};
+                                                    final name =
+                                                        (md['fullName'] ??
+                                                                md['username'] ??
+                                                                ds.id)
+                                                            .toString();
+                                                    return Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 10,
+                                                            vertical: 5,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFFE8F5E0,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              20,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        name,
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: Color(
+                                                            0xFF3A6B2A,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }).toList(),
+                                                );
+                                              },
+                                            ),
+                                    ),
+                                    Expanded(
+                                      flex: 4,
+                                      child: Text(
+                                        email ?? '-',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF2E3B4E),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 1,
+                                      child: Center(
+                                        child: IconButton(
+                                          icon: const Icon(
+                                            Icons.settings,
+                                            size: 20,
+                                          ),
+                                          color: const Color(0xFF9AB88A),
+                                          onPressed: () => _openParentDialog(
+                                            context,
+                                            username: username,
+                                            fullName: fullName,
+                                            status: status,
+                                            childrenIds: childrenIds,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
                       ),
-                    );
-                  },
-                );
-              },
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
+  Widget _colHeader(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF9AB88A),
+        letterSpacing: 0.8,
+      ),
+    );
+  }
+
+  String _initials(String name) {
+    final trimmed = name.trim();
+    final spaceIdx = trimmed.indexOf(' ');
+    if (spaceIdx > 0 && spaceIdx < trimmed.length - 1) {
+      return '${trimmed[0]}${trimmed[spaceIdx + 1]}'.toUpperCase();
+    }
+    return trimmed.isNotEmpty ? trimmed[0].toUpperCase() : '?';
+  }
+
+  Color _avatarColor(String name) {
+    const colors = [
+      Color(0xFF7986CB),
+      Color(0xFF4DB6AC),
+      Color(0xFFFF8A65),
+      Color(0xFFA1887F),
+      Color(0xFF4FC3F7),
+      Color(0xFFBA68C8),
+      Color(0xFF81C784),
+      Color(0xFFFFB74D),
+    ];
+    return colors[name.hashCode.abs() % colors.length];
+  }
+
+  // ── placeholder kept for future use ────────────────────────────────────────
   Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
