@@ -324,14 +324,14 @@ class AdminStore {
     });
   }
 
-  Future<void> moveStudent(String username, String newClassId) async {
-    username = username.trim().toLowerCase();
+  Future<void> moveStudent(String uid, String newClassId) async {
+    uid = uid.trim();
     newClassId = newClassId.trim().toUpperCase();
 
-    if (username.isEmpty) throw Exception("username lipsa");
+    if (uid.isEmpty) throw Exception("uid lipsa");
     if (newClassId.isEmpty) throw Exception("classId lipsa");
 
-    final userRef = _db.collection('users').doc(username);
+    final userRef = _db.collection('users').doc(uid);
     final newClassRef = _db.collection('classes').doc(newClassId);
 
     await _db.runTransaction((tx) async {
@@ -340,6 +340,10 @@ class AdminStore {
 
       final userData = userSnap.data() as Map<String, dynamic>;
       final role = (userData["role"] ?? "").toString();
+      final userUsername = (userData["username"] ?? "")
+          .toString()
+          .trim()
+          .toLowerCase();
       final oldClassId = (userData["classId"] ?? "")
           .toString()
           .trim()
@@ -378,7 +382,7 @@ class AdminStore {
           .trim()
           .toLowerCase();
 
-      if (existingTeacher.isNotEmpty && existingTeacher != username) {
+      if (existingTeacher.isNotEmpty && existingTeacher != userUsername) {
         throw Exception(
           "Clasa $newClassId are deja un diriginte: $existingTeacher",
         );
@@ -395,7 +399,7 @@ class AdminStore {
               .trim()
               .toLowerCase();
 
-          if (oldTeacher == username) {
+          if (oldTeacher == userUsername) {
             // scoate complet teacherUsername
             tx.set(oldClassRef, {
               "teacherUsername": FieldValue.delete(),
@@ -408,7 +412,7 @@ class AdminStore {
       // setează teacher ca diriginte pe noua clasă
       tx.set(newClassRef, {
         "name": newClassId,
-        "teacherUsername": username,
+        "teacherUsername": userUsername,
         "updatedAt": FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
