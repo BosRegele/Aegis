@@ -581,13 +581,6 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                       }),
                                     ),
                                     _buildSidebarItem(
-                                      icon: Icons.admin_panel_settings_rounded,
-                                      label: "Admini",
-                                      onTap: () => setState(() {
-                                        activeSidebarLabel = 'Admini';
-                                      }),
-                                    ),
-                                    _buildSidebarItem(
                                       icon: Icons.code_rounded,
                                       label: "Development",
                                       onTap: () => setState(() {
@@ -600,30 +593,40 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Tooltip(
-                            message: "Deconectare",
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
-                              onTap: _showLogoutDialog,
-                              child: Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.10),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.14),
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.logout_rounded,
-                                  color: Colors.white.withValues(alpha: 0.82),
-                                  size: 18,
+                        InkWell(
+                          onTap: _showLogoutDialog,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                            decoration: const BoxDecoration(
+                              border: Border(
+                                top: BorderSide(
+                                  color: Colors.white24,
+                                  width: 0.5,
                                 ),
                               ),
+                            ),
+                            child: const Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.logout_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Deconectare',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -683,7 +686,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                     ),
                                     child: _buildCleanCreateUserCard(),
                                   ),
-                                  const SizedBox(height: 18),
+                                  const SizedBox(height: 36),
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 46,
@@ -696,7 +699,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                           flex: 2,
                                           child: _buildRecentAccessCard(),
                                         ),
-                                        const SizedBox(width: 18),
+                                        const SizedBox(width: 40),
                                         Expanded(
                                           flex: 1,
                                           child: _buildClassDistributionCard(),
@@ -3714,19 +3717,17 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
   Widget _buildEmbeddedPage(String label) {
     switch (label) {
       case 'Clase':
-        return const AdminClassesPage();
+        return const AdminClassesPage(embedded: true);
       case 'Elevi':
         return const AdminStudentsPage(key: ValueKey('students-page-v2'));
       case 'Părinți':
         return const AdminParentsPage();
       case 'Diriginți':
         return const AdminTeachersPage();
-      case 'Admini':
-        return const AdminAdminsPage();
       case 'Turnichete':
-        return const AdminTurnstilesPage();
+        return const AdminTurnstilesPage(embedded: true);
       case 'Vacanțe':
-        return const AdminSchedulesPage();
+        return const AdminSchedulesPage(embedded: true);
       default:
         return const SizedBox.shrink();
     }
@@ -4033,47 +4034,61 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
               );
             }
 
-            return Container(
-              padding: const EdgeInsets.fromLTRB(0, 14, 0, 0),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F7F3),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 14),
-                    child: Text(
-                      'Acces Recent',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A2E1A),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Acces Recent',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A2E1A),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const SizedBox(
-                    width: double.infinity,
-                    child: ColoredBox(
-                      color: Color(0xFFE5E7EB),
-                      child: SizedBox(height: 1),
-                    ),
-                  ),
-                  const SizedBox(height: 0),
-                  Container(
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.vertical(
-                        bottom: Radius.circular(14),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => activeSidebarLabel = 'Turnichete'),
+                        child: const Row(
+                          children: [
+                            Text(
+                              'Vezi Tot',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1F7A35),
+                              ),
+                            ),
+                            SizedBox(width: 4),
+                            Icon(
+                              Icons.arrow_forward,
+                              size: 16,
+                              color: Color(0xFF1F7A35),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      children: [
-                        const Padding(
+                    ],
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0x55E5E7EB)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        color: const Color(0xFFF3F7F3),
+                        child: const Padding(
                           padding: EdgeInsets.fromLTRB(18, 14, 18, 12),
                           child: Row(
                             children: [
@@ -4128,136 +4143,136 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                             ],
                           ),
                         ),
-                        if (!eventsSnap.hasData)
-                          const Padding(
-                            padding: EdgeInsets.fromLTRB(18, 20, 18, 24),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'Se încarcă accesările...',
-                                style: TextStyle(
-                                  color: Color(0xFF6B7280),
-                                  fontSize: 13,
-                                ),
+                      ),
+                      if (!eventsSnap.hasData)
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(18, 20, 18, 24),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Se încarcă accesările...',
+                              style: TextStyle(
+                                color: Color(0xFF6B7280),
+                                fontSize: 13,
                               ),
                             ),
-                          )
-                        else if (eventDocs.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.fromLTRB(18, 20, 18, 24),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'Nu există accesări recente.',
-                                style: TextStyle(
-                                  color: Color(0xFF6B7280),
-                                  fontSize: 13,
-                                ),
+                          ),
+                        )
+                      else if (eventDocs.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(18, 20, 18, 24),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Nu există accesări recente.',
+                              style: TextStyle(
+                                color: Color(0xFF6B7280),
+                                fontSize: 13,
                               ),
                             ),
-                          )
-                        else
-                          ...eventDocs.asMap().entries.map((entry) {
-                            final idx = entry.key;
-                            final data =
-                                entry.value.data() as Map<String, dynamic>;
-                            final fullName = (data['fullName'] ?? 'Necunoscut')
-                                .toString();
-                            final type = (data['type'] ?? '').toString();
-                            final gateUid = (data['gateUid'] ?? '').toString();
-                            final location = gateNames[gateUid] ?? 'Poartă';
-                            final timeLabel = _formatAccessTime(
-                              data['timestamp'],
-                            );
-                            return Column(
-                              children: [
-                                if (idx > 0)
-                                  const Divider(
-                                    height: 1,
-                                    thickness: 1,
-                                    color: Color(0xFFE5E7EB),
-                                  ),
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    18,
-                                    14,
-                                    18,
-                                    14,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 4,
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 30,
-                                              height: 30,
-                                              decoration: const BoxDecoration(
-                                                color: Color(0xFFDCE6D9),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: const Icon(
-                                                Icons.person_outline_rounded,
-                                                size: 18,
-                                                color: Color(0xFF1F7A35),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: Text(
-                                                fullName,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF0F172A),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Text(
-                                          timeLabel,
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            color: Color(0xFF374151),
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 3,
-                                        child: Text(
-                                          location,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            color: Color(0xFF111827),
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: statusChip(type),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                          ),
+                        )
+                      else
+                        ...eventDocs.asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final data =
+                              entry.value.data() as Map<String, dynamic>;
+                          final fullName = (data['fullName'] ?? 'Necunoscut')
+                              .toString();
+                          final type = (data['type'] ?? '').toString();
+                          final gateUid = (data['gateUid'] ?? '').toString();
+                          final location = gateNames[gateUid] ?? 'Poartă';
+                          final timeLabel = _formatAccessTime(
+                            data['timestamp'],
+                          );
+                          return Column(
+                            children: [
+                              if (idx > 0)
+                                const Divider(
+                                  height: 1,
+                                  thickness: 1,
+                                  color: Color(0x33E5E7EB),
                                 ),
-                              ],
-                            );
-                          }),
-                        const SizedBox(height: 10),
-                      ],
-                    ),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  18,
+                                  14,
+                                  18,
+                                  14,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 4,
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 30,
+                                            height: 30,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFFDCE6D9),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.person_outline_rounded,
+                                              size: 18,
+                                              color: Color(0xFF1F7A35),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              fullName,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFF0F172A),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text(
+                                        timeLabel,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          color: Color(0xFF374151),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 3,
+                                      child: Text(
+                                        location,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          color: Color(0xFF111827),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: statusChip(type),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        }),
+                      const SizedBox(height: 10),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             );
           },
         );

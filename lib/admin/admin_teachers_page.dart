@@ -47,7 +47,6 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFCDE8B0)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.04),
@@ -59,16 +58,30 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(40, 16, 40, 16),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF4F9F3),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                      ),
                       child: Row(
                         children: [
+                          Expanded(flex: 5, child: _colHeader('NUME DIRIGINTE')),
                           Expanded(
-                            flex: 5,
-                            child: _colHeader('NUME DIRIGINTE'),
+                            flex: 2,
+                            child: Center(child: _colHeader('CLASĂ')),
                           ),
-                          Expanded(flex: 2, child: _colHeader('CLASĂ')),
-                          Expanded(flex: 4, child: _colHeader('EMAIL')),
+                          Expanded(
+                            flex: 4,
+                            child: Center(child: _colHeader('EMAIL')),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Center(child: _colHeader('STATUS')),
+                          ),
                           Expanded(
                             flex: 1,
                             child: Center(child: _colHeader('SETĂRI')),
@@ -76,7 +89,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                         ],
                       ),
                     ),
-                    const Divider(height: 1, color: Color(0xFFCDE8B0)),
+                    const Divider(height: 1, color: Color(0xFFE8F5E0)),
                     Expanded(
                       child: StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
@@ -113,16 +126,15 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                           }
 
                           return ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                            padding: const EdgeInsets.fromLTRB(40, 16, 40, 24),
                             itemCount: docs.length,
-                            separatorBuilder: (_, __) => const Divider(
-                              height: 1,
-                              color: Color(0xFFE8F5E0),
-                            ),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 12),
                             itemBuilder: (_, i) {
                               final d = docs[i];
                               final data = d.data() as Map<String, dynamic>;
-                              final username = (data['username'] ?? d.id)
+                              final uid = d.id;
+                              final username = (data['username'] ?? uid)
                                   .toString();
                               final fullName = (data['fullName'] ?? username)
                                   .toString();
@@ -131,10 +143,11 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                               final email = data['email']?.toString();
                               final status = (data['status'] ?? 'active')
                                   .toString();
+                              final isActive = status != 'disabled';
 
                               return Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
+                                  vertical: 12,
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -151,37 +164,32 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                             child: Text(
                                               _initials(fullName),
                                               style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
+                                                color: Color(0xFF1A1A1A),
+                                                fontWeight: FontWeight.w800,
                                                 fontSize: 13,
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 10),
-                                          Flexible(
+                                          const SizedBox(width: 12),
+                                          Expanded(
                                             child: Column(
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
-                                              mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Text(
                                                   fullName,
                                                   style: const TextStyle(
-                                                    fontWeight: FontWeight.w600,
+                                                    fontWeight: FontWeight.w700,
                                                     fontSize: 14,
-                                                    color: Color(0xFF1A2E1A),
+                                                    color: Color(0xFF111111),
                                                   ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
                                                 ),
                                                 Text(
                                                   'Username: $username',
                                                   style: const TextStyle(
-                                                    fontSize: 11,
-                                                    color: Color(0xFF7AAF5B),
+                                                    fontSize: 12,
+                                                    color: Color(0xFF7A9070),
                                                   ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
                                                 ),
                                               ],
                                             ),
@@ -192,47 +200,72 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                     Expanded(
                                       flex: 2,
                                       child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: classId.isEmpty
-                                            ? const Text(
-                                                '-',
-                                                style: TextStyle(
-                                                  color: Colors.black38,
-                                                ),
-                                              )
-                                            : Container(
+                                        alignment: Alignment.center,
+                                        child: classId.isNotEmpty
+                                            ? Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 5,
+                                                      horizontal: 14,
+                                                      vertical: 6,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: const Color(
-                                                    0xFFE8F5E0,
-                                                  ),
+                                                  color: const Color(0xFFDCEEDC),
                                                   borderRadius:
                                                       BorderRadius.circular(20),
                                                 ),
                                                 child: Text(
-                                                  classId,
+                                                  _formatClassName(classId),
                                                   style: const TextStyle(
                                                     fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Color(0xFF3A6B2A),
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF2E7D32),
                                                   ),
                                                 ),
-                                              ),
+                                              )
+                                            : const Text('-'),
                                       ),
                                     ),
                                     Expanded(
                                       flex: 4,
                                       child: Text(
-                                        email ?? '-',
+                                        (email != null && email.isNotEmpty)
+                                            ? email
+                                            : '-',
+                                        textAlign: TextAlign.center,
                                         style: const TextStyle(
                                           fontSize: 13,
-                                          color: Color(0xFF2E3B4E),
+                                          color: Color(0xFF2E4A2E),
                                         ),
-                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Align(
+                                        alignment: Alignment.center,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isActive
+                                                ? const Color(0xFFDCEEDC)
+                                                : const Color(0xFFFDEBEB),
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                          child: Text(
+                                            isActive ? 'ACTIV' : 'DEZACTIVAT',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: isActive
+                                                  ? const Color(0xFF2E7D32)
+                                                  : const Color(0xFFD32F2F),
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
                                     Expanded(
@@ -240,10 +273,10 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                       child: Center(
                                         child: IconButton(
                                           icon: const Icon(
-                                            Icons.settings,
-                                            size: 20,
+                                            Icons.settings_outlined,
+                                            color: Color(0xFF757575),
+                                            size: 22,
                                           ),
-                                          color: const Color(0xFF9AB88A),
                                           onPressed: () => _openTeacherDialog(
                                             context,
                                             username: username,
@@ -272,16 +305,35 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
     );
   }
 
-  Widget _colHeader(String label) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: Color(0xFF9AB88A),
-        letterSpacing: 0.8,
-      ),
-    );
+  String _formatClassName(String classId) {
+    if (classId.isEmpty) return '-';
+    if (classId.toLowerCase().startsWith('clasa')) return classId;
+
+    final original = classId.trim();
+    final match = RegExp(r'^(\d+)(.*)$').firstMatch(original);
+
+    if (match != null) {
+      final numStr = match.group(1)!;
+      final letter = match.group(2)!.trim();
+
+      String roman = numStr;
+      if (numStr == '9') {
+        roman = 'IX';
+      } else if (numStr == '10') {
+        roman = 'X';
+      } else if (numStr == '11') {
+        roman = 'XI';
+      } else if (numStr == '12') {
+        roman = 'XII';
+      }
+
+      if (letter.isNotEmpty) {
+        return 'Clasa a $roman-a $letter';
+      }
+      return 'Clasa a $roman-a';
+    }
+
+    return 'Clasa $original';
   }
 
   String _initials(String name) {
@@ -298,13 +350,25 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
       Color(0xFF7986CB),
       Color(0xFF4DB6AC),
       Color(0xFFFF8A65),
-      Color(0xFFA1887F),
-      Color(0xFF4FC3F7),
-      Color(0xFFBA68C8),
-      Color(0xFF81C784),
-      Color(0xFFFFB74D),
+      Color(0xFFA5D6A7),
+      Color(0xFFCE93D8),
+      Color(0xFF80DEEA),
+      Color(0xFFFFCC80),
+      Color(0xFF90A4AE),
     ];
     return colors[name.hashCode.abs() % colors.length];
+  }
+
+  Widget _colHeader(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF006B3D),
+        letterSpacing: 1.2,
+      ),
+    );
   }
 
   Widget _buildDetailRow(String label, String value) {
@@ -363,7 +427,6 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // --- HEADER ---
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: const BoxDecoration(
@@ -385,8 +448,6 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                       ),
                     ),
                   ),
-
-                  // --- CONTENT ---
                   Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
@@ -406,15 +467,12 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                       ],
                     ),
                   ),
-
-                  // --- ACTIONS ---
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                     child: Column(
                       children: [
                         Row(
                           children: [
-                            // Buton Enable/Disable
                             Expanded(
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
@@ -434,12 +492,14 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                     ? null
                                     : () async {
                                         final disable = status != 'disabled';
+                                        final nav = Navigator.of(context);
                                         setDialogState(() => busy = true);
                                         await store.setDisabled(
                                           username,
                                           disable,
                                         );
-                                        if (mounted) Navigator.pop(context);
+                                        if (!mounted) return;
+                                        nav.pop();
                                       },
                                 child: Text(
                                   status == 'disabled'
@@ -452,7 +512,6 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            // Buton Delete
                             Expanded(
                               child: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
@@ -469,6 +528,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                 onPressed: busy
                                     ? null
                                     : () async {
+                                        final nav = Navigator.of(context);
                                         final ok = await showDialog<bool>(
                                           context: context,
                                           builder: (_) => AlertDialog(
@@ -502,7 +562,8 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                         setDialogState(() => busy = true);
                                         try {
                                           await store.deleteUser(username);
-                                          if (mounted) Navigator.pop(context);
+                                          if (!mounted) return;
+                                          nav.pop();
                                         } catch (_) {
                                           setDialogState(() => busy = false);
                                         }
@@ -531,11 +592,11 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                           width: double.infinity,
                           child: TextButton(
                             style: TextButton.styleFrom(
-                              backgroundColor: Colors.grey.withValues(
-                                alpha: 0.1,
-                              ),
+                              backgroundColor:
+                                  Colors.grey.withValues(alpha: 0.1),
                               foregroundColor: const Color(0xFF2E3B4E),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),

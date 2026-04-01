@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 import 'services/admin_store.dart';
@@ -12,6 +12,8 @@ class AdminStudentsPage extends StatefulWidget {
 
 class _AdminStudentsPageState extends State<AdminStudentsPage> {
   final store = AdminStore();
+  bool _showAll = false;
+  static const int _initialLimit = 7;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +25,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FFF5),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,81 +44,100 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
               style: TextStyle(fontSize: 13, color: Color(0xFF5A8040)),
             ),
             const SizedBox(height: 20),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFCDE8B0)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                      child: Row(
-                        children: [
-                          Expanded(flex: 5, child: _colHeader('NUME ELEV')),
-                          Expanded(flex: 2, child: _colHeader('CLASĂ')),
-                          Expanded(flex: 4, child: _colHeader('EMAIL')),
-                          Expanded(flex: 2, child: _colHeader('STATUS')),
-                          Expanded(
-                            flex: 1,
-                            child: Center(child: _colHeader('SETĂRI')),
-                          ),
-                        ],
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(40, 16, 40, 16),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF4F9F3),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
                       ),
                     ),
-                    const Divider(height: 1, color: Color(0xFFCDE8B0)),
-                    Expanded(
-                      child: StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('users')
-                            .where('role', isEqualTo: 'student')
-                            .snapshots(),
-                        builder: (context, snap) {
-                          if (snap.hasError) {
-                            return Center(
-                              child: SelectableText("Eroare:\n${snap.error}"),
-                            );
-                          }
-                          if (!snap.hasData) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
+                    child: Row(
+                      children: [
+                        Expanded(flex: 5, child: _colHeader('NUME ELEV')),
+                        Expanded(
+                          flex: 2,
+                          child: Center(child: _colHeader('CLASĂ')),
+                        ),
+                        Expanded(
+                          flex: 4,
+                          child: Center(child: _colHeader('EMAIL')),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Center(child: _colHeader('STATUS')),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Center(child: _colHeader('SETĂRI')),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, color: Color(0xFFE8F5E0)),
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .where('role', isEqualTo: 'student')
+                        .snapshots(),
+                    builder: (context, snap) {
+                      if (snap.hasError) {
+                        return Center(
+                          child: SelectableText("Eroare:\n${snap.error}"),
+                        );
+                      }
+                      if (!snap.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                          final docs = [...snap.data!.docs];
-                          docs.sort((a, b) {
-                            final an = ((a.data() as Map)['fullName'] ?? '')
-                                .toString()
-                                .toLowerCase();
-                            final bn = ((b.data() as Map)['fullName'] ?? '')
-                                .toString()
-                                .toLowerCase();
-                            return an.compareTo(bn);
-                          });
+                      final docs = [...snap.data!.docs];
+                      docs.sort((a, b) {
+                        final an = ((a.data() as Map)['fullName'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final bn = ((b.data() as Map)['fullName'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        return an.compareTo(bn);
+                      });
 
-                          if (docs.isEmpty) {
-                            return const Center(child: Text("Nu există elevi"));
-                          }
+                      if (docs.isEmpty) {
+                        return const Center(child: Text("Nu există elevi"));
+                      }
 
-                          return ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                            itemCount: docs.length,
-                            separatorBuilder: (_, __) => const Divider(
-                              height: 1,
-                              color: Color(0xFFE8F5E0),
-                            ),
+                      final visibleDocs = _showAll
+                          ? docs
+                          : docs.take(_initialLimit).toList();
+                      final hasMore = docs.length > _initialLimit;
+
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(40, 16, 40, 0),
+                            itemCount: visibleDocs.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 12),
                             itemBuilder: (_, i) {
-                              final d = docs[i];
+                              final d = visibleDocs[i];
                               final data = d.data() as Map<String, dynamic>;
                               final uid = d.id;
                               final username = (data['username'] ?? uid)
@@ -139,10 +160,13 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                               final parentUsernames = List<String>.from(
                                 data['parents'] ?? [],
                               );
+                              final photoUrl =
+                                  (data['photoUrl'] ?? data['avatarUrl'] ?? '')
+                                      .toString();
 
                               return Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
+                                  vertical: 12,
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -156,14 +180,21 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                             backgroundColor: _avatarColor(
                                               fullName,
                                             ),
-                                            child: Text(
-                                              _initials(fullName),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 13,
-                                              ),
-                                            ),
+                                            backgroundImage: photoUrl.isNotEmpty
+                                                ? NetworkImage(photoUrl)
+                                                      as ImageProvider
+                                                : null,
+                                            child: photoUrl.isEmpty
+                                                ? Text(
+                                                    _initials(fullName),
+                                                    style: const TextStyle(
+                                                      color: Color(0xFF1A1A1A),
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      fontSize: 13,
+                                                    ),
+                                                  )
+                                                : null,
                                           ),
                                           const SizedBox(width: 12),
                                           Expanded(
@@ -174,9 +205,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                 Text(
                                                   fullName,
                                                   style: const TextStyle(
-                                                    fontWeight: FontWeight.w600,
+                                                    fontWeight: FontWeight.w700,
                                                     fontSize: 14,
-                                                    color: Color(0xFF1A2E1A),
+                                                    color: Color(0xFF111111),
                                                   ),
                                                 ),
                                                 Text(
@@ -195,27 +226,27 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                     Expanded(
                                       flex: 2,
                                       child: Align(
-                                        alignment: Alignment.centerLeft,
+                                        alignment: Alignment.center,
                                         child: classId.isNotEmpty
                                             ? Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 5,
+                                                      horizontal: 14,
+                                                      vertical: 6,
                                                     ),
                                                 decoration: BoxDecoration(
                                                   color: const Color(
-                                                    0xFFE8F5E0,
+                                                    0xFFDCEEDC,
                                                   ),
                                                   borderRadius:
                                                       BorderRadius.circular(20),
                                                 ),
                                                 child: Text(
-                                                  classId,
+                                                  _formatClassName(classId),
                                                   style: const TextStyle(
                                                     fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Color(0xFF3A6B2A),
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF2E7D32),
                                                   ),
                                                 ),
                                               )
@@ -228,6 +259,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                         (email != null && email.isNotEmpty)
                                             ? email
                                             : '-',
+                                        textAlign: TextAlign.center,
                                         style: const TextStyle(
                                           fontSize: 13,
                                           color: Color(0xFF2E4A2E),
@@ -237,31 +269,31 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                     Expanded(
                                       flex: 2,
                                       child: Align(
-                                        alignment: Alignment.centerLeft,
+                                        alignment: Alignment.center,
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
+                                            horizontal: 14,
                                             vertical: 6,
                                           ),
                                           decoration: BoxDecoration(
                                             color: inSchool
-                                                ? const Color(0xFFE0F4EB)
-                                                : const Color(0xFFFFE0E0),
+                                                ? const Color(0xFFDCEEDC)
+                                                : const Color(0xFFFDEBEB),
                                             borderRadius: BorderRadius.circular(
-                                              8,
+                                              20,
                                             ),
                                           ),
                                           child: Text(
                                             inSchool
                                                 ? 'ÎN INCINTĂ'
-                                                : 'ÎN AFARA\nINCINTEI',
+                                                : 'ÎN AFARA INCINTEI',
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
-                                              fontSize: 11,
+                                              fontSize: 12,
                                               fontWeight: FontWeight.w700,
                                               color: inSchool
-                                                  ? const Color(0xFF2A6B3A)
-                                                  : const Color(0xFFB03030),
+                                                  ? const Color(0xFF2E7D32)
+                                                  : const Color(0xFFD32F2F),
                                             ),
                                           ),
                                         ),
@@ -272,9 +304,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                       child: Center(
                                         child: IconButton(
                                           icon: const Icon(
-                                            Icons.settings,
-                                            color: Color(0xFF9AB88A),
-                                            size: 20,
+                                            Icons.settings_outlined,
+                                            color: Color(0xFF424242),
+                                            size: 22,
                                           ),
                                           onPressed: () => _openStudentDialog(
                                             context,
@@ -298,18 +330,106 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                 ),
                               );
                             },
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                          ),
+                          if (hasMore || _showAll)
+                            Container(
+                              padding: const EdgeInsets.fromLTRB(
+                                40,
+                                10,
+                                40,
+                                12,
+                              ),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFF4F9F3),
+                                border: Border(
+                                  top: BorderSide(color: Color(0xFFE8E8E8)),
+                                ),
+                                borderRadius: BorderRadius.only(
+                                  bottomLeft: Radius.circular(20),
+                                  bottomRight: Radius.circular(20),
+                                ),
+                              ),
+                              alignment: Alignment.centerRight,
+                              child: GestureDetector(
+                                onTap: () =>
+                                    setState(() => _showAll = !_showAll),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE8E8E8),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        _showAll
+                                            ? 'Afișează mai puțin'
+                                            : 'Afișează mai mult',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF333333),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Icon(
+                                        _showAll
+                                            ? Icons.keyboard_arrow_up
+                                            : Icons.keyboard_arrow_down,
+                                        size: 18,
+                                        color: const Color(0xFF333333),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatClassName(String classId) {
+    if (classId.isEmpty) return '-';
+    if (classId.toLowerCase().startsWith('clasa')) return classId;
+
+    final original = classId.trim();
+    // Match something like "9A", "10 C", "11B", "12"
+    final match = RegExp(r'^(\d+)(.*)$').firstMatch(original);
+
+    if (match != null) {
+      final numStr = match.group(1)!;
+      final letter = match.group(2)!.trim();
+
+      String roman = numStr;
+      if (numStr == '9')
+        roman = 'IX';
+      else if (numStr == '10')
+        roman = 'X';
+      else if (numStr == '11')
+        roman = 'XI';
+      else if (numStr == '12')
+        roman = 'XII';
+
+      if (letter.isNotEmpty) {
+        return 'Clasa a $roman-a $letter';
+      }
+      return 'Clasa a $roman-a';
+    }
+
+    return 'Clasa $original';
   }
 
   String _initials(String name) {
@@ -339,9 +459,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     return Text(
       label,
       style: const TextStyle(
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w700,
-        color: Color(0xFF5A8040),
+        color: Color(0xFF006B3D),
         letterSpacing: 1.2,
       ),
     );

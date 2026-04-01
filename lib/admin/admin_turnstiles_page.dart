@@ -35,7 +35,8 @@ String _hhmm(Timestamp ts) {
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class AdminTurnstilesPage extends StatefulWidget {
-  const AdminTurnstilesPage({super.key});
+  const AdminTurnstilesPage({super.key, this.embedded = false});
+  final bool embedded;
 
   @override
   State<AdminTurnstilesPage> createState() => _AdminTurnstilesPageState();
@@ -95,6 +96,29 @@ class _AdminTurnstilesPageState extends State<AdminTurnstilesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final body = Container(
+      color: const Color(0xFFF0F3EC),
+      child: Column(
+        children: [
+          if (!widget.embedded)
+            _TurnstilesTopBar(
+              displayName: AppSession.username ?? 'Admin',
+              searchController: _searchC,
+              onSearch: (value) => setState(() => _searchQuery = value),
+            ),
+          Expanded(
+            child: _TurnstileBody(
+              key: ValueKey(_refreshKey),
+              onRefresh: () => setState(() => _refreshKey++),
+              searchQuery: _searchQuery,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (widget.embedded) return body;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0B7A21),
       body: SafeArea(
@@ -104,39 +128,19 @@ class _AdminTurnstilesPageState extends State<AdminTurnstilesPage> {
             borderRadius: BorderRadius.circular(6),
             child: Row(
               children: [
-            _TurnstilesSidebar(
-              selected: 'turnstiles',
-              onMenuTap: () => Navigator.of(context).pop(),
-              onStudentsTap: () => _replacePage(const AdminStudentsPage()),
-              onPersonalTap: () => _replacePage(const AdminTeachersPage()),
-              onTurnichetiTap: () {},
-              onClaseTap: () => _replacePage(const AdminClassesPage()),
-              onVacanteTap: () =>
-                  _replacePage(const admin_vacante.AdminClassesPage()),
-              onParintiTap: () => _replacePage(const AdminParentsPage()),
-              onLogoutTap: _showLogoutDialog,
-            ),
-            Expanded(
-              child: Container(
-                color: const Color(0xFFF0F3EC),
-                child: Column(
-                  children: [
-                    _TurnstilesTopBar(
-                      displayName: AppSession.username ?? 'Admin',
-                      searchController: _searchC,
-                      onSearch: (value) => setState(() => _searchQuery = value),
-                    ),
-                    Expanded(
-                      child: _TurnstileBody(
-                        key: ValueKey(_refreshKey),
-                        onRefresh: () => setState(() => _refreshKey++),
-                        searchQuery: _searchQuery,
-                      ),
-                    ),
-                  ],
+                _TurnstilesSidebar(
+                  selected: 'turnstiles',
+                  onMenuTap: () => Navigator.of(context).pop(),
+                  onStudentsTap: () => _replacePage(const AdminStudentsPage()),
+                  onPersonalTap: () => _replacePage(const AdminTeachersPage()),
+                  onTurnichetiTap: () {},
+                  onClaseTap: () => _replacePage(const AdminClassesPage()),
+                  onVacanteTap: () =>
+                      _replacePage(const admin_vacante.AdminClassesPage()),
+                  onParintiTap: () => _replacePage(const AdminParentsPage()),
+                  onLogoutTap: _showLogoutDialog,
                 ),
-              ),
-            ),
+                Expanded(child: body),
               ],
             ),
           ),
@@ -186,16 +190,15 @@ class _TurnstileBody extends StatelessWidget {
             final gateMap = <String, String>{};
             for (final g in gates) {
               final d = g.data() as Map<String, dynamic>;
-              gateMap[g.id] =
-                  (d['fullName'] ?? d['username'] ?? g.id).toString();
+              gateMap[g.id] = (d['fullName'] ?? d['username'] ?? g.id)
+                  .toString();
             }
 
             // Filter gates by search query
             final searchLower = searchQuery.toLowerCase().trim();
             final filteredGates = gates.where((g) {
               final d = g.data() as Map<String, dynamic>;
-              final name =
-                  (d['fullName'] ?? d['username'] ?? g.id).toString();
+              final name = (d['fullName'] ?? d['username'] ?? g.id).toString();
               return name.toLowerCase().contains(searchLower);
             }).toList();
 
@@ -207,8 +210,7 @@ class _TurnstileBody extends StatelessWidget {
             // Daily stats (client-side filter)
             final now = DateTime.now();
             final todayStart = DateTime(now.year, now.month, now.day);
-            final yesterdayStart =
-                todayStart.subtract(const Duration(days: 1));
+            final yesterdayStart = todayStart.subtract(const Duration(days: 1));
 
             final todayCount = allEvents.where((e) {
               final d = e.data() as Map<String, dynamic>;
@@ -387,8 +389,10 @@ class _ActiveHubsPanel extends StatelessWidget {
                 ),
                 const Spacer(),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF0A7A21),
                     borderRadius: BorderRadius.circular(999),
@@ -418,7 +422,11 @@ class _ActiveHubsPanel extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     itemCount: gates.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) => _GateCard(key: ValueKey(gates[i].id), doc: gates[i], allEvents: allEvents),
+                    itemBuilder: (_, i) => _GateCard(
+                      key: ValueKey(gates[i].id),
+                      doc: gates[i],
+                      allEvents: allEvents,
+                    ),
                   ),
           ),
         ],
@@ -441,10 +449,7 @@ class _GateCard extends StatefulWidget {
   State<_GateCard> createState() => _GateCardState();
 }
 
-enum _GateCardAction {
-  settings,
-  deleteTurnstile,
-}
+enum _GateCardAction { settings, deleteTurnstile }
 
 class _GateCardState extends State<_GateCard> {
   final AdminApi _api = AdminApi();
@@ -455,17 +460,15 @@ class _GateCardState extends State<_GateCard> {
     if (_actionBusy) return;
 
     final data = widget.doc.data() as Map<String, dynamic>;
-    final username =
-        (data['username'] ?? data['fullName'] ?? widget.doc.id).toString();
+    final username = (data['username'] ?? data['fullName'] ?? widget.doc.id)
+        .toString();
 
     setState(() => _actionBusy = true);
     try {
       await _api.deleteUser(username: username);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Turnicheta $username a fost ștearsă.'),
-        ),
+        SnackBar(content: Text('Turnicheta $username a fost ștearsă.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -479,10 +482,10 @@ class _GateCardState extends State<_GateCard> {
 
   Future<void> _showSettingsDialog() async {
     final data = widget.doc.data() as Map<String, dynamic>;
-    final username =
-        (data['username'] ?? data['fullName'] ?? widget.doc.id).toString();
-    var currentName =
-        (data['fullName'] ?? data['username'] ?? widget.doc.id).toString();
+    final username = (data['username'] ?? data['fullName'] ?? widget.doc.id)
+        .toString();
+    var currentName = (data['fullName'] ?? data['username'] ?? widget.doc.id)
+        .toString();
     final photoUrl = (data['photoUrl'] ?? data['avatarUrl'] ?? '').toString();
 
     final nameC = TextEditingController(text: currentName);
@@ -615,17 +618,25 @@ class _GateCardState extends State<_GateCard> {
                                   : () async {
                                       final newName = nameC.text.trim();
                                       if (newName.isEmpty) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
-                                            content: Text('Introdu un nume valid.'),
+                                            content: Text(
+                                              'Introdu un nume valid.',
+                                            ),
                                           ),
                                         );
                                         return;
                                       }
                                       if (newName == currentName) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
-                                            content: Text('Numele este deja setat.'),
+                                            content: Text(
+                                              'Numele este deja setat.',
+                                            ),
                                           ),
                                         );
                                         return;
@@ -642,17 +653,27 @@ class _GateCardState extends State<_GateCard> {
                                           currentName = newName;
                                           renameBusy = false;
                                         });
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
-                                            content: Text('Numele turnichetei a fost actualizat.'),
+                                            content: Text(
+                                              'Numele turnichetei a fost actualizat.',
+                                            ),
                                           ),
                                         );
                                       } catch (e) {
                                         if (!mounted) return;
-                                        setDialogState(() => renameBusy = false);
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        setDialogState(
+                                          () => renameBusy = false,
+                                        );
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           SnackBar(
-                                            content: Text('Eroare la actualizarea numelui: $e'),
+                                            content: Text(
+                                              'Eroare la actualizarea numelui: $e',
+                                            ),
                                           ),
                                         );
                                       }
@@ -668,7 +689,9 @@ class _GateCardState extends State<_GateCard> {
                                     )
                                   : const Icon(Icons.edit_rounded),
                               label: Text(
-                                renameBusy ? 'Se salvează...' : 'Salvează numele',
+                                renameBusy
+                                    ? 'Se salvează...'
+                                    : 'Salvează numele',
                               ),
                             ),
                           ),
@@ -708,8 +731,8 @@ class _GateCardState extends State<_GateCard> {
   @override
   Widget build(BuildContext context) {
     final data = widget.doc.data() as Map<String, dynamic>;
-    final gateName =
-        (data['fullName'] ?? data['username'] ?? widget.doc.id).toString();
+    final gateName = (data['fullName'] ?? data['username'] ?? widget.doc.id)
+        .toString();
     final isOnline = (data['status'] ?? 'active') != 'disabled';
 
     final gateScans = widget.allEvents
@@ -791,8 +814,9 @@ class _GateCardState extends State<_GateCard> {
                                         color: isOnline
                                             ? const Color(0xFFE8F5EA)
                                             : const Color(0xFFF5F0E8),
-                                        borderRadius:
-                                            BorderRadius.circular(999),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
                                         border: Border.all(
                                           color: isOnline
                                               ? const Color(0xFFB8D9BE)
@@ -870,8 +894,10 @@ class _GateCardState extends State<_GateCard> {
                     onPressed: () {},
                     child: const Text(
                       'Testează conexiunea',
-                      style:
-                          TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -881,8 +907,10 @@ class _GateCardState extends State<_GateCard> {
                     color: const Color(0xFF7B9E84),
                     onPressed: () {},
                     padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
                   ),
                   PopupMenuButton<_GateCardAction>(
                     enabled: !_actionBusy,
@@ -940,7 +968,9 @@ class _GateCardState extends State<_GateCard> {
                             ? const SizedBox(
                                 width: 16,
                                 height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(
                                 Icons.settings_rounded,
@@ -963,15 +993,18 @@ class _GateCardState extends State<_GateCard> {
                     ),
                     onPressed: toggle,
                     padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
                   ),
                 ],
               ),
             ),
 
             // Ultimele 3 scanari - vizibile doar cand este extins
-              if (_isExpanded && gateScans.isNotEmpty) _LastScansSection(docs: gateScans),
+            if (_isExpanded && gateScans.isNotEmpty)
+              _LastScansSection(docs: gateScans),
             // Rand de actiuni jos
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
@@ -993,8 +1026,10 @@ class _GateCardState extends State<_GateCard> {
                     onPressed: () {},
                     child: const Text(
                       'Repornește dispozitivul',
-                      style:
-                          TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -1004,8 +1039,10 @@ class _GateCardState extends State<_GateCard> {
                     color: const Color(0xFF7B9E84),
                     onPressed: () {},
                     padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
                   ),
                 ],
               ),
@@ -1029,109 +1066,107 @@ class _LastScansSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Divider(height: 1, color: Color(0xFFEEF4EE)),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 10, 16, 6),
-              child: Text(
-                'ULTIMELE 3 SCANĂRI',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF7B9E84),
-                  letterSpacing: 0.8,
-                ),
-              ),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 1, color: Color(0xFFEEF4EE)),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 10, 16, 6),
+          child: Text(
+            'ULTIMELE 3 SCANĂRI',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF7B9E84),
+              letterSpacing: 0.8,
             ),
-            ...docs.map((e) {
-              final d = e.data() as Map<String, dynamic>;
-              final fullName = (d['fullName'] ?? '').toString();
-              final ts = d['timestamp'] as Timestamp?;
-              final isDenied =
-                  (d['type'] ?? '') == 'deny' || fullName.isEmpty;
-              final parts = fullName
-                  .trim()
-                  .split(RegExp(r'\s+'))
-                  .where((p) => p.isNotEmpty)
-                  .toList();
-              final initials =
-                  parts.take(2).map((p) => p[0].toUpperCase()).join();
+          ),
+        ),
+        ...docs.map((e) {
+          final d = e.data() as Map<String, dynamic>;
+          final fullName = (d['fullName'] ?? '').toString();
+          final ts = d['timestamp'] as Timestamp?;
+          final isDenied = (d['type'] ?? '') == 'deny' || fullName.isEmpty;
+          final parts = fullName
+              .trim()
+              .split(RegExp(r'\s+'))
+              .where((p) => p.isNotEmpty)
+              .toList();
+          final initials = parts.take(2).map((p) => p[0].toUpperCase()).join();
 
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: Row(
-                  children: [
-                    isDenied
-                        ? Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFDE8E8),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.block_rounded,
-                              size: 14,
-                              color: Color(0xFF6B1A1A),
-                            ),
-                          )
-                        : Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFD9EDDE),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              initials.isEmpty ? '?' : initials,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF0A7A21),
-                              ),
-                            ),
-                          ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        fullName.isEmpty ? 'Etichetă ID necunoscută' : fullName,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isDenied
-                              ? const Color(0xFF6B1A1A)
-                              : const Color(0xFF1A2F1E),
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+              children: [
+                isDenied
+                    ? Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFDE8E8),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (isDenied)
-                      const Text(
-                        'RESPINS',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.block_rounded,
+                          size: 14,
                           color: Color(0xFF6B1A1A),
                         ),
                       )
-                    else if (ts != null)
-                      Text(
-                        _hhmm(ts),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF7B9E84),
+                    : Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD9EDDE),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          initials.isEmpty ? '?' : initials,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0A7A21),
+                          ),
                         ),
                       ),
-                  ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    fullName.isEmpty ? 'Etichetă ID necunoscută' : fullName,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDenied
+                          ? const Color(0xFF6B1A1A)
+                          : const Color(0xFF1A2F1E),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              );
-            }),
-          ],
-        );
+                if (isDenied)
+                  const Text(
+                    'RESPINS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF6B1A1A),
+                    ),
+                  )
+                else if (ts != null)
+                  Text(
+                    _hhmm(ts),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF7B9E84),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
   }
 }
 
@@ -1155,10 +1190,10 @@ class _LiveTrafficPanel extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final scale = constraints.maxWidth < 360
-          ? 0.95
-          : (constraints.maxWidth < 420
-              ? 1.0
-              : (constraints.maxWidth < 520 ? 1.08 : 1.12));
+            ? 0.95
+            : (constraints.maxWidth < 420
+                  ? 1.0
+                  : (constraints.maxWidth < 520 ? 1.08 : 1.12));
         double s(double v) => v * scale;
 
         return Container(
@@ -1241,7 +1276,7 @@ class _LiveTrafficPanel extends StatelessWidget {
                           return _TrafficEntry(
                             gateName: gateName,
                             personName: fullName.isEmpty
-                              ? 'Mediu neînregistrat detectat'
+                                ? 'Mediu neînregistrat detectat'
                                 : fullName,
                             roleLabel: roleLabel,
                             timeAgo: ts != null ? _timeAgo(ts) : '',
@@ -1519,13 +1554,13 @@ class _DailyScansCard extends StatelessWidget {
                 pct < 0.5
                     ? Icons.trending_flat_rounded
                     : (isUp
-                        ? Icons.trending_up_rounded
-                        : Icons.trending_down_rounded),
+                          ? Icons.trending_up_rounded
+                          : Icons.trending_down_rounded),
                 color: pct < 0.5
                     ? const Color(0xFF9FDCAD)
                     : (isUp
-                        ? const Color(0xFF6FDFBF)
-                        : const Color(0xFFFF8080)),
+                          ? const Color(0xFF6FDFBF)
+                          : const Color(0xFFFF8080)),
                 size: 16,
               ),
               const SizedBox(width: 4),
@@ -1536,8 +1571,8 @@ class _DailyScansCard extends StatelessWidget {
                     color: pct < 0.5
                         ? const Color(0xFF9FDCAD)
                         : (isUp
-                            ? const Color(0xFF6FDFBF)
-                            : const Color(0xFFFF8080)),
+                              ? const Color(0xFF6FDFBF)
+                              : const Color(0xFFFF8080)),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1566,8 +1601,7 @@ void _showAllLogsDialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(24),
       child: Container(
-        constraints:
-            const BoxConstraints(maxWidth: 600, maxHeight: 620),
+        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 620),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -1611,8 +1645,7 @@ void _showAllLogsDialog(
                   final docs = List<QueryDocumentSnapshot>.from(
                     snap.data?.docs ?? fallbackEvents,
                   );
-                  if (snap.connectionState ==
-                          ConnectionState.waiting &&
+                  if (snap.connectionState == ConnectionState.waiting &&
                       docs.isEmpty) {
                     return const Center(
                       child: CircularProgressIndicator(
@@ -1639,16 +1672,12 @@ void _showAllLogsDialog(
                     itemCount: docs.length,
                     itemBuilder: (_, i) {
                       final d = docs[i].data() as Map<String, dynamic>;
-                      final gateUid =
-                          (d['gateUid'] ?? '').toString();
-                      final gateName =
-                          gateMap[gateUid] ?? 'Poartă necunoscută';
-                      final fullName =
-                          (d['fullName'] ?? '').toString();
+                      final gateUid = (d['gateUid'] ?? '').toString();
+                      final gateName = gateMap[gateUid] ?? 'Poartă necunoscută';
+                      final fullName = (d['fullName'] ?? '').toString();
                       final ts = d['timestamp'] as Timestamp?;
                       final isDenied =
-                          (d['type'] ?? '') == 'deny' ||
-                              fullName.isEmpty;
+                          (d['type'] ?? '') == 'deny' || fullName.isEmpty;
                       final classId = (d['classId'] ?? '').toString();
                       final String roleLabel;
                       if (isDenied) {
@@ -1662,7 +1691,7 @@ void _showAllLogsDialog(
                       return _TrafficEntry(
                         gateName: gateName,
                         personName: fullName.isEmpty
-                          ? 'Mediu neînregistrat detectat'
+                            ? 'Mediu neînregistrat detectat'
                             : fullName,
                         roleLabel: roleLabel,
                         timeAgo: ts != null ? _timeAgo(ts) : '',
@@ -1816,9 +1845,7 @@ class _TurnstilesSidebar extends StatelessWidget {
                   ),
                   alignment: Alignment.center,
                   child: Text(
-                    displayName.isNotEmpty
-                        ? displayName[0].toUpperCase()
-                        : 'A',
+                    displayName.isNotEmpty ? displayName[0].toUpperCase() : 'A',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF7A4A10),
@@ -1893,8 +1920,7 @@ class _SidebarTile extends StatelessWidget {
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
                 Icon(icon, color: const Color(0xFFCEF0D8), size: 18),
