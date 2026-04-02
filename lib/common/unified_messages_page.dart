@@ -15,7 +15,7 @@ enum UnifiedInboxRole { student, parent, teacher }
 
 enum _InboxItemKind { announcement, decision }
 
-enum _InboxDecisionState { approved, rejected, system }
+enum _InboxDecisionState { pending, approved, rejected, system }
 
 class UnifiedMessagesPage extends StatefulWidget {
   final UnifiedInboxRole role;
@@ -32,13 +32,33 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
   List<String> _childrenUids = const <String>[];
   Map<String, String> _childNames = const <String, String>{};
 
+  Future<void> _markParentInboxOpened() async {
+    final uid = (AppSession.uid ?? '').trim();
+    if (uid.isEmpty) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'inboxLastOpenedAt': Timestamp.fromDate(DateTime.now()),
+      }, SetOptions(merge: true));
+    } catch (_) {}
+  }
+
   @override
   void initState() {
     super.initState();
     if (widget.role == UnifiedInboxRole.parent) {
+      _markParentInboxOpened();
       _loadingChildren = true;
       _loadChildren();
     }
+  }
+
+  @override
+  void dispose() {
+    if (widget.role == UnifiedInboxRole.parent) {
+      _markParentInboxOpened();
+    }
+    super.dispose();
   }
 
   Future<void> _loadChildren() async {
@@ -141,6 +161,19 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
               .snapshots(),
         )
         .toList();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _buildParentPendingRequestsStream(
+    String uid,
+  ) {
+    return FirebaseFirestore.instance
+        .collection('leaveRequests')
+        .where('targetUid', isEqualTo: uid)
+        .where('targetRole', isEqualTo: 'parent')
+        .where('status', isEqualTo: 'pending')
+        .orderBy('requestedAt', descending: true)
+        .limit(50)
+        .snapshots();
   }
 
   Widget _buildMergedStream(
@@ -331,14 +364,31 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       if (widget.role == UnifiedInboxRole.parent) {
-        return _buildMergedStream(_buildParentDecisionStreams(), (decisionDocs) {
-          final decisionItems = _mapParentDecisionItems(decisionDocs);
-          final allItems = <_UnifiedMessageItem>[
-            ...secretariatItems,
-            ...decisionItems,
-          ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return _buildItemsList(allItems);
-        });
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: _buildParentPendingRequestsStream(uid),
+          builder: (context, pendingSnap) {
+            if (pendingSnap.hasError) {
+              return Center(child: Text('Eroare: ${pendingSnap.error}'));
+            }
+
+            final pendingItems = _mapParentPendingRequestItems(
+              pendingSnap.data?.docs ??
+                  const <QueryDocumentSnapshot<Map<String, dynamic>>>[],
+            );
+
+            return _buildMergedStream(_buildParentDecisionStreams(), (
+              decisionDocs,
+            ) {
+              final decisionItems = _mapParentDecisionItems(decisionDocs);
+              final allItems = <_UnifiedMessageItem>[
+                ...secretariatItems,
+                ...pendingItems,
+                ...decisionItems,
+              ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+              return _buildItemsList(allItems);
+            });
+          },
+        );
       }
 
       if (widget.role != UnifiedInboxRole.student) {
@@ -498,6 +548,43 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
             message: (data['message'] ?? '').toString().trim(),
             createdAt: when,
             sender: sender,
+            dateLabel: (data['dateText'] ?? '').toString().trim(),
+            timeLabel: (data['timeText'] ?? '').toString().trim(),
+          );
+        })
+        .toList();
+  }
+
+  List<_UnifiedMessageItem> _mapParentPendingRequestItems(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    return docs
+        .where((doc) {
+          final data = doc.data();
+          final status = (data['status'] ?? '').toString().trim();
+          final source = (data['source'] ?? '').toString().trim();
+          final targetRole = (data['targetRole'] ?? '').toString().trim();
+          return status == 'pending' &&
+              source != 'secretariat' &&
+              targetRole == 'parent';
+        })
+        .map((doc) {
+          final data = doc.data();
+          final studentUid = (data['studentUid'] ?? '').toString().trim();
+          final studentName = (data['studentName'] ?? '').toString().trim();
+          final requestedAt = (data['requestedAt'] as Timestamp?)?.toDate();
+          final when = requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final resolvedStudentName = studentName.isNotEmpty
+              ? studentName
+              : (_childNames[studentUid] ?? 'Elev');
+
+          return _UnifiedMessageItem(
+            kind: _InboxItemKind.decision,
+            state: _InboxDecisionState.pending,
+            title: 'Cerere Nouă - $resolvedStudentName',
+            message: (data['message'] ?? '').toString().trim(),
+            createdAt: when,
+            sender: 'Necesită aprobarea părintelui',
             dateLabel: (data['dateText'] ?? '').toString().trim(),
             timeLabel: (data['timeText'] ?? '').toString().trim(),
           );
@@ -925,6 +1012,15 @@ class _CardScheme {
 
 _CardScheme _cardScheme(_InboxDecisionState state) {
   switch (state) {
+    case _InboxDecisionState.pending:
+      return const _CardScheme(
+        label: 'NOUĂ',
+        accent: Color(0xFF9A6B00),
+        pillBg: Color(0xFFFFF4D9),
+        pillFg: Color(0xFF8A5D00),
+        iconBg: Color(0xFFFFF4D9),
+        footerIcon: Icons.pending_actions_rounded,
+      );
     case _InboxDecisionState.approved:
       return const _CardScheme(
         label: 'APROBATĂ',

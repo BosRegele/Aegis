@@ -20,8 +20,15 @@ const _danger = Color(0xFF8E3557);
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN WIDGET
 // ─────────────────────────────────────────────────────────────────────────────
-class ParentHomePage extends StatelessWidget {
+class ParentHomePage extends StatefulWidget {
   const ParentHomePage({super.key});
+
+  @override
+  State<ParentHomePage> createState() => _ParentHomePageState();
+}
+
+class _ParentHomePageState extends State<ParentHomePage> {
+  DateTime? _localInboxLastOpened;
 
   @override
   Widget build(BuildContext context) {
@@ -49,18 +56,22 @@ class ParentHomePage extends StatelessWidget {
                     rawChildren,
                   ).where((s) => s.trim().isNotEmpty).toList()
                 : <String>[];
-            final inboxLastOpened = (data['inboxLastOpenedAt'] as Timestamp?)
-                ?.toDate();
+            final serverInboxLastOpened =
+                (data['inboxLastOpenedAt'] as Timestamp?)?.toDate();
+            final inboxLastOpened = _effectiveLastOpened(
+              serverInboxLastOpened,
+              _localInboxLastOpened,
+            );
 
             return LayoutBuilder(
               builder: (context, constraints) {
                 final compact = constraints.maxHeight < 760;
-                final topSectionH = compact ? 416.0 : 448.0;
+                final topSectionH = compact ? 444.0 : 484.0;
                 final activityTop = compact ? 170.0 : 186.0;
                 final activityCardHeight = compact ? 248.0 : 286.0;
                 final childrenCardHeight = compact ? 84.0 : 92.0;
-                final contentLift = compact ? 2.0 : 4.0;
-                final topGap = compact ? 2.0 : 6.0;
+                final contentLift = 0.0;
+                final topGap = compact ? 12.0 : 16.0;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -142,18 +153,8 @@ class ParentHomePage extends StatelessWidget {
                                             child: _MesajeCard(
                                               childrenUids: childrenUids,
                                               inboxLastOpened: inboxLastOpened,
-                                              onTap: () {
-                                                _markOpened(
-                                                  uid,
-                                                  'inboxLastOpenedAt',
-                                                );
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        const ParentInboxPage(),
-                                                  ),
-                                                );
+                                              onTap: () async {
+                                                await _openInbox(context, uid);
                                               },
                                             ),
                                           ),
@@ -178,10 +179,44 @@ class ParentHomePage extends StatelessWidget {
     );
   }
 
-  static void _markOpened(String uid, String field) {
-    FirebaseFirestore.instance.collection('users').doc(uid).update({
-      field: FieldValue.serverTimestamp(),
-    });
+  DateTime? _effectiveLastOpened(DateTime? serverValue, DateTime? localValue) {
+    if (serverValue == null) return localValue;
+    if (localValue == null) return serverValue;
+    return localValue.isAfter(serverValue) ? localValue : serverValue;
+  }
+
+  Future<void> _openInbox(BuildContext context, String uid) async {
+    final openedAt = DateTime.now();
+    if (mounted) {
+      setState(() {
+        _localInboxLastOpened = openedAt;
+      });
+    }
+
+    _markOpened(uid, 'inboxLastOpenedAt', openedAt);
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ParentInboxPage()),
+    );
+
+    final returnedAt = DateTime.now();
+    if (mounted) {
+      setState(() {
+        _localInboxLastOpened = returnedAt;
+      });
+    }
+    _markOpened(uid, 'inboxLastOpenedAt', returnedAt);
+  }
+
+  static Future<void> _markOpened(String uid, String field, [DateTime? when]) {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .set({
+          field: Timestamp.fromDate(when ?? DateTime.now()),
+        }, SetOptions(merge: true))
+        .catchError((_) {});
   }
 
   static void _showSettingsSheet(BuildContext context) {
@@ -821,15 +856,147 @@ class _MesajeCard extends StatelessWidget {
     required this.onTap,
   });
 
+  DateTime? _readDateTime(dynamic value) {
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+    if (value is DateTime) {
+      return value;
+    }
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+    return null;
+  }
+
+  DateTime? _decisionMessageTime(Map<String, dynamic> data) {
+    return _readDateTime(data['reviewedAt']) ??
+        _readDateTime(data['updatedAt']) ??
+        _readDateTime(data['requestedAt']);
+  }
+
+  int _countUnreadDecisions(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final lastViewed = inboxLastOpened;
+    return docs.where((doc) {
+      final data = doc.data();
+      final source = (data['source'] ?? '').toString();
+      if (source == 'secretariat') {
+        return false;
+      }
+
+      final when = _decisionMessageTime(data);
+      if (when == null) {
+        return lastViewed == null;
+      }
+      return lastViewed == null || when.isAfter(lastViewed);
+    }).length;
+  }
+
+  int _countUnreadSecretariat(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final lastViewed = inboxLastOpened;
+    final uniqueDocs = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{
+      for (final doc in docs) doc.id: doc,
+    };
+    return uniqueDocs.values.where((doc) {
+      final when = _readDateTime(doc.data()['createdAt']) ??
+          _readDateTime(doc.data()['reviewedAt']) ??
+          _readDateTime(doc.data()['requestedAt']);
+      if (when == null) {
+        return lastViewed == null;
+      }
+      return lastViewed == null || when.isAfter(lastViewed);
+    }).length;
+  }
+
+  int _countUnreadPendingRequests(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final lastViewed = inboxLastOpened;
+    return docs.where((doc) {
+      final when = _readDateTime(doc.data()['requestedAt']) ??
+          _readDateTime(doc.data()['createdAt']) ??
+          _readDateTime(doc.data()['updatedAt']);
+      if (when == null) {
+        return lastViewed == null;
+      }
+      return lastViewed == null || when.isAfter(lastViewed);
+    }).length;
+  }
+
+  List<Stream<QuerySnapshot<Map<String, dynamic>>>> _buildSecretariatStreams() {
+    if (childrenUids.isEmpty) {
+      return const <Stream<QuerySnapshot<Map<String, dynamic>>>>[];
+    }
+
+    final base = FirebaseFirestore.instance.collection('secretariatMessages');
+    return [
+      base
+          .where('recipientRole', isEqualTo: 'parent')
+          .where('studentUid', isEqualTo: '')
+          .snapshots(),
+      ...childrenUids.map(
+        (childUid) => base
+            .where('recipientRole', isEqualTo: 'parent')
+            .where('studentUid', isEqualTo: childUid)
+            .snapshots(),
+      ),
+    ];
+  }
+
+  Widget _buildMergedStream(
+    List<Stream<QuerySnapshot<Map<String, dynamic>>>> streams,
+    Widget Function(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs)
+    onReady,
+  ) {
+    if (streams.isEmpty) {
+      return onReady(const <QueryDocumentSnapshot<Map<String, dynamic>>>[]);
+    }
+
+    Widget step(
+      int index,
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> acc,
+    ) {
+      if (index >= streams.length) {
+        return onReady(acc);
+      }
+
+      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: streams[index],
+        builder: (context, snap) {
+          if (!snap.hasData) {
+            return onReady(acc);
+          }
+          return step(index + 1, [...acc, ...snap.data!.docs]);
+        },
+      );
+    }
+
+    return step(0, const <QueryDocumentSnapshot<Map<String, dynamic>>>[]);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final msgStream = childrenUids.isNotEmpty
+      final parentUid = (AppSession.uid ?? '').trim();
+    final decisionStream = childrenUids.isNotEmpty
         ? FirebaseFirestore.instance
               .collection('leaveRequests')
               .where('studentUid', whereIn: childrenUids)
               .where('status', whereIn: ['approved', 'rejected'])
               .snapshots()
         : null;
+      final pendingRequestsStream = parentUid.isNotEmpty
+      ? FirebaseFirestore.instance
+        .collection('leaveRequests')
+        .where('targetUid', isEqualTo: parentUid)
+        .where('targetRole', isEqualTo: 'parent')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+      : null;
+    final secretariatStreams = _buildSecretariatStreams();
 
     return Material(
       color: _surfaceContainerLow,
@@ -865,60 +1032,51 @@ class _MesajeCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              if (msgStream != null)
-                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: msgStream,
-                  builder: (context, snap) {
-                    int unread = 0;
-                    if (snap.hasData) {
-                      for (final doc in snap.data!.docs) {
-                        final d = doc.data();
-                        if (d['viewedByParent'] != true) {
-                          final ts =
-                              ((d['reviewedAt'] ?? d['updatedAt'])
-                                      as Timestamp?)
-                                  ?.toDate();
-                          if (inboxLastOpened == null ||
-                              (ts != null && ts.isAfter(inboxLastOpened!))) {
-                            unread++;
-                          }
-                        }
-                      }
-                    }
-                    return Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: unread > 0 ? _primary : _outline,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          unread > 0
-                              ? '$unread mesaje noi'
-                              : 'Niciun mesaj nou',
-                          style: TextStyle(
-                            color: unread > 0 ? _primary : _outline,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                )
-              else
-                const Text(
-                  'Niciun mesaj nou',
-                  style: TextStyle(
-                    color: _outline,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: pendingRequestsStream,
+                builder: (context, pendingSnap) {
+                  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: decisionStream,
+                    builder: (context, decisionSnap) {
+                      return _buildMergedStream(secretariatStreams, (
+                        secretariatDocs,
+                      ) {
+                        final unread =
+                            _countUnreadPendingRequests(
+                              pendingSnap.data?.docs ?? const [],
+                            ) +
+                            _countUnreadDecisions(
+                              decisionSnap.data?.docs ?? const [],
+                            ) +
+                            _countUnreadSecretariat(secretariatDocs);
+                        return Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: unread > 0 ? _primary : _outline,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              unread > 0
+                                  ? '$unread mesaje noi'
+                                  : 'Niciun mesaj nou',
+                              style: TextStyle(
+                                color: unread > 0 ? _primary : _outline,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        );
+                      });
+                    },
+                  );
+                },
+              ),
             ],
           ),
         ),

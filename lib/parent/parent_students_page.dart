@@ -1,14 +1,12 @@
-import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
 import '../core/session.dart';
 
 const _kHeaderGreen = Color(0xFF0D6F1C);
 const _kPageBg = Color(0xFFF1F5EC);
 
-// Data model similar to _OrarViewData from orar.dart
-class _StudentProfileData {
+class ParentStudentViewData {
   final String uid;
   final String fullName;
   final String username;
@@ -18,7 +16,7 @@ class _StudentProfileData {
   final Map<int, Map<String, String>> schedule;
   final bool inSchool;
 
-  const _StudentProfileData({
+  const ParentStudentViewData({
     required this.uid,
     required this.fullName,
     required this.username,
@@ -28,246 +26,18 @@ class _StudentProfileData {
     required this.schedule,
     required this.inSchool,
   });
-
 }
 
-class ParentStudentsPage extends StatefulWidget {
-  const ParentStudentsPage({super.key});
+class ParentStudentsPage extends StatelessWidget {
+  final List<ParentStudentViewData> students;
 
-  @override
-  State<ParentStudentsPage> createState() => _ParentStudentsPageState();
-}
-
-class _ParentStudentsPageState extends State<ParentStudentsPage> {
-  // All child UIDs accumulated from parallel streams.
-  final Set<String> _studentUids = {};
-  // True once the parent-doc stream has emitted at least once.
-  bool _loadedOnce = false;
-
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _parentDocSub;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _parentsArraySub;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _legacyUidSub;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _legacyIdSub;
-
-  @override
-  void initState() {
-    super.initState();
-    _setupStreams();
-  }
-
-  void _setupStreams() {
-    final parentUid = (AppSession.uid ?? '').trim();
-    if (parentUid.isEmpty) {
-      setState(() => _loadedOnce = true);
-      return;
-    }
-
-    final users = FirebaseFirestore.instance.collection('users');
-
-    // 1) Parent's own document — read the 'children' array.
-    _parentDocSub = users.doc(parentUid).snapshots().listen(
-      (snap) {
-        if (!mounted) return;
-        final data = snap.data() ?? {};
-        final children = (data['children'] as List? ?? [])
-            .map((v) => v.toString().trim())
-            .where((v) => v.isNotEmpty)
-            .toSet();
-        setState(() {
-          _studentUids.addAll(children);
-          _loadedOnce = true;
-        });
-      },
-      onError: (_) {
-        if (mounted) setState(() => _loadedOnce = true);
-      },
-    );
-
-    // 2) Modern schema: students whose 'parents' array contains parentUid.
-    _parentsArraySub = users
-        .where('parents', arrayContains: parentUid)
-        .snapshots()
-        .listen(
-      (snap) {
-        if (!mounted) return;
-        setState(() => _studentUids.addAll(snap.docs.map((d) => d.id)));
-      },
-      onError: (_) {},
-    );
-
-    // 3) Legacy schema: students with 'parentUid' == parentUid.
-    _legacyUidSub = users
-        .where('parentUid', isEqualTo: parentUid)
-        .snapshots()
-        .listen(
-      (snap) {
-        if (!mounted) return;
-        setState(() => _studentUids.addAll(snap.docs.map((d) => d.id)));
-      },
-      onError: (_) {},
-    );
-
-    // 4) Legacy schema: students with 'parentId' == parentUid.
-    _legacyIdSub = users
-        .where('parentId', isEqualTo: parentUid)
-        .snapshots()
-        .listen(
-      (snap) {
-        if (!mounted) return;
-        setState(() => _studentUids.addAll(snap.docs.map((d) => d.id)));
-      },
-      onError: (_) {},
-    );
-  }
-
-  @override
-  void dispose() {
-    _parentDocSub?.cancel();
-    _parentsArraySub?.cancel();
-    _legacyUidSub?.cancel();
-    _legacyIdSub?.cancel();
-    super.dispose();
-  }
-
-  // This function is almost identical to _loadData in orar.dart, but takes a uid
-  Future<_StudentProfileData> _loadStudentData(String studentUid) async {
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(studentUid)
-        .get();
-    if (!userDoc.exists) {
-      throw Exception('Profilul elevului cu UID $studentUid nu a fost găsit.');
-    }
-
-    final userData = userDoc.data() ?? <String, dynamic>{};
-    final username = (userData['username'] ?? '').toString().trim();
-    final fullName = (userData['fullName'] ?? '').toString().trim();
-    final role = (userData['role'] ?? '').toString().trim();
-    final classId = (userData['classId'] ?? '').toString().trim().toUpperCase();
-    final inSchool = (userData['inSchool'] ?? false) as bool;
-    var teacherName = 'N/A';
-
-    Map<int, Map<String, String>> schedule = {};
-
-    if (classId.isNotEmpty) {
-      final classDoc = await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(classId)
-          .get();
-
-      if (classDoc.exists) {
-        final classData = classDoc.data() ?? <String, dynamic>{};
-
-        // New schedule format
-        final scheduleData = classData['schedule'];
-        if (scheduleData is Map) {
-          for (final entry in scheduleData.entries) {
-            final dayNum = int.tryParse(entry.key.toString());
-            if (dayNum != null && dayNum >= 1 && dayNum <= 5) {
-              final times = entry.value;
-              if (times is Map) {
-                final start = times['start']?.toString() ?? '';
-                final end = times['end']?.toString() ?? '';
-                if (start.isNotEmpty && end.isNotEmpty) {
-                  schedule[dayNum] = {'start': start, 'end': end};
-                }
-              }
-            }
-          }
-        }
-
-        // Fallback to old format
-        if (schedule.isEmpty) {
-          final start = (classData['noExitStart'] ?? '').toString().trim();
-          final end = (classData['noExitEnd'] ?? '').toString().trim();
-          final rawDays = classData['noExitDays'];
-
-          if (start.isNotEmpty && end.isNotEmpty && rawDays is List) {
-            for (final day in rawDays) {
-              if (day is int && day >= 1 && day <= 5) {
-                schedule[day] = {'start': start, 'end': end};
-              }
-            }
-          }
-        }
-
-        final teacherUsername =
-            (classData['teacherUsername'] ?? '').toString().trim().toLowerCase();
-        if (teacherUsername.isNotEmpty) {
-          final teacherQuery = await FirebaseFirestore.instance
-              .collection('users')
-              .where('username', isEqualTo: teacherUsername)
-              .limit(1)
-              .get();
-          if (teacherQuery.docs.isNotEmpty) {
-            final teacherData = teacherQuery.docs.first.data();
-            teacherName =
-                (teacherData['fullName'] ?? teacherUsername).toString();
-          }
-        }
-      }
-    }
-
-    return _StudentProfileData(
-      uid: studentUid,
-      fullName: fullName,
-      username: username,
-      role: role,
-      classId: classId,
-      teacherName: teacherName,
-      schedule: schedule,
-      inSchool: inSchool,
-    );
-  }
-
-  Future<void> _openStudentDetails(BuildContext context, String studentUid) async {
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final data = await _loadStudentData(studentUid);
-      if (!mounted) return;
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => StudentDetailsPage(data: data)),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Nu am putut încărca profilul elevului: $error')),
-      );
-    }
-  }
-
-  _StudentProfileData _summaryDataFromDoc(
-    String studentUid,
-    Map<String, dynamic> userData,
-  ) {
-    return _StudentProfileData(
-      uid: studentUid,
-      fullName: (userData['fullName'] ?? '').toString().trim(),
-      username: (userData['username'] ?? '').toString().trim(),
-      role: (userData['role'] ?? '').toString().trim(),
-      classId: (userData['classId'] ?? '').toString().trim().toUpperCase(),
-      teacherName: 'N/A',
-      schedule: const <int, Map<String, String>>{},
-      inSchool: userData['inSchool'] == true,
-    );
-  }
+  const ParentStudentsPage({super.key, this.students = const []});
 
   @override
   Widget build(BuildContext context) {
-    final parentUid = (AppSession.uid ?? '').trim();
-
-    if (parentUid.isEmpty) {
-      return const Scaffold(
-        backgroundColor: _kPageBg,
-        body: Center(
-          child: Text(
-            'Sesiune invalidă.',
-            style: TextStyle(fontSize: 16, color: Color(0xFF7A8077)),
-          ),
-        ),
-      );
-    }
+    final validStudents = students
+        .where((student) => student.uid.trim().isNotEmpty)
+        .toList(growable: false);
 
     return Scaffold(
       backgroundColor: _kPageBg,
@@ -279,7 +49,9 @@ class _ParentStudentsPageState extends State<ParentStudentsPage> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                child: _buildContent(),
+                child: validStudents.isNotEmpty
+                    ? _buildContent(context, validStudents)
+                    : _buildFirebaseContent(context),
               ),
             ),
           ],
@@ -288,19 +60,350 @@ class _ParentStudentsPageState extends State<ParentStudentsPage> {
     );
   }
 
-  Widget _buildContent() {
-    if (!_loadedOnce) {
-      return const Center(child: CircularProgressIndicator());
+  Widget _buildFirebaseContent(BuildContext context) {
+    final parentUid = (AppSession.uid ?? '').trim();
+    if (parentUid.isEmpty) {
+      return const Center(
+        child: Text(
+          'Sesiune invalidă.',
+          style: TextStyle(fontSize: 16, color: Color(0xFF7A8077)),
+        ),
+      );
     }
 
-    // Filter out any UIDs that belong to the parent account itself.
-    final parentUid = (AppSession.uid ?? '').trim();
-    final validIds = _studentUids
-        .where((uid) => uid.isNotEmpty && uid != parentUid)
-        .toList()
-      ..sort();
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(parentUid)
+          .snapshots(),
+      builder: (context, parentSnapshot) {
+        if (parentSnapshot.hasError) {
+          return const Center(
+            child: Text(
+              'Nu am putut încărca elevii asignați.',
+              style: TextStyle(fontSize: 16, color: Color(0xFF7A8077)),
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
 
-    if (validIds.isEmpty) {
+        if (!parentSnapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final parentData =
+            parentSnapshot.data?.data() ?? const <String, dynamic>{};
+
+        final studentIds =
+            ((parentData['children'] as List? ?? const [])
+                  .map((value) => value.toString().trim())
+                  .where((value) => value.isNotEmpty && value != parentUid)
+                  .toSet()
+                  .toList())
+              ..sort();
+
+        if (studentIds.isEmpty) {
+          return _buildContent(context, const <ParentStudentViewData>[]);
+        }
+
+        return FutureBuilder<List<ParentStudentViewData>>(
+          future: _loadAssignedStudents(studentIds),
+          builder: (context, studentsSnapshot) {
+            if (studentsSnapshot.hasError) {
+              return const Center(
+                child: Text(
+                  'Nu am putut încărca datele elevilor.',
+                  style: TextStyle(fontSize: 16, color: Color(0xFF7A8077)),
+                  textAlign: TextAlign.center,
+                ),
+              );
+            }
+
+            if (!studentsSnapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            return _buildContent(context, studentsSnapshot.data!);
+          },
+        );
+      },
+    );
+  }
+
+  Future<List<ParentStudentViewData>> _loadAssignedStudents(
+    List<String> studentUids,
+  ) async {
+    final users = FirebaseFirestore.instance.collection('users');
+    final teacherNameCache = <String, String>{};
+    final resultByUid = <String, ParentStudentViewData>{};
+
+    for (final rawUid in studentUids) {
+      final studentUid = rawUid.trim();
+      if (studentUid.isEmpty) {
+        continue;
+      }
+
+      final studentSnapshot = await _resolveStudentDocument(users, studentUid);
+      if (studentSnapshot == null || !studentSnapshot.exists) {
+        continue;
+      }
+
+      final studentData = studentSnapshot.data() ?? <String, dynamic>{};
+      final classId = (studentData['classId'] ?? '')
+          .toString()
+          .trim()
+          .toUpperCase();
+      final classData = await _loadClassData(classId);
+      final displayName = _displayNameFromUserData(
+        studentData,
+        fallback: studentUid,
+      );
+      final fullName = (studentData['fullName'] ?? '').toString().trim();
+      final username = (studentData['username'] ?? '').toString().trim();
+
+      resultByUid[studentUid] = ParentStudentViewData(
+        uid: studentSnapshot.id,
+        fullName: fullName.isNotEmpty ? fullName : displayName,
+        username: username.isNotEmpty ? username : studentSnapshot.id,
+        role: (studentData['role'] ?? '').toString().trim(),
+        classId: classId,
+        teacherName: await _resolveTeacherName(classData, teacherNameCache),
+        schedule: _parseSchedule(classData),
+        inSchool: studentData['inSchool'] == true,
+      );
+    }
+
+    return studentUids
+        .map((uid) => resultByUid[uid.trim()])
+        .whereType<ParentStudentViewData>()
+        .toList(growable: false);
+  }
+
+  Future<DocumentSnapshot<Map<String, dynamic>>?> _resolveStudentDocument(
+    CollectionReference<Map<String, dynamic>> users,
+    String studentUid,
+  ) async {
+    try {
+      final direct = await users.doc(studentUid).get();
+      if (direct.exists) {
+        return direct;
+      }
+    } catch (_) {
+      // Try legacy fallbacks below.
+    }
+
+    try {
+      final byUid = await users
+          .where('uid', isEqualTo: studentUid)
+          .limit(1)
+          .get();
+      if (byUid.docs.isNotEmpty) {
+        return byUid.docs.first;
+      }
+    } catch (_) {
+      // Continue with other fallbacks.
+    }
+
+    try {
+      final byUsername = await users
+          .where('username', isEqualTo: studentUid)
+          .limit(1)
+          .get();
+      if (byUsername.docs.isNotEmpty) {
+        return byUsername.docs.first;
+      }
+    } catch (_) {
+      // No more fallbacks.
+    }
+
+    return null;
+  }
+
+  Future<Map<String, dynamic>> _loadClassData(String classId) async {
+    final normalized = classId.trim().toUpperCase();
+    if (normalized.isEmpty) {
+      return const <String, dynamic>{};
+    }
+
+    final classes = FirebaseFirestore.instance.collection('classes');
+
+    try {
+      final directDoc = await classes.doc(normalized).get();
+      if (directDoc.exists) {
+        return directDoc.data() ?? const <String, dynamic>{};
+      }
+    } catch (_) {
+      // Fall back to query lookup below.
+    }
+
+    try {
+      final query = await classes
+          .where('classId', isEqualTo: normalized)
+          .limit(1)
+          .get();
+      if (query.docs.isNotEmpty) {
+        return query.docs.first.data();
+      }
+    } catch (_) {
+      return const <String, dynamic>{};
+    }
+
+    return const <String, dynamic>{};
+  }
+
+  Future<String> _resolveTeacherName(
+    Map<String, dynamic> classData,
+    Map<String, String> cache,
+  ) async {
+    final directName = (classData['teacherName'] ?? '').toString().trim();
+    if (directName.isNotEmpty) {
+      return directName;
+    }
+
+    final teacherUid = (classData['teacherUid'] ?? '').toString().trim();
+    if (teacherUid.isNotEmpty) {
+      final cached = cache[teacherUid];
+      if (cached != null) {
+        return cached;
+      }
+
+      try {
+        final teacherDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(teacherUid)
+            .get();
+        final teacherData = teacherDoc.data() ?? const <String, dynamic>{};
+        final resolved = _displayNameFromUserData(
+          teacherData,
+          fallback: teacherUid,
+        );
+        cache[teacherUid] = resolved;
+        return resolved;
+      } catch (_) {
+        return teacherUid;
+      }
+    }
+
+    final teacherUsername = (classData['teacherUsername'] ?? '')
+        .toString()
+        .trim();
+    if (teacherUsername.isNotEmpty) {
+      final cached = cache[teacherUsername];
+      if (cached != null) {
+        return cached;
+      }
+
+      try {
+        final teacherDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(teacherUsername)
+            .get();
+
+        if (teacherDoc.exists) {
+          final resolved = _displayNameFromUserData(
+            teacherDoc.data() ?? const <String, dynamic>{},
+            fallback: teacherUsername,
+          );
+          cache[teacherUsername] = resolved;
+          return resolved;
+        }
+
+        final teacherQuery = await FirebaseFirestore.instance
+            .collection('users')
+            .where('username', isEqualTo: teacherUsername)
+            .limit(1)
+            .get();
+
+        if (teacherQuery.docs.isNotEmpty) {
+          final resolved = _displayNameFromUserData(
+            teacherQuery.docs.first.data(),
+            fallback: teacherUsername,
+          );
+          cache[teacherUsername] = resolved;
+          return resolved;
+        }
+      } catch (_) {
+        cache[teacherUsername] = teacherUsername;
+        return teacherUsername;
+      }
+
+      cache[teacherUsername] = teacherUsername;
+      return teacherUsername;
+    }
+
+    return 'N/A';
+  }
+
+  String _displayNameFromUserData(
+    Map<String, dynamic> userData, {
+    required String fallback,
+  }) {
+    final fullName = (userData['fullName'] ?? '').toString().trim();
+    if (fullName.isNotEmpty) {
+      return fullName;
+    }
+
+    final username = (userData['username'] ?? '').toString().trim();
+    if (username.isNotEmpty) {
+      return username;
+    }
+
+    return fallback;
+  }
+
+  Map<int, Map<String, String>> _parseSchedule(Map<String, dynamic> classData) {
+    final schedule = <int, Map<String, String>>{};
+    final rawSchedule = classData['schedule'];
+
+    if (rawSchedule is Map) {
+      for (final entry in rawSchedule.entries) {
+        final dayNum = int.tryParse(entry.key.toString());
+        if (dayNum == null || dayNum < 1 || dayNum > 5) {
+          continue;
+        }
+
+        final times = entry.value;
+        if (times is! Map) {
+          continue;
+        }
+
+        final start = (times['start'] ?? '').toString().trim();
+        final end = (times['end'] ?? '').toString().trim();
+        if (start.isEmpty || end.isEmpty) {
+          continue;
+        }
+
+        schedule[dayNum] = {'start': start, 'end': end};
+      }
+    }
+
+    if (schedule.isNotEmpty) {
+      return schedule;
+    }
+
+    final oldStart = (classData['noExitStart'] ?? '').toString().trim();
+    final oldEnd = (classData['noExitEnd'] ?? '').toString().trim();
+    final oldDays = classData['noExitDays'];
+    if (oldStart.isEmpty || oldEnd.isEmpty || oldDays is! List) {
+      return schedule;
+    }
+
+    for (final day in oldDays) {
+      final dayNum = day is int ? day : int.tryParse(day.toString());
+      if (dayNum == null || dayNum < 1 || dayNum > 5) {
+        continue;
+      }
+      schedule[dayNum] = {'start': oldStart, 'end': oldEnd};
+    }
+
+    return schedule;
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    List<ParentStudentViewData> validStudents,
+  ) {
+    if (validStudents.isEmpty) {
       return const Center(
         child: Text(
           'Nu este atribuit niciun elev.',
@@ -312,25 +415,18 @@ class _ParentStudentsPageState extends State<ParentStudentsPage> {
     return ListView.separated(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(top: 6, bottom: 24),
-      itemCount: validIds.length,
+      itemCount: validStudents.length,
       separatorBuilder: (_, __) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
-        final studentUid = validIds[index];
-        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .doc(studentUid)
-              .snapshots(),
-          builder: (context, childSnapshot) {
-            if (!childSnapshot.hasData) return const _StudentCardSkeleton();
-            if (!childSnapshot.data!.exists) return const SizedBox.shrink();
-            final childData = childSnapshot.data!.data() ?? <String, dynamic>{};
-            final summaryData = _summaryDataFromDoc(studentUid, childData);
-            return _StudentSummaryButton(
-              data: summaryData,
-              onTap: () => _openStudentDetails(context, studentUid),
-            );
-          },
+        final student = validStudents[index];
+        return _StudentSummaryButton(
+          data: student,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => StudentDetailsPage(data: student),
+            ),
+          ),
         );
       },
     );
@@ -359,14 +455,22 @@ class _TopHeader extends StatelessWidget {
             Positioned.fill(child: Container(color: _kHeaderGreen)),
             Positioned(right: -46, top: -34, child: _circle(122, 0.12)),
             Positioned(left: 182, top: 104, child: _circle(78, 0.11)),
-            Positioned(right: 24, top: 40 + topPadding, child: _circle(66, 0.14)),
+            Positioned(
+              right: 24,
+              top: 40 + topPadding,
+              child: _circle(66, 0.14),
+            ),
             Padding(
               padding: EdgeInsets.fromLTRB(22, topPadding + 38, 22, 24),
               child: Row(
                 children: [
                   IconButton(
                     onPressed: onBack,
-                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 34),
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: Colors.white,
+                      size: 34,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   const Text(
@@ -415,14 +519,29 @@ class _HeaderDotsPainter extends CustomPainter {
 }
 
 class _StudentSummaryButton extends StatelessWidget {
-  final _StudentProfileData data;
+  final ParentStudentViewData data;
   final VoidCallback onTap;
 
   const _StudentSummaryButton({required this.data, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final displayName = data.fullName.isNotEmpty ? data.fullName : data.username;
+    final displayName = data.fullName.isNotEmpty
+        ? data.fullName
+        : data.username;
+    final avatarBg = data.inSchool
+        ? const Color(0xFF258635)
+        : const Color(0xFFB84777);
+    final statusText = data.inSchool ? 'IN INCINTA' : 'IN AFARA INCINTEI';
+    final statusColor = data.inSchool
+        ? const Color(0xFF0C6F1D)
+        : const Color(0xFF952E5C);
+    final statusBg = data.inSchool
+        ? const Color(0xFFDBEBDD)
+        : const Color(0xFFF0E1E8);
+    final statusBorder = data.inSchool
+        ? const Color(0xFFA9CCAE)
+        : const Color(0xFFD2A9BF);
 
     return _BouncingButton(
       onTap: onTap,
@@ -437,106 +556,92 @@ class _StudentSummaryButton extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance.collection('users').doc(data.uid).snapshots(),
-              builder: (context, snapshot) {
-                bool isInSchool = data.inSchool;
-                if (snapshot.hasData && snapshot.data!.exists) {
-                  final d = snapshot.data!.data() as Map<String, dynamic>;
-                  isInSchool = d['inSchool'] == true;
-                }
-
-                final avatarBg = isInSchool ? const Color(0xFF258635) : const Color(0xFFB84777);
-                final statusText = isInSchool ? 'IN INCINTA' : 'IN AFARA INCINTEI';
-                final statusColor = isInSchool ? const Color(0xFF0C6F1D) : const Color(0xFF952E5C);
-                final statusBg = isInSchool ? const Color(0xFFDBEBDD) : const Color(0xFFF0E1E8);
-                final statusBorder = isInSchool ? const Color(0xFFA9CCAE) : const Color(0xFFD2A9BF);
-
-                return Row(
-                  children: [
-                    Container(
-                      width: 116,
-                      height: 116,
-                      decoration: BoxDecoration(
-                        color: avatarBg,
-                        shape: BoxShape.circle,
+            Row(
+              children: [
+                Container(
+                  width: 116,
+                  height: 116,
+                  decoration: BoxDecoration(
+                    color: avatarBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      _initials(displayName),
+                      style: const TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFAEE8AF),
+                        height: 1,
                       ),
-                      child: Center(
-                        child: Text(
-                          _initials(displayName),
-                          style: const TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFAEE8AF),
-                            height: 1,
-                          ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111811),
+                          height: 1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _classLabel(data.classId),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF2A352A),
+                          height: 1,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            displayName,
-                            style: const TextStyle(
-                              fontSize: 21,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF111811),
-                              height: 1,
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusBg,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: statusBorder, width: 1.4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _classLabel(data.classId),
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF2A352A),
-                              height: 1,
+                            const SizedBox(width: 9),
+                            Text(
+                              statusText,
+                              style: TextStyle(
+                                color: statusColor,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                height: 1,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: statusBg,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: statusBorder, width: 1.4),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 14,
-                                  height: 14,
-                                  decoration: BoxDecoration(
-                                    color: statusColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 9),
-                                Text(
-                                  statusText,
-                                  style: TextStyle(
-                                    color: statusColor,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    height: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                );
-              },
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(width: 12),
             Container(
@@ -643,17 +748,16 @@ class _BouncingButtonState extends State<_BouncingButton> {
   }
 }
 
-
-
-
 class StudentDetailsPage extends StatelessWidget {
-  final _StudentProfileData data;
+  final ParentStudentViewData data;
 
   const StudentDetailsPage({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
-    final displayName = data.fullName.isNotEmpty ? data.fullName : data.username;
+    final displayName = data.fullName.isNotEmpty
+        ? data.fullName
+        : data.username;
 
     return Scaffold(
       backgroundColor: const Color(0xFF7AAF5B),
@@ -699,13 +803,15 @@ class StudentDetailsPage extends StatelessWidget {
 }
 
 class _StudentProfileCard extends StatelessWidget {
-  final _StudentProfileData data;
+  final ParentStudentViewData data;
 
   const _StudentProfileCard({required this.data});
 
   @override
   Widget build(BuildContext context) {
-    final displayName = data.fullName.isNotEmpty ? data.fullName : data.username;
+    final displayName = data.fullName.isNotEmpty
+        ? data.fullName
+        : data.username;
     final scheduleRows = _buildScheduleRows(data);
 
     return Column(
@@ -737,8 +843,11 @@ class _StudentProfileCard extends StatelessWidget {
                         color: const Color(0xFFDCEED5),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.person,
-                          size: 56, color: Color(0xFF6C7D62)),
+                      child: const Icon(
+                        Icons.person,
+                        size: 56,
+                        color: Color(0xFF6C7D62),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -749,20 +858,29 @@ class _StudentProfileCard extends StatelessWidget {
                             Text(
                               displayName,
                               style: const TextStyle(
-                                  fontSize: 23,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.0,
-                                  color: Color(0xFF171717)),
+                                fontSize: 23,
+                                fontWeight: FontWeight.w800,
+                                height: 1.0,
+                                color: Color(0xFF171717),
+                              ),
                             ),
                           const SizedBox(height: 8),
                           if (data.classId.isNotEmpty)
-                            Text('Clasa: ${data.classId}',
-                                style: const TextStyle(
-                                    fontSize: 20, color: Color(0xFF303030))),
+                            Text(
+                              'Clasa: ${data.classId}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                color: Color(0xFF303030),
+                              ),
+                            ),
                           if (data.classId.isNotEmpty)
-                            Text('Diriginte: ${data.teacherName}',
-                                style: const TextStyle(
-                                    fontSize: 20, color: Color(0xFF303030))),
+                            Text(
+                              'Diriginte: ${data.teacherName}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                color: Color(0xFF303030),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -775,11 +893,14 @@ class _StudentProfileCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: Text('Username: ${data.username}',
-                        style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF333333))),
+                    child: Text(
+                      'Username: ${data.username}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF333333),
+                      ),
+                    ),
                   ),
                 ],
               ],
@@ -821,43 +942,12 @@ class _StudentProfileCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(data.uid)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      final userData = snapshot.data?.data() as Map<String, dynamic>? ?? {};
-                      final inSchool = userData['inSchool'] == true;
-                      
-                      final color = inSchool ? const Color(0xFF4B78D2) : Colors.red;
-                      final text = inSchool ? 'În incintă' : 'În afara incintei';
-                      final icon = inSchool ? Icons.school_rounded : Icons.logout_rounded;
-
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: color, width: 1.2),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(icon, color: color, size: 15),
-                            const SizedBox(width: 5),
-                            Text(
-                              text,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: color,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                  _DetailChip(
+                    icon: data.inSchool
+                        ? Icons.school_rounded
+                        : Icons.logout_rounded,
+                    text: data.inSchool ? 'În incintă' : 'În afara incintei',
+                    color: data.inSchool ? const Color(0xFF4B78D2) : Colors.red,
                   ),
                 ],
               ),
@@ -880,70 +970,13 @@ class _StudentProfileCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('accessEvents')
-                          .where('userId', isEqualTo: data.uid)
-                          .orderBy('timestamp', descending: true)
-                          .limit(1)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        final docs = snapshot.data?.docs ?? [];
-                        if (docs.isEmpty) {
-                          return Text(
-                            'Niciuna',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: const Color(0xFF2E3B4E).withOpacity(0.45),
-                              fontWeight: FontWeight.w400,
-                            ),
-                          );
-                        }
-                        final doc = docs.first;
-                        final docData = doc.data() as Map<String, dynamic>;
-                        final type = (docData['type'] ?? '').toString();
-                        final ts = (docData['timestamp'] as Timestamp?);
-                        final dateStr = ts != null
-                            ? '${ts.toDate().day.toString().padLeft(2, '0')}.${ts.toDate().month.toString().padLeft(2, '0')}.${ts.toDate().year} ${ts.toDate().hour.toString().padLeft(2, '0')}:${ts.toDate().minute.toString().padLeft(2, '0')}'
-                            : '';
-                        final scanColor = type == 'entry'
-                            ? const Color(0xFF17B5A8)
-                            : type == 'exit'
-                                ? const Color(0xFFE47E2D)
-                                : const Color(0xFF4B78D2);
-                        final scanIcon = type == 'entry'
-                            ? Icons.login_rounded
-                            : type == 'exit'
-                                ? Icons.logout_rounded
-                                : Icons.qr_code_scanner_rounded;
-
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: scanColor.withOpacity(0.10),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: scanColor, width: 1.2),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(scanIcon, color: scanColor, size: 15),
-                              const SizedBox(width: 5),
-                              Flexible(
-                                child: Text(
-                                  dateStr,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: scanColor,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                    child: Text(
+                      'Nu este disponibil pe această pagină.',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: const Color(0xFF2E3B4E).withOpacity(0.45),
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                   ),
                 ],
@@ -967,79 +1000,13 @@ class _StudentProfileCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('leaveRequests')
-                          .where('studentUid', isEqualTo: data.uid)
-                          .where('status', whereIn: ['approved', 'pending'])
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        final docs = snapshot.data?.docs ?? [];
-                        if (docs.any((doc) => (doc.data() as Map<String, dynamic>)['status'] == 'approved')) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF4CAF50).withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: const Color(0xFF4CAF50), width: 1.2),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 15),
-                                const SizedBox(width: 5),
-                                const Flexible(
-                                  child: Text(
-                                    'Invoire activă',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF388E3C),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        } else if (docs.isNotEmpty) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF17B5A8).withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: const Color(0xFF17B5A8), width: 1.2),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.hourglass_top_rounded, color: Color(0xFF17B5A8), size: 15),
-                                const SizedBox(width: 5),
-                                const Flexible(
-                                  child: Text(
-                                    'Cerere în așteptare',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF17B5A8),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        } else {
-                          return Text(
-                            'Niciuna',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: const Color(0xFF2E3B4E).withOpacity(0.45),
-                              fontWeight: FontWeight.w400,
-                            ),
-                          );
-                        }
-                      },
+                    child: Text(
+                      'Nu este disponibil pe această pagină.',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: const Color(0xFF2E3B4E).withOpacity(0.45),
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                   ),
                 ],
@@ -1048,16 +1015,21 @@ class _StudentProfileCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 22),
-        const Text('Orar',
-            style: TextStyle(
-                fontSize: 40,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF161616))),
+        const Text(
+          'Orar',
+          style: TextStyle(
+            fontSize: 40,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF161616),
+          ),
+        ),
         const SizedBox(height: 12),
         if (scheduleRows.isEmpty)
-          const Text('Nu exista orar definit pentru acest elev.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, color: Color(0xFF333333))),
+          const Text(
+            'Nu exista orar definit pentru acest elev.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18, color: Color(0xFF333333)),
+          ),
         for (final row in scheduleRows) ...[
           _OrarRow(day: row.dayName, interval: row.intervalText),
           const SizedBox(height: 10),
@@ -1073,7 +1045,7 @@ class _ScheduleRowData {
   const _ScheduleRowData({required this.dayName, required this.intervalText});
 }
 
-List<_ScheduleRowData> _buildScheduleRows(_StudentProfileData data) {
+List<_ScheduleRowData> _buildScheduleRows(ParentStudentViewData data) {
   if (data.schedule.isEmpty) return const [];
   const dayMap = {1: 'Luni', 2: 'Marți', 3: 'Miercuri', 4: 'Joi', 5: 'Vineri'};
   final sortedDays = data.schedule.keys.toList()..sort();
@@ -1105,17 +1077,23 @@ class _OrarRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           child: Row(
             children: [
-              Text(day,
-                  style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1C1C1C))),
+              Text(
+                day,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF1C1C1C),
+                ),
+              ),
               const Spacer(),
-              Text(interval,
-                  style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1C1C1C))),
+              Text(
+                interval,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1C1C1C),
+                ),
+              ),
             ],
           ),
         ),
@@ -1124,70 +1102,37 @@ class _OrarRow extends StatelessWidget {
   }
 }
 
-class _StudentCardSkeleton extends StatelessWidget {
-  const _StudentCardSkeleton();
+class _DetailChip extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final Color color;
+
+  const _DetailChip({
+    required this.icon,
+    required this.text,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE3E8DF)),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color, width: 1.2),
       ),
-      child: const Row(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 116,
-            height: 116,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Color(0xFFDDE5D8),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Color(0xFFDDE5D8),
-                    borderRadius: BorderRadius.all(Radius.circular(10)),
-                  ),
-                  child: SizedBox(width: 180, height: 22),
-                ),
-                SizedBox(height: 10),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Color(0xFFE7ECE1),
-                    borderRadius: BorderRadius.all(Radius.circular(10)),
-                  ),
-                  child: SizedBox(width: 140, height: 18),
-                ),
-                SizedBox(height: 16),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Color(0xFFE7ECE1),
-                    borderRadius: BorderRadius.all(Radius.circular(16)),
-                  ),
-                  child: SizedBox(width: 160, height: 34),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 12),
-          SizedBox(
-            width: 74,
-            height: 74,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Color(0xFFD5DBD1),
-                borderRadius: BorderRadius.all(Radius.circular(18)),
-              ),
+          Icon(icon, color: color, size: 15),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 14,
+              color: color,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

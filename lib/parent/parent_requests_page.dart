@@ -1,7 +1,4 @@
-import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/session.dart';
@@ -17,13 +14,8 @@ class ParentRequestsPage extends StatefulWidget {
 }
 
 class _ParentRequestsPageState extends State<ParentRequestsPage> {
-  // UIDs strictly from parent.children array — used for leaveRequests query
-  // (security rule only allows reads for students in this array).
-  List<String> _childrenFromArray = const [];
   bool _loadedOnce = false;
-  Stream<QuerySnapshot>? _leaveRequestsStream;
-
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _parentDocSub;
+  Stream<QuerySnapshot<Map<String, dynamic>>>? _leaveRequestsStream;
 
   @override
   void initState() {
@@ -38,57 +30,33 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
       return;
     }
 
-    _parentDocSub = FirebaseFirestore.instance
-        .collection('users')
-        .doc(parentUid)
-        .snapshots()
-        .listen(
-      (snap) {
-        if (!mounted) return;
-        final children = ((snap.data() ?? {})['children'] as List? ?? [])
-            .map((v) => v.toString().trim())
-            .where((v) => v.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
-        final queryIds = children.take(30).toList(growable: false);
-        if (_loadedOnce && listEquals(_childrenFromArray, children)) {
-          return;
-        }
-        setState(() {
-          _childrenFromArray = children;
-          _leaveRequestsStream = queryIds.isEmpty
-              ? null
-              : FirebaseFirestore.instance
-                    .collection('leaveRequests')
-                    .where('studentUid', whereIn: queryIds)
-                    .snapshots();
-          _loadedOnce = true;
-        });
-      },
-      onError: (_) {
-        if (mounted) setState(() => _loadedOnce = true);
-      },
-    );
+    setState(() {
+      _leaveRequestsStream = FirebaseFirestore.instance
+          .collection('leaveRequests')
+          .where('targetUid', isEqualTo: parentUid)
+          .snapshots();
+      _loadedOnce = true;
+    });
   }
 
   @override
-  void dispose() {
-    _parentDocSub?.cancel();
-    super.dispose();
-  }
+  void dispose() => super.dispose();
 
   Future<void> _handleRequest(String docId, bool approved) async {
-    final parentName = (AppSession.fullName != null && AppSession.fullName!.isNotEmpty)
+    final parentName =
+        (AppSession.fullName != null && AppSession.fullName!.isNotEmpty)
         ? AppSession.fullName!
         : (AppSession.username ?? 'Parinte');
     try {
-      await FirebaseFirestore.instance.collection('leaveRequests').doc(docId).update({
-        'status': approved ? 'approved' : 'rejected',
-        'reviewedAt': FieldValue.serverTimestamp(),
-        'reviewedByUid': AppSession.uid,
-        'reviewedByName': parentName,
-      });
+      await FirebaseFirestore.instance
+          .collection('leaveRequests')
+          .doc(docId)
+          .update({
+            'status': approved ? 'approved' : 'rejected',
+            'reviewedAt': FieldValue.serverTimestamp(),
+            'reviewedByUid': AppSession.uid,
+            'reviewedByName': parentName,
+          });
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -99,7 +67,9 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Eroare: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Eroare: $e')));
     }
   }
 
@@ -128,43 +98,36 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
 
   Widget _buildRequests() {
     final parentUid = (AppSession.uid ?? '').trim();
-    final childIds = _childrenFromArray
-        .where((uid) => uid.isNotEmpty && uid != parentUid)
-        .toList();
 
-    if (childIds.isEmpty) {
-      return const Center(
-        child: Text(
-          'Nu exista elevi atribuiti.',
-          style: TextStyle(color: Color(0xFF7A8077), fontSize: 16),
-        ),
-      );
-    }
-
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: _leaveRequestsStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
           return Center(child: Text('Eroare: ${snapshot.error}'));
         }
 
-        final docs = (snapshot.data?.docs ?? [])
-            .where((doc) {
-              final data = doc.data() as Map<String, dynamic>;
+        final docs =
+            (snapshot.data?.docs ?? []).where((doc) {
+              final data = doc.data();
               final status = (data['status'] ?? '').toString().trim();
               final source = (data['source'] ?? '').toString().trim();
-              return status == 'pending' && source != 'secretariat';
-            })
-            .toList()
-          ..sort((a, b) {
-            final aTs = (a.data() as Map<String, dynamic>)['requestedAt'] as Timestamp?;
-            final bTs = (b.data() as Map<String, dynamic>)['requestedAt'] as Timestamp?;
-            return (bTs?.millisecondsSinceEpoch ?? 0)
-                .compareTo(aTs?.millisecondsSinceEpoch ?? 0);
-          });
+              final targetRole = (data['targetRole'] ?? '').toString().trim();
+              final targetUid = (data['targetUid'] ?? '').toString().trim();
+              return status == 'pending' &&
+                  source != 'secretariat' &&
+                  targetRole == 'parent' &&
+                  targetUid == parentUid;
+            }).toList()..sort((a, b) {
+              final aTs = a.data()['requestedAt'] as Timestamp?;
+              final bTs = b.data()['requestedAt'] as Timestamp?;
+              return (bTs?.millisecondsSinceEpoch ?? 0).compareTo(
+                aTs?.millisecondsSinceEpoch ?? 0,
+              );
+            });
 
         if (docs.isEmpty) {
           return const Center(
@@ -217,7 +180,11 @@ class _TopHeader extends StatelessWidget {
             Positioned.fill(child: Container(color: _kHeaderGreen)),
             Positioned(right: -46, top: -34, child: _circle(122, 0.12)),
             Positioned(left: 182, top: 104, child: _circle(78, 0.11)),
-            Positioned(right: 24, top: 40 + topPadding, child: _circle(66, 0.14)),
+            Positioned(
+              right: 24,
+              top: 40 + topPadding,
+              child: _circle(66, 0.14),
+            ),
             Padding(
               padding: EdgeInsets.fromLTRB(22, topPadding + 38, 22, 24),
               child: Row(
@@ -265,18 +232,26 @@ class _RequestCard extends StatelessWidget {
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
-  const _RequestCard({required this.data, required this.onAccept, required this.onReject});
+  const _RequestCard({
+    required this.data,
+    required this.onAccept,
+    required this.onReject,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final studentName = (data['studentName'] ?? 'Elev necunoscut').toString().trim();
+    final studentName = (data['studentName'] ?? 'Elev necunoscut')
+        .toString()
+        .trim();
     final classId = (data['classId'] ?? '').toString().trim();
     final dateText = (data['dateText'] ?? '-').toString();
     final timeText = (data['timeText'] ?? '-').toString();
     final reason = (data['message'] ?? 'Fara motiv').toString().trim();
 
     final initials = _initials(studentName);
-    final classLabel = classId.isEmpty ? 'ELEV' : 'ELEV • CLASA ${classId.toUpperCase()}';
+    final classLabel = classId.isEmpty
+        ? 'ELEV'
+        : 'ELEV • CLASA ${classId.toUpperCase()}';
 
     return Container(
       width: double.infinity,
@@ -329,7 +304,10 @@ class _RequestCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFDDE9DD),
                           borderRadius: BorderRadius.circular(14),
@@ -426,7 +404,11 @@ class _RequestCard extends StatelessWidget {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_circle_rounded, color: Colors.white, size: 28),
+                        Icon(
+                          Icons.check_circle_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                         SizedBox(width: 10),
                         Text(
                           'Accepta',
@@ -455,7 +437,11 @@ class _RequestCard extends StatelessWidget {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.cancel_rounded, color: Color(0xFF9C2A60), size: 28),
+                        Icon(
+                          Icons.cancel_rounded,
+                          color: Color(0xFF9C2A60),
+                          size: 28,
+                        ),
                         SizedBox(width: 10),
                         Text(
                           'Respinge',
