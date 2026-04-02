@@ -1,9 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 
-const _kOrarHeaderGreen = Color(0xFF1D5C2B);
-const _kOrarPageBg = Color(0xFFFFFFFF);
+const _kOrarHeaderGreen = Color(0xFF0E6A1E);
+const _kOrarPageBg = Color(0xFFF1F5E8);
 
 class OrarDirPage extends StatefulWidget {
   const OrarDirPage({super.key});
@@ -15,7 +15,7 @@ class OrarDirPage extends StatefulWidget {
 class _OrarDirPageState extends State<OrarDirPage> {
   static const _dayMap = {
     1: 'Luni',
-    2: 'Mar?i',
+    2: 'Marți',
     3: 'Miercuri',
     4: 'Joi',
     5: 'Vineri',
@@ -31,14 +31,10 @@ class _OrarDirPageState extends State<OrarDirPage> {
     return Scaffold(
       backgroundColor: _kOrarPageBg,
       body: SafeArea(
-        top: false,
         bottom: false,
         child: Column(
           children: [
-            _OrarTopHeader(
-              onBack: () => Navigator.of(context).maybePop(),
-              onProfile: () => Navigator.of(context).popUntil((r) => r.isFirst),
-            ),
+            _OrarTopHeader(onBack: () => Navigator.of(context).maybePop()),
             Expanded(
               child: FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance
@@ -58,7 +54,7 @@ class _OrarDirPageState extends State<OrarDirPage> {
                   final classId = (userData['classId'] ?? '').toString().trim();
 
                   if (classId.isEmpty) {
-                    return const Center(child: Text('Nu ai clasa asignata.'));
+                    return const Center(child: Text('Nu ai clasa asignată.'));
                   }
 
                   return FutureBuilder<DocumentSnapshot>(
@@ -111,7 +107,7 @@ class _OrarDirPageState extends State<OrarDirPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // -- Card clasa ------------------------------
+                            // ── Card clasă ──────────────────────────────
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(
@@ -136,12 +132,12 @@ class _OrarDirPageState extends State<OrarDirPage> {
                               ),
                             ),
                             const SizedBox(height: 28),
-                            // -- Titlu sec?iune + badge modul ------------
+                            // ── Titlu secțiune + badge modul ────────────
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 const Text(
-                                  'Orar Saptam�nal',
+                                  'Orar Săptămânal',
                                   style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w800,
@@ -173,13 +169,13 @@ class _OrarDirPageState extends State<OrarDirPage> {
                               ],
                             ),
                             const SizedBox(height: 20),
-                            // -- R�nduri zile ----------------------------
+                            // ── Rânduri zile ────────────────────────────
                             if (sortedDays.isEmpty)
                               const Padding(
                                 padding: EdgeInsets.only(top: 24),
                                 child: Center(
                                   child: Text(
-                                    'Nu exista orar definit pentru clasa ta.',
+                                    'Nu există orar definit pentru clasa ta.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 16,
@@ -212,62 +208,33 @@ class _OrarDirPageState extends State<OrarDirPage> {
   }
 }
 
-// --- Header ------------------------------------------------------------------
+// ─── Header ──────────────────────────────────────────────────────────────────
 
 class _OrarTopHeader extends StatelessWidget {
   final VoidCallback onBack;
-  final VoidCallback? onProfile;
 
-  const _OrarTopHeader({required this.onBack, this.onProfile});
+  const _OrarTopHeader({required this.onBack});
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(38)),
       child: SizedBox(
         width: double.infinity,
-        height: 90 + topPadding,
+        height: 158,
         child: Stack(
           fit: StackFit.expand,
-          clipBehavior: Clip.none,
           children: [
             Container(color: _kOrarHeaderGreen),
-            Positioned(right: -60, top: -60, child: _circle(180)),
-            Positioned(right: 120, top: topPadding + 15, child: _circle(55)),
-            Positioned(left: -40, bottom: -30, child: _circle(130)),
-            if (onProfile != null)
-              Positioned(
-                top: topPadding,
-                right: 14,
-                child: Hero(
-                  tag: 'teacher-profile-btn',
-                  child: GestureDetector(
-                    onTap: onProfile,
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: const Color(0x337DE38D),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0x6DC7F4CE),
-                          width: 1,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 21,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            CustomPaint(painter: _OrarDotsPainter()),
+            // cerc mare dreapta-sus
+            Positioned(right: 64, top: -40, child: _circle(122)),
+            // cerc mic centru-jos
+            Positioned(left: 168, bottom: -30, child: _circle(78)),
             Padding(
-              padding: EdgeInsets.fromLTRB(4, topPadding - 6, 18, 0),
+              padding: const EdgeInsets.fromLTRB(12, 20, 18, 0),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
                     onPressed: onBack,
@@ -275,17 +242,20 @@ class _OrarTopHeader extends StatelessWidget {
                     icon: const Icon(
                       Icons.arrow_back_rounded,
                       color: Colors.white,
-                      size: 26,
+                      size: 30,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  const Text(
-                    'Orar',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      height: 1,
+                  const SizedBox(width: 8),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: Text(
+                      'Orar',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        height: 1,
+                      ),
                     ),
                   ),
                 ],
@@ -307,7 +277,23 @@ class _OrarTopHeader extends StatelessWidget {
   );
 }
 
-// --- R�nd zi ------------------------------------------------------------------
+class _OrarDotsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withOpacity(0.14);
+    const spacing = 18.0;
+    for (double y = 14; y < size.height; y += spacing) {
+      for (double x = 16; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), 1.3, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ─── Rând zi ──────────────────────────────────────────────────────────────────
 
 class _OrarRow extends StatelessWidget {
   final String day;
