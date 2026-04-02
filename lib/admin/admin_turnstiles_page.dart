@@ -97,7 +97,7 @@ class _AdminTurnstilesPageState extends State<AdminTurnstilesPage> {
   @override
   Widget build(BuildContext context) {
     final body = Container(
-      color: const Color(0xFFF0F3EC),
+      color: const Color(0xFFF8FFF5),
       child: Column(
         children: [
           if (!widget.embedded)
@@ -296,10 +296,13 @@ class _TurnstileBody extends StatelessWidget {
                         // Stanga: hub-uri active
                         Expanded(
                           flex: 6,
-                          child: _ActiveHubsPanel(
-                            gates: filteredGates,
-                            activeCount: activeCount,
-                            allEvents: allEvents,
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: _ActiveHubsPanel(
+                              gates: filteredGates,
+                              activeCount: activeCount,
+                              allEvents: allEvents,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -356,21 +359,22 @@ class _ActiveHubsPanel extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2EAE0)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE8F5E0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
             child: Row(
               children: [
                 const Icon(
@@ -384,7 +388,7 @@ class _ActiveHubsPanel extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A2F1E),
+                    color: Color(0xFF1A2E1A),
                   ),
                 ),
                 const Spacer(),
@@ -410,25 +414,28 @@ class _ActiveHubsPanel extends StatelessWidget {
             ),
           ),
           const Divider(height: 1, color: Color(0xFFEEF4EE)),
-          Expanded(
-            child: gates.isEmpty
-                ? const Center(
+          gates.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
                     child: Text(
                       'Nu există turnichete înregistrate.',
                       style: TextStyle(color: Color(0xFF7B9E84), fontSize: 14),
                     ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: gates.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) => _GateCard(
-                      key: ValueKey(gates[i].id),
-                      doc: gates[i],
-                      allEvents: allEvents,
-                    ),
                   ),
-          ),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: gates.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 14),
+                  itemBuilder: (_, i) => _GateCard(
+                    key: ValueKey(gates[i].id),
+                    doc: gates[i],
+                    allEvents: allEvents,
+                  ),
+                ),
         ],
       ),
     );
@@ -747,9 +754,16 @@ class _GateCardState extends State<_GateCard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FCF9),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2EAE0)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8F0E6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: AnimatedSize(
         duration: const Duration(milliseconds: 250),
@@ -759,294 +773,200 @@ class _GateCardState extends State<_GateCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Gate header row
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 10, 10),
-              child: Row(
-                children: [
-                  // â”€â”€ Tappable left area: icon + info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: toggle,
-                      child: Row(
+            InkWell(
+              onTap: toggle,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 16, 20),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: isOnline
+                            ? const Color(0xFFE8F5EA)
+                            : const Color(0xFFF5F0E8),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.door_front_door_rounded,
+                        color: isOnline
+                            ? const Color(0xFF0A7A21)
+                            : const Color(0xFFA08030),
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFEBF5ED),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.door_front_door_rounded,
-                              color: Color(0xFF0A7A21),
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  gateName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 17,
+                                    color: Color(0xFF1A2E1A),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isOnline
+                                      ? const Color(0xFFE8F5EA)
+                                      : const Color(0xFFFFF3E0),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Expanded(
-                                      child: Text(
-                                        gateName,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 15,
-                                          color: Color(0xFF1A2F1E),
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    // Badge activ/inactiv
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 3,
-                                      ),
+                                      width: 6,
+                                      height: 6,
                                       decoration: BoxDecoration(
                                         color: isOnline
-                                            ? const Color(0xFFE8F5EA)
-                                            : const Color(0xFFF5F0E8),
-                                        borderRadius: BorderRadius.circular(
-                                          999,
-                                        ),
-                                        border: Border.all(
-                                          color: isOnline
-                                              ? const Color(0xFFB8D9BE)
-                                              : const Color(0xFFD9C8A8),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            width: 6,
-                                            height: 6,
-                                            decoration: BoxDecoration(
-                                              color: isOnline
-                                                  ? const Color(0xFF0A7A21)
-                                                  : const Color(0xFFA08030),
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            isOnline ? 'ACTIV' : 'INACTIV',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700,
-                                              color: isOnline
-                                                  ? const Color(0xFF0A7A21)
-                                                  : const Color(0xFFA08030),
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ],
+                                            ? const Color(0xFF0A7A21)
+                                            : const Color(0xFFA08030),
+                                        shape: BoxShape.circle,
                                       ),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 3),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.location_on_rounded,
-                                      size: 12,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                    const SizedBox(width: 2),
+                                    const SizedBox(width: 5),
                                     Text(
-                                      'Tudor Vianu, intrare elevi',
+                                      isOnline ? 'Activ' : 'Inactiv',
                                       style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey.shade500,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: isOnline
+                                            ? const Color(0xFF0A7A21)
+                                            : const Color(0xFFA08030),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Tudor Vianu · intrare elevi',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade500,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  // â”€â”€ Right action buttons (independent of expand) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF0A7A21),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      side: const BorderSide(color: Color(0xFFB8D9BE)),
+                    const SizedBox(width: 8),
+                    PopupMenuButton<_GateCardAction>(
+                      enabled: !_actionBusy,
+                      tooltip: 'Opțiuni',
+                      offset: const Offset(0, 36),
+                      color: Colors.white,
+                      elevation: 8,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ),
-                    onPressed: () {},
-                    child: const Text(
-                      'Testează conexiunea',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: const Icon(Icons.refresh_rounded),
-                    iconSize: 18,
-                    color: const Color(0xFF7B9E84),
-                    onPressed: () {},
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
-                    ),
-                  ),
-                  PopupMenuButton<_GateCardAction>(
-                    enabled: !_actionBusy,
-                    tooltip: 'Setări turnichetă',
-                    offset: const Offset(0, 32),
-                    color: Colors.white,
-                    elevation: 10,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    onSelected: (action) {
-                      switch (action) {
-                        case _GateCardAction.settings:
-                          _showSettingsDialog();
-                          break;
-                        case _GateCardAction.deleteTurnstile:
-                          _deleteTurnstile();
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem<_GateCardAction>(
-                        value: _GateCardAction.settings,
-                        child: Row(
-                          children: [
-                            Icon(Icons.settings_rounded, size: 18),
-                            SizedBox(width: 10),
-                            Text('Setări'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem<_GateCardAction>(
-                        value: _GateCardAction.deleteTurnstile,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete_outline_rounded,
-                              size: 18,
-                              color: Color(0xFFB3261E),
-                            ),
-                            SizedBox(width: 10),
-                            Text(
-                              'Șterge turnicheta',
-                              style: TextStyle(color: Color(0xFFB3261E)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    child: SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: Center(
-                        child: _actionBusy
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(
+                      onSelected: (action) {
+                        switch (action) {
+                          case _GateCardAction.settings:
+                            _showSettingsDialog();
+                            break;
+                          case _GateCardAction.deleteTurnstile:
+                            _deleteTurnstile();
+                            break;
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem<_GateCardAction>(
+                          value: _GateCardAction.settings,
+                          child: Row(
+                            children: [
+                              Icon(
                                 Icons.settings_rounded,
                                 size: 18,
-                                color: Color(0xFF7B9E84),
+                                color: Color(0xFF5A8040),
                               ),
+                              SizedBox(width: 10),
+                              Text('Setări'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem<_GateCardAction>(
+                          value: _GateCardAction.deleteTurnstile,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_outline_rounded,
+                                size: 18,
+                                color: Color(0xFFB3261E),
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                'Șterge turnicheta',
+                                style: TextStyle(color: Color(0xFFB3261E)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF4F9F3),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(
+                          child: _actionBusy
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF7B9E84),
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.more_horiz_rounded,
+                                  size: 20,
+                                  color: Color(0xFF7B9E84),
+                                ),
+                        ),
                       ),
                     ),
-                  ),
-                  // Expand/collapse chevron button
-                  IconButton(
-                    icon: AnimatedRotation(
+                    const SizedBox(width: 4),
+                    AnimatedRotation(
                       turns: _isExpanded ? 0.5 : 0.0,
                       duration: const Duration(milliseconds: 250),
                       child: const Icon(
                         Icons.keyboard_arrow_down_rounded,
-                        size: 20,
+                        size: 24,
                         color: Color(0xFF7B9E84),
                       ),
                     ),
-                    onPressed: toggle,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
 
-            // Ultimele 3 scanari - vizibile doar cand este extins
+            // Ultimele 3 scanari
             if (_isExpanded && gateScans.isNotEmpty)
               _LastScansSection(docs: gateScans),
-            // Rand de actiuni jos
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
-              child: Row(
-                children: [
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0A7A21),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed: () {},
-                    child: const Text(
-                      'Repornește dispozitivul',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.settings_rounded),
-                    iconSize: 18,
-                    color: const Color(0xFF7B9E84),
-                    onPressed: () {},
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -1068,7 +988,7 @@ class _LastScansSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Divider(height: 1, color: Color(0xFFEEF4EE)),
+        const Divider(height: 1, color: Color(0xFFE8F5E0)),
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 10, 16, 6),
           child: Text(
@@ -1187,134 +1107,114 @@ class _LiveTrafficPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final scale = constraints.maxWidth < 360
-            ? 0.95
-            : (constraints.maxWidth < 420
-                  ? 1.0
-                  : (constraints.maxWidth < 520 ? 1.08 : 1.12));
-        double s(double v) => v * scale;
-
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(s(16)),
-            border: Border.all(color: const Color(0xFFE2EAE0)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: s(8),
-                offset: const Offset(0, 2),
-              ),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE8F5E0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Padding(
-                padding: EdgeInsets.fromLTRB(s(16), s(14), s(16), s(10)),
-                child: Row(
-                  children: [
-                    Text(
-                      'Trafic în timp real',
-                      style: TextStyle(
-                        fontSize: s(16),
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A2F1E),
-                      ),
-                    ),
-                    SizedBox(width: s(6)),
-                    Container(
-                      width: s(8),
-                      height: s(8),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE57373),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1, color: Color(0xFFEEF4EE)),
-
-              // Events list
-              Expanded(
-                child: events.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Nu există activitate recentă.',
-                          style: TextStyle(
-                            color: const Color(0xFF7B9E84),
-                            fontSize: s(13),
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: EdgeInsets.symmetric(vertical: s(8)),
-                        itemCount: events.length,
-                        itemBuilder: (_, i) {
-                          final d = events[i].data() as Map<String, dynamic>;
-                          final gateUid = (d['gateUid'] ?? '').toString();
-                          final gateName =
-                              gateMap[gateUid] ?? 'Poartă necunoscută';
-                          final fullName = (d['fullName'] ?? '').toString();
-                          final ts = d['timestamp'] as Timestamp?;
-                          final isDenied =
-                              (d['type'] ?? '') == 'deny' || fullName.isEmpty;
-                          final classId = (d['classId'] ?? '').toString();
-                          final String roleLabel;
-                          if (isDenied) {
-                            roleLabel = '';
-                          } else if (classId.isNotEmpty) {
-                            roleLabel = 'Elev';
-                          } else {
-                            roleLabel = 'Personal';
-                          }
-
-                          return _TrafficEntry(
-                            gateName: gateName,
-                            personName: fullName.isEmpty
-                                ? 'Mediu neînregistrat detectat'
-                                : fullName,
-                            roleLabel: roleLabel,
-                            timeAgo: ts != null ? _timeAgo(ts) : '',
-                            isDenied: isDenied,
-                            showConnector: i != events.length - 1,
-                            scale: scale,
-                          );
-                        },
-                      ),
-              ),
-
-              // Buton pentru toate jurnalele
-              Padding(
-                padding: EdgeInsets.fromLTRB(s(12), 0, s(12), s(12)),
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: Size(double.infinity, s(40)),
-                    side: const BorderSide(color: Color(0xFFCCDDCC)),
-                    foregroundColor: const Color(0xFF1A2F1E),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(s(8)),
-                    ),
-                  ),
-                  onPressed: () =>
-                      _showAllLogsDialog(context, allEvents, gateMap),
-                  child: Text(
-                    'Vezi toate jurnalele',
-                    style: TextStyle(
-                      fontSize: s(13),
-                      fontWeight: FontWeight.w600,
-                    ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Row(
+              children: [
+                const Text(
+                  'Trafic în timp real',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A2E1A),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE57373),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+          const Divider(height: 1, color: Color(0xFFE8F5E0)),
+
+          // Events list
+          Expanded(
+            child: events.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Nu există activitate recentă.',
+                      style: TextStyle(color: Color(0xFF7B9E84), fontSize: 15),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    itemCount: events.length,
+                    itemBuilder: (_, i) {
+                      final d = events[i].data() as Map<String, dynamic>;
+                      final gateUid = (d['gateUid'] ?? '').toString();
+                      final gateName = gateMap[gateUid] ?? 'Poartă necunoscută';
+                      final fullName = (d['fullName'] ?? '').toString();
+                      final ts = d['timestamp'] as Timestamp?;
+                      final isDenied =
+                          (d['type'] ?? '') == 'deny' || fullName.isEmpty;
+                      final classId = (d['classId'] ?? '').toString();
+                      final String roleLabel;
+                      if (isDenied) {
+                        roleLabel = '';
+                      } else if (classId.isNotEmpty) {
+                        roleLabel = 'Elev';
+                      } else {
+                        roleLabel = 'Personal';
+                      }
+
+                      return _TrafficEntry(
+                        gateName: gateName,
+                        personName: fullName.isEmpty
+                            ? 'Mediu neînregistrat detectat'
+                            : fullName,
+                        roleLabel: roleLabel,
+                        timeAgo: ts != null ? _timeAgo(ts) : '',
+                        isDenied: isDenied,
+                        showConnector: i != events.length - 1,
+                      );
+                    },
+                  ),
+          ),
+
+          // Buton pentru toate jurnalele
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+                side: const BorderSide(color: Color(0xFFCCDDCC)),
+                foregroundColor: const Color(0xFF1A2E1A),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () => _showAllLogsDialog(context, allEvents, gateMap),
+              child: const Text(
+                'Vezi toate jurnalele',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1330,7 +1230,6 @@ class _TrafficEntry extends StatelessWidget {
   final String timeAgo;
   final bool isDenied;
   final bool showConnector;
-  final double scale;
 
   const _TrafficEntry({
     required this.gateName,
@@ -1339,25 +1238,22 @@ class _TrafficEntry extends StatelessWidget {
     required this.timeAgo,
     required this.isDenied,
     this.showConnector = false,
-    this.scale = 1,
   });
 
   @override
   Widget build(BuildContext context) {
-    double s(double v) => v * scale;
-
     return Padding(
-      padding: EdgeInsets.fromLTRB(s(14), s(6), s(14), s(10)),
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: s(10),
+            width: 14,
             child: Column(
               children: [
                 Container(
-                  width: s(6),
-                  height: s(6),
+                  width: 8,
+                  height: 8,
                   decoration: BoxDecoration(
                     color: isDenied
                         ? const Color(0xFFB04068)
@@ -1367,9 +1263,9 @@ class _TrafficEntry extends StatelessWidget {
                 ),
                 if (showConnector)
                   Container(
-                    width: s(2),
-                    height: s(44),
-                    margin: EdgeInsets.only(top: s(4)),
+                    width: 2,
+                    height: 52,
+                    margin: const EdgeInsets.only(top: 4),
                     decoration: BoxDecoration(
                       color: isDenied
                           ? const Color(0xFFE7C8D3)
@@ -1380,7 +1276,7 @@ class _TrafficEntry extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(width: s(10)),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1390,10 +1286,10 @@ class _TrafficEntry extends StatelessWidget {
                     Expanded(
                       child: Text(
                         gateName,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize: s(13),
-                          color: const Color(0xFF1A2F1E),
+                          fontSize: 15,
+                          color: Color(0xFF1A2E1A),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1401,30 +1297,30 @@ class _TrafficEntry extends StatelessWidget {
                     ),
                     Text(
                       timeAgo,
-                      style: TextStyle(
-                        fontSize: s(10),
-                        color: const Color(0xFF7B9E84),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF7B9E84),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: s(6)),
+                const SizedBox(height: 6),
                 Container(
-                  padding: EdgeInsets.fromLTRB(s(10), s(8), s(10), s(8)),
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                   decoration: BoxDecoration(
                     color: isDenied
-                        ? const Color(0xFFF7EEF2)
-                        : const Color(0xFFF1F5ED),
-                    borderRadius: BorderRadius.circular(s(10)),
+                        ? const Color(0xFFFDF2F4)
+                        : const Color(0xFFF4F9F3),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       RichText(
                         text: TextSpan(
-                          style: TextStyle(
-                            fontSize: s(12),
-                            color: const Color(0xFF2F4837),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF2F4837),
                           ),
                           children: [
                             if (roleLabel.isNotEmpty)
@@ -1439,7 +1335,7 @@ class _TrafficEntry extends StatelessWidget {
                           ],
                         ),
                       ),
-                      SizedBox(height: s(5)),
+                      const SizedBox(height: 6),
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -1447,16 +1343,16 @@ class _TrafficEntry extends StatelessWidget {
                             isDenied
                                 ? Icons.warning_amber_rounded
                                 : Icons.check_circle_outline_rounded,
-                            size: s(12),
+                            size: 14,
                             color: isDenied
                                 ? const Color(0xFFB04068)
                                 : const Color(0xFF0A7A21),
                           ),
-                          SizedBox(width: s(4)),
+                          const SizedBox(width: 4),
                           Text(
                             isDenied ? 'ACCES RESPINS' : 'ACCES ACORDAT',
                             style: TextStyle(
-                              fontSize: s(10),
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: isDenied
                                   ? const Color(0xFFB04068)
@@ -1523,7 +1419,7 @@ class _DailyScansCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       decoration: BoxDecoration(
         color: const Color(0xFF0A5C18),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -12,6 +12,8 @@ class AdminTeachersPage extends StatefulWidget {
 
 class _AdminTeachersPageState extends State<AdminTeachersPage> {
   final store = AdminStore();
+  int _currentPage = 0;
+  static const int _pageSize = 7;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +49,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE0E8D8), width: 1),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.04),
@@ -69,7 +72,10 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                       ),
                       child: Row(
                         children: [
-                          Expanded(flex: 5, child: _colHeader('NUME DIRIGINTE')),
+                          Expanded(
+                            flex: 5,
+                            child: _colHeader('NUME DIRIGINTE'),
+                          ),
                           Expanded(
                             flex: 2,
                             child: Center(child: _colHeader('CLASĂ')),
@@ -77,10 +83,6 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                           Expanded(
                             flex: 4,
                             child: Center(child: _colHeader('EMAIL')),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Center(child: _colHeader('STATUS')),
                           ),
                           Expanded(
                             flex: 1,
@@ -125,172 +127,219 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                             );
                           }
 
-                          return ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(40, 16, 40, 24),
-                            itemCount: docs.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 12),
-                            itemBuilder: (_, i) {
-                              final d = docs[i];
-                              final data = d.data() as Map<String, dynamic>;
-                              final uid = d.id;
-                              final username = (data['username'] ?? uid)
-                                  .toString();
-                              final fullName = (data['fullName'] ?? username)
-                                  .toString();
-                              final classId = (data['classId'] ?? '')
-                                  .toString();
-                              final email = data['email']?.toString();
-                              final status = (data['status'] ?? 'active')
-                                  .toString();
-                              final isActive = status != 'disabled';
+                          final visibleDocs = docs
+                              .skip(_currentPage * _pageSize)
+                              .take(_pageSize)
+                              .toList();
+                          final totalPages = (docs.length / _pageSize).ceil();
 
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Expanded(
-                                      flex: 5,
+                          return Column(
+                            children: [
+                              Expanded(
+                                child: ListView.separated(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    40,
+                                    16,
+                                    40,
+                                    0,
+                                  ),
+                                  itemCount: visibleDocs.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 12),
+                                  itemBuilder: (_, i) {
+                                    final d = visibleDocs[i];
+                                    final data =
+                                        d.data() as Map<String, dynamic>;
+                                    final uid = d.id;
+                                    final username = (data['username'] ?? uid)
+                                        .toString();
+                                    final fullName =
+                                        (data['fullName'] ?? username)
+                                            .toString();
+                                    final classId = (data['classId'] ?? '')
+                                        .toString();
+                                    final email = data['email']?.toString();
+                                    final status = (data['status'] ?? 'active')
+                                        .toString();
+                                    final isActive = status != 'disabled';
+
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
                                       child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
                                         children: [
-                                          CircleAvatar(
-                                            radius: 20,
-                                            backgroundColor: _avatarColor(
-                                              fullName,
-                                            ),
-                                            child: Text(
-                                              _initials(fullName),
-                                              style: const TextStyle(
-                                                color: Color(0xFF1A1A1A),
-                                                fontWeight: FontWeight.w800,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
                                           Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                            flex: 5,
+                                            child: Row(
                                               children: [
-                                                Text(
-                                                  fullName,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 14,
-                                                    color: Color(0xFF111111),
+                                                CircleAvatar(
+                                                  radius: 20,
+                                                  backgroundColor: _avatarColor(
+                                                    fullName,
+                                                  ),
+                                                  child: Text(
+                                                    _initials(fullName),
+                                                    style: const TextStyle(
+                                                      color: Color(0xFF1A1A1A),
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      fontSize: 13,
+                                                    ),
                                                   ),
                                                 ),
-                                                Text(
-                                                  'Username: $username',
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color: Color(0xFF7A9070),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        fullName,
+                                                        style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          fontSize: 14,
+                                                          color: Color(
+                                                            0xFF111111,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        'Username: $username',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color: Color(
+                                                            0xFF7A9070,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Align(
-                                        alignment: Alignment.center,
-                                        child: classId.isNotEmpty
-                                            ? Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 14,
-                                                      vertical: 6,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFFDCEEDC),
-                                                  borderRadius:
-                                                      BorderRadius.circular(20),
-                                                ),
-                                                child: Text(
-                                                  _formatClassName(classId),
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Color(0xFF2E7D32),
-                                                  ),
-                                                ),
-                                              )
-                                            : const Text('-'),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 4,
-                                      child: Text(
-                                        (email != null && email.isNotEmpty)
-                                            ? email
-                                            : '-',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          color: Color(0xFF2E4A2E),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Align(
-                                        alignment: Alignment.center,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 14,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isActive
-                                                ? const Color(0xFFDCEEDC)
-                                                : const Color(0xFFFDEBEB),
-                                            borderRadius:
-                                                BorderRadius.circular(20),
-                                          ),
-                                          child: Text(
-                                            isActive ? 'ACTIV' : 'DEZACTIVAT',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                              color: isActive
-                                                  ? const Color(0xFF2E7D32)
-                                                  : const Color(0xFFD32F2F),
+                                          Expanded(
+                                            flex: 2,
+                                            child: Align(
+                                              alignment: Alignment.center,
+                                              child: classId.isNotEmpty
+                                                  ? Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 14,
+                                                            vertical: 6,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFFDCEEDC,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              20,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        _formatClassName(
+                                                          classId,
+                                                        ),
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color: Color(
+                                                            0xFF2E7D32,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    )
+                                                  : const Text('-'),
                                             ),
                                           ),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 1,
-                                      child: Center(
-                                        child: IconButton(
-                                          icon: const Icon(
-                                            Icons.settings_outlined,
-                                            color: Color(0xFF757575),
-                                            size: 22,
+                                          Expanded(
+                                            flex: 4,
+                                            child: Text(
+                                              (email != null &&
+                                                      email.isNotEmpty)
+                                                  ? email
+                                                  : '-',
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: Color(0xFF2E4A2E),
+                                              ),
+                                            ),
                                           ),
-                                          onPressed: () => _openTeacherDialog(
-                                            context,
-                                            username: username,
-                                            fullName: fullName,
-                                            classId: classId,
-                                            status: status,
+                                          Expanded(
+                                            flex: 1,
+                                            child: Center(
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.settings_outlined,
+                                                  color: Color(0xFF757575),
+                                                  size: 22,
+                                                ),
+                                                onPressed: () =>
+                                                    _openTeacherDialog(
+                                                      context,
+                                                      username: username,
+                                                      fullName: fullName,
+                                                      classId: classId,
+                                                      status: status,
+                                                    ),
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                        ],
                                       ),
-                                    ),
-                                  ],
+                                    );
+                                  },
                                 ),
-                              );
-                            },
+                              ),
+                              if (totalPages > 1)
+                                Container(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    40,
+                                    14,
+                                    40,
+                                    14,
+                                  ),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFF4F9F3),
+                                    border: Border(
+                                      top: BorderSide(color: Color(0xFFE8E8E8)),
+                                    ),
+                                    borderRadius: BorderRadius.only(
+                                      bottomLeft: Radius.circular(20),
+                                      bottomRight: Radius.circular(20),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      _PaginationButton(
+                                        icon: Icons.chevron_left_rounded,
+                                        enabled: _currentPage > 0,
+                                        onTap: () =>
+                                            setState(() => _currentPage--),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      ..._buildPageButtons(totalPages),
+                                      const SizedBox(width: 4),
+                                      _PaginationButton(
+                                        icon: Icons.chevron_right_rounded,
+                                        enabled: _currentPage < totalPages - 1,
+                                        onTap: () =>
+                                            setState(() => _currentPage++),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
                           );
                         },
                       ),
@@ -397,6 +446,83 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
         ],
       ),
     );
+  }
+
+  List<Widget> _buildPageButtons(int totalPages) {
+    final pages = <Widget>[];
+    const maxVisible = 5;
+
+    void addPage(int index) {
+      pages.add(
+        GestureDetector(
+          onTap: () => setState(() => _currentPage = index),
+          child: Container(
+            width: 36,
+            height: 36,
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            decoration: BoxDecoration(
+              color: _currentPage == index
+                  ? const Color(0xFF424242)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _currentPage == index
+                    ? const Color(0xFF424242)
+                    : const Color(0xFFD0D0D0),
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${index + 1}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: _currentPage == index
+                    ? Colors.white
+                    : const Color(0xFF333333),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    void addEllipsis() {
+      pages.add(
+        Container(
+          width: 36,
+          height: 36,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          alignment: Alignment.center,
+          child: const Text(
+            '...',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF999999),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (totalPages <= maxVisible) {
+      for (int i = 0; i < totalPages; i++) {
+        addPage(i);
+      }
+    } else {
+      addPage(0);
+      if (_currentPage > 2) addEllipsis();
+      final start = (_currentPage - 1).clamp(1, totalPages - 2);
+      final end = (_currentPage + 1).clamp(1, totalPages - 2);
+      for (int i = start; i <= end; i++) {
+        addPage(i);
+      }
+      if (_currentPage < totalPages - 3) addEllipsis();
+      addPage(totalPages - 1);
+    }
+
+    return pages;
   }
 
   Future<void> _openTeacherDialog(
@@ -592,11 +718,11 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                           width: double.infinity,
                           child: TextButton(
                             style: TextButton.styleFrom(
-                              backgroundColor:
-                                  Colors.grey.withValues(alpha: 0.1),
+                              backgroundColor: Colors.grey.withValues(
+                                alpha: 0.1,
+                              ),
                               foregroundColor: const Color(0xFF2E3B4E),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -617,6 +743,42 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
           ),
         );
       },
+    );
+  }
+}
+
+class _PaginationButton extends StatelessWidget {
+  const _PaginationButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: enabled ? const Color(0xFFD0D0D0) : const Color(0xFFE8E8E8),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          size: 20,
+          color: enabled ? const Color(0xFF333333) : const Color(0xFFCCCCCC),
+        ),
+      ),
     );
   }
 }

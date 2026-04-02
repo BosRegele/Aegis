@@ -16,7 +16,7 @@ import 'admin_teachers_page.dart';
 import 'admin_admins_page.dart';
 import 'admin_parents_page.dart';
 import 'admin_turnstiles_page.dart';
-import 'admin_schedules_page.dart';
+import 'admin_vacante.dart' as admin_vacante;
 // import 'secretariat_global_messages_page.dart'; // unused after menu cleanup
 import '../services/security_flags_service.dart';
 
@@ -578,13 +578,6 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                       label: "Turnichete",
                                       onTap: () => setState(() {
                                         activeSidebarLabel = 'Turnichete';
-                                      }),
-                                    ),
-                                    _buildSidebarItem(
-                                      icon: Icons.code_rounded,
-                                      label: "Development",
-                                      onTap: () => setState(() {
-                                        activeSidebarLabel = 'Development';
                                       }),
                                     ),
                                   ],
@@ -3727,7 +3720,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
       case 'Turnichete':
         return const AdminTurnstilesPage(embedded: true);
       case 'Vacanțe':
-        return const AdminSchedulesPage(embedded: true);
+        return const admin_vacante.AdminClassesPage(embedded: true);
       default:
         return const SizedBox.shrink();
     }
