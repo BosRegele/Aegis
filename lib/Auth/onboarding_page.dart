@@ -22,6 +22,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   static const _stepComplete = 'complete';
 
   static const _darkBg        = Color(0xFF0B2B17);
+  static const _leftPanelGreen = Color(0xFF0C5A22);
   static const _primaryGreen  = Color(0xFF1F6B38);
   static const _cardCream     = Color(0xFFF5F1E8);
   static const _infoBoxBg     = Color(0xFFE9F4EE);
@@ -40,6 +41,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
   String? _errorMsg;
   String? _personalEmail;
   final   _api                 = AdminApi();
+
+  bool get _isSecretariatRole {
+    final role = (widget.userData['role'] ?? '').toString().trim().toLowerCase();
+    return role == 'secretariat' || role == 'admin';
+  }
 
   @override
   void initState() {
@@ -157,6 +163,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
         user: widget.user,
         onBack: _goBackToPasswordStep,
         onFinalize: _markCompleteAfterPhoto,
+        canUploadPhoto: !_isSecretariatRole,
+        showSkipButton: _isSecretariatRole,
       );
     }
     if (_step == _stepComplete) return _buildCompleteScreen();
@@ -175,17 +183,33 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 
   Widget _buildWideLayout() {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 900),
-      child: IntrinsicHeight(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(flex: 40, child: _buildLeftPanel()),
-              Expanded(flex: 60, child: _buildRightPanel()),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 920),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.24),
+                blurRadius: 28,
+                offset: const Offset(0, 12),
+              ),
             ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: SizedBox(
+              height: 560,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 40, child: _buildLeftPanel()),
+                  Expanded(flex: 60, child: _buildRightPanel()),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -197,51 +221,89 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   Widget _buildLeftPanel() {
     return Container(
-      color: _darkBg,
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 48),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: _primaryGreen,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.asset(
-                'assets/images/aegis_logo.png',
-                fit: BoxFit.contain,
+      color: _leftPanelGreen,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              CustomPaint(painter: _OnboardingLeftDotsPainter()),
+              Positioned(top: -34, right: -24, child: _panelCircle(130)),
+              Positioned(bottom: -42, left: -28, child: _panelCircle(150)),
+              SingleChildScrollView(
+                padding: EdgeInsets.zero,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 54),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: _primaryGreen,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _primaryGreen.withOpacity(0.35),
+                                blurRadius: 18,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              'assets/images/aegis_logo.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 56),
+                        const Text(
+                          'Poarta ta catre\nsecuritate academica',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 46,
+                            fontWeight: FontWeight.w700,
+                            height: 1.08,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Solutia completa, optimizata pentru mobil, '
+                          'pentru gestionarea accesului si plecarilor din '
+                          'scoala. Creste siguranta prin identitati QR '
+                          'dinamice, integrare automata a orarului si '
+                          'aprobari in timp real din partea parintilor.',
+                          style: TextStyle(
+                            color: Color(0xCCFFFFFF),
+                            fontSize: 15,
+                            height: 1.62,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 48),
-          const Text(
-            'Poarta ta catre\nsecuritate academica',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Solutia completa, optimizata pentru mobil, '
-            'pentru gestionarea accesului si plecarilor din '
-            'scoala. Creste siguranta prin identitati QR '
-            'dinamice, integrare automata a orarului si '
-            'aprobari in timp real din partea parintilor.',
-            style: TextStyle(
-              color: Color(0xAAFFFFFF),
-              fontSize: 13.5,
-              height: 1.65,
-            ),
-          ),
-        ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _panelCircle(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.07),
+        shape: BoxShape.circle,
       ),
     );
   }
@@ -637,4 +699,20 @@ class _OnboardingPageState extends State<OnboardingPage> {
       ),
     );
   }
+}
+
+class _OnboardingLeftDotsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withOpacity(0.09);
+    const spacing = 18.0;
+    for (double y = 12; y < size.height; y += spacing) {
+      for (double x = 12; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), 0.9, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

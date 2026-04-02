@@ -11,11 +11,15 @@ class ProfilePicturePage extends StatefulWidget {
   final User user;
   final VoidCallback? onBack;
   final Future<void> Function()? onFinalize;
+  final bool canUploadPhoto;
+  final bool showSkipButton;
 
   const ProfilePicturePage({
     required this.user,
     this.onBack,
     this.onFinalize,
+    this.canUploadPhoto = true,
+    this.showSkipButton = false,
     super.key,
   });
 
@@ -26,6 +30,7 @@ class ProfilePicturePage extends StatefulWidget {
 class _ProfilePicturePageState extends State<ProfilePicturePage> {
   // ── colours matching the mockup ─────────────────────────────────────────────
   static const _darkBg      = Color(0xFF0B2B17);
+  static const _leftPanelGreen = Color(0xFF0C5A22);
   static const _primaryGreen = Color(0xFF1F6B38);
   static const _cardCream   = Color(0xFFF5F1E8);
   static const _infoBoxBg   = Color(0xFFE9F4EE);
@@ -37,6 +42,7 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
 
   // ── image picking ────────────────────────────────────────────────────────────
   Future<void> _pickImage() async {
+    if (!widget.canUploadPhoto) return;
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
@@ -55,6 +61,11 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
   Future<void> _finalize() async {
     setState(() => _loading = true);
     try {
+      if (!widget.canUploadPhoto) {
+        await widget.onFinalize?.call();
+        return;
+      }
+
       if (_imageBytes != null) {
         final ref = FirebaseStorage.instance
             .ref('profile_pictures/${widget.user.uid}.jpg');
@@ -117,17 +128,33 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
 
   // ── wide (desktop / web) layout ──────────────────────────────────────────────
   Widget _buildWideLayout() {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 900),
-      child: IntrinsicHeight(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(flex: 40, child: _buildLeftPanel()),
-              Expanded(flex: 60, child: _buildRightPanel()),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 920),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.24),
+                blurRadius: 28,
+                offset: const Offset(0, 12),
+              ),
             ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: SizedBox(
+              height: 560,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 40, child: _buildLeftPanel()),
+                  Expanded(flex: 60, child: _buildRightPanel()),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -142,52 +169,80 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
   // ── left green panel ─────────────────────────────────────────────────────────
   Widget _buildLeftPanel() {
     return Container(
-      color: _darkBg,
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 48),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      color: _leftPanelGreen,
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          // app icon / logo
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: _primaryGreen,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.asset(
-                'assets/images/aegis_logo.png',
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-          const SizedBox(height: 48),
-          const Text(
-            'Poarta ta către\nsecuritate academică',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Soluția completă, optimizată pentru mobil, '
-            'pentru gestionarea accesului și plecărilor din '
-            'școală. Crește siguranța prin identități QR '
-            'dinamice, integrare automată a orarului și '
-            'aprobări în timp real din partea părinților.',
-            style: TextStyle(
-              color: Color(0xAAFFFFFF),
-              fontSize: 13.5,
-              height: 1.65,
+          CustomPaint(painter: _PhotoLeftDotsPainter()),
+          Positioned(top: -34, right: -24, child: _panelCircle(130)),
+          Positioned(bottom: -42, left: -28, child: _panelCircle(150)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 48),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // app icon / logo
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: _primaryGreen,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _primaryGreen.withOpacity(0.35),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      'assets/images/aegis_logo.png',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 48),
+                const Text(
+                  'Poarta ta către\nsecuritate academică',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Soluția completă, optimizată pentru mobil, '
+                  'pentru gestionarea accesului și plecărilor din '
+                  'școală. Crește siguranța prin identități QR '
+                  'dinamice, integrare automată a orarului și '
+                  'aprobări în timp real din partea părinților.',
+                  style: TextStyle(
+                    color: Color(0xCCFFFFFF),
+                    fontSize: 13.5,
+                    height: 1.65,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _panelCircle(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.07),
+        shape: BoxShape.circle,
       ),
     );
   }
@@ -286,17 +341,20 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
           Positioned(
             bottom: 2,
             right: 2,
-            child: GestureDetector(
-              onTap: _loading ? null : _pickImage,
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: _primaryGreen,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2.5),
+            child: Opacity(
+              opacity: widget.canUploadPhoto ? 1 : 0.45,
+              child: GestureDetector(
+                onTap: (_loading || !widget.canUploadPhoto) ? null : _pickImage,
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: _primaryGreen,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2.5),
+                  ),
+                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
                 ),
-                child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
               ),
             ),
           ),
@@ -310,10 +368,10 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        onPressed: _loading ? null : _pickImage,
+        onPressed: (_loading || !widget.canUploadPhoto) ? null : _pickImage,
         icon: const Icon(Icons.file_upload_outlined, color: Color(0xFF333333), size: 20),
-        label: const Text(
-          'Încarcă Foto',
+        label: Text(
+          widget.canUploadPhoto ? 'Încarcă Foto' : 'Upload indisponibil pentru acest rol',
           style: TextStyle(
             color: Color(0xFF333333),
             fontWeight: FontWeight.w500,
@@ -339,16 +397,17 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _infoBoxBorder),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded, color: Color(0xFF2D7A4F), size: 19),
-          SizedBox(width: 10),
+          const Icon(Icons.info_outline_rounded, color: Color(0xFF2D7A4F), size: 19),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Criterii: Față trebuie să fie vizibilă clar, fundal neutru, fără '
-              'accesorii care ascund trăsăturile.',
-              style: TextStyle(
+              widget.canUploadPhoto
+                  ? 'Criterii: Față trebuie să fie vizibilă clar, fundal neutru, fără accesorii care ascund trăsăturile.'
+                  : 'Pentru conturile de secretariat, încărcarea pozei de profil este dezactivată. Apasă Skip pentru a continua.',
+              style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFF3D3D3D),
                 height: 1.5,
@@ -364,6 +423,25 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
   Widget _buildNavigationRow() {
     return Row(
       children: [
+        if (widget.showSkipButton) ...[
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _loading ? null : _finalize,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                side: const BorderSide(color: Color(0xFFCCCCCC)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Skip',
+                style: TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+        ],
         Expanded(
           child: OutlinedButton.icon(
             onPressed: _loading ? null : widget.onBack,
@@ -407,11 +485,11 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   )
-                : const Row(
+                : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Finalizare',
+                        widget.canUploadPhoto ? 'Finalizare' : 'Continuă',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -460,5 +538,21 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
       ),
     );
   }
+}
+
+class _PhotoLeftDotsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withOpacity(0.09);
+    const spacing = 18.0;
+    for (double y = 12; y < size.height; y += spacing) {
+      for (double x = 12; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), 0.9, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
