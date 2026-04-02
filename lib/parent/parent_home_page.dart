@@ -20,8 +20,15 @@ const _danger = Color(0xFF8E3557);
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN WIDGET
 // ─────────────────────────────────────────────────────────────────────────────
-class ParentHomePage extends StatelessWidget {
+class ParentHomePage extends StatefulWidget {
   const ParentHomePage({super.key});
+
+  @override
+  State<ParentHomePage> createState() => _ParentHomePageState();
+}
+
+class _ParentHomePageState extends State<ParentHomePage> {
+  DateTime? _localInboxLastOpened;
 
   @override
   Widget build(BuildContext context) {
@@ -49,14 +56,22 @@ class ParentHomePage extends StatelessWidget {
                     rawChildren,
                   ).where((s) => s.trim().isNotEmpty).toList()
                 : <String>[];
-            final inboxLastOpened = (data['inboxLastOpenedAt'] as Timestamp?)
-                ?.toDate();
+            final serverInboxLastOpened =
+                (data['inboxLastOpenedAt'] as Timestamp?)?.toDate();
+            final inboxLastOpened = _effectiveLastOpened(
+              serverInboxLastOpened,
+              _localInboxLastOpened,
+            );
 
             return LayoutBuilder(
               builder: (context, constraints) {
                 final compact = constraints.maxHeight < 760;
-                final topSectionH = compact ? 460.0 : 495.0;
-                const activityTop = 188.0;
+                final topSectionH = compact ? 444.0 : 484.0;
+                final activityTop = compact ? 170.0 : 186.0;
+                final activityCardHeight = compact ? 248.0 : 286.0;
+                final childrenCardHeight = compact ? 84.0 : 92.0;
+                final contentLift = 0.0;
+                final topGap = compact ? 12.0 : 16.0;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -74,69 +89,83 @@ class ParentHomePage extends StatelessWidget {
                             top: activityTop,
                             left: 20,
                             right: 20,
-                            child: _ActivityCard(childrenUids: childrenUids),
+                            child: _ActivityCard(
+                              childrenUids: childrenUids,
+                              height: activityCardHeight,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                        child: Column(
-                          children: [
-                            SizedBox(height: compact ? 0 : 2),
-                            _CopiiMeiCard(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const ParentStudentsPage(),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Transform.translate(
+                          offset: Offset(0, contentLift),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                            child: Column(
+                              children: [
+                                SizedBox(height: topGap),
+                                SizedBox(
+                                  height: childrenCardHeight,
+                                  child: _CopiiMeiCard(
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const ParentStudentsPage(),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            Expanded(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    child: _CereriCard(
-                                      childrenUids: childrenUids,
-                                      onTap: () {
-                                        _markOpened(
-                                          uid,
-                                          'requestsLastOpenedAt',
-                                        );
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                const ParentRequestsPage(),
+                                const SizedBox(height: 18),
+                                LayoutBuilder(
+                                  builder: (context, innerConstraints) {
+                                    return Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: AspectRatio(
+                                            aspectRatio: 1,
+                                            child: _CereriCard(
+                                              childrenUids: childrenUids,
+                                              onTap: () {
+                                                _markOpened(
+                                                  uid,
+                                                  'requestsLastOpenedAt',
+                                                );
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        const ParentRequestsPage(),
+                                                  ),
+                                                );
+                                              },
+                                            ),
                                           ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: _MesajeCard(
-                                      childrenUids: childrenUids,
-                                      inboxLastOpened: inboxLastOpened,
-                                      onTap: () {
-                                        _markOpened(uid, 'inboxLastOpenedAt');
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                const ParentInboxPage(),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: AspectRatio(
+                                            aspectRatio: 1,
+                                            child: _MesajeCard(
+                                              childrenUids: childrenUids,
+                                              inboxLastOpened: inboxLastOpened,
+                                              onTap: () async {
+                                                await _openInbox(context, uid);
+                                              },
+                                            ),
                                           ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -150,10 +179,44 @@ class ParentHomePage extends StatelessWidget {
     );
   }
 
-  static void _markOpened(String uid, String field) {
-    FirebaseFirestore.instance.collection('users').doc(uid).update({
-      field: FieldValue.serverTimestamp(),
-    });
+  DateTime? _effectiveLastOpened(DateTime? serverValue, DateTime? localValue) {
+    if (serverValue == null) return localValue;
+    if (localValue == null) return serverValue;
+    return localValue.isAfter(serverValue) ? localValue : serverValue;
+  }
+
+  Future<void> _openInbox(BuildContext context, String uid) async {
+    final openedAt = DateTime.now();
+    if (mounted) {
+      setState(() {
+        _localInboxLastOpened = openedAt;
+      });
+    }
+
+    _markOpened(uid, 'inboxLastOpenedAt', openedAt);
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ParentInboxPage()),
+    );
+
+    final returnedAt = DateTime.now();
+    if (mounted) {
+      setState(() {
+        _localInboxLastOpened = returnedAt;
+      });
+    }
+    _markOpened(uid, 'inboxLastOpenedAt', returnedAt);
+  }
+
+  static Future<void> _markOpened(String uid, String field, [DateTime? when]) {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .set({
+          field: Timestamp.fromDate(when ?? DateTime.now()),
+        }, SetOptions(merge: true))
+        .catchError((_) {});
   }
 
   static void _showSettingsSheet(BuildContext context) {
@@ -204,7 +267,7 @@ class _TopHeroHeader extends StatelessWidget {
               child: _Circle(size: 186, opacity: 0.08),
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(28, 8 + topPadding, 18, 0),
+              padding: EdgeInsets.fromLTRB(28, 4 + topPadding, 18, 0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -274,62 +337,69 @@ class _Circle extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 class _ActivityCard extends StatelessWidget {
   final List<String> childrenUids;
+  final double height;
 
-  const _ActivityCard({required this.childrenUids});
+  const _ActivityCard({required this.childrenUids, required this.height});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _surfaceLowest,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x140D631B),
-            blurRadius: 24,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-            child: Row(
-              children: const [
-                Text(
-                  'Activitate Recenta',
-                  style: TextStyle(
-                    color: _onSurface,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
+    return SizedBox(
+      height: height,
+      child: Container(
+        decoration: BoxDecoration(
+          color: _surfaceLowest,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x140D631B),
+              blurRadius: 24,
+              offset: Offset(0, 10),
             ),
-          ),
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: _outlineVariant.withValues(alpha: 0.35),
-            indent: 20,
-            endIndent: 20,
-          ),
-          if (childrenUids.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-              child: Center(
-                child: Text(
-                  'Nu sunt copii adaugati.',
-                  style: TextStyle(color: _outline),
-                ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+              child: Row(
+                children: const [
+                  Text(
+                    'Activitate Recenta',
+                    style: TextStyle(
+                      color: _onSurface,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
-            )
-          else
-            _ActivityFeed(childrenUids: childrenUids),
-          const SizedBox(height: 4),
-        ],
+            ),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: _outlineVariant.withValues(alpha: 0.35),
+              indent: 20,
+              endIndent: 20,
+            ),
+            Expanded(
+              child: childrenUids.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(
+                        vertical: 20,
+                        horizontal: 20,
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Nu sunt copii adaugati.',
+                          style: TextStyle(color: _outline),
+                        ),
+                      ),
+                    )
+                  : _ActivityFeed(childrenUids: childrenUids),
+            ),
+            const SizedBox(height: 4),
+          ],
+        ),
       ),
     );
   }
@@ -633,7 +703,7 @@ class _CopiiMeiCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
                     Text(
-                      'Copiii Mei',
+                      'Copiii mei',
                       style: TextStyle(
                         color: _primary,
                         fontSize: 16,
@@ -642,7 +712,7 @@ class _CopiiMeiCard extends StatelessWidget {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Vezi detaliile elevilor tai',
+                      'Vezi detaliile elevilor tăi',
                       style: TextStyle(
                         color: _outline,
                         fontSize: 13,
@@ -692,7 +762,7 @@ class _CereriCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         splashColor: Colors.white.withValues(alpha: 0.1),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -700,16 +770,16 @@ class _CereriCard extends StatelessWidget {
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
                       Icons.description_outlined,
                       color: Colors.white,
-                      size: 26,
+                      size: 22,
                     ),
                   ),
                   if (badgeStream != null)
@@ -747,20 +817,20 @@ class _CereriCard extends StatelessWidget {
               ),
               const Spacer(),
               const Text(
-                'Cererile de\ninvoire',
+                'Cereri de\ninvoire',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 17,
+                  fontSize: 15,
                   fontWeight: FontWeight.w800,
                   height: 1.2,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                'Vezi cererile primite',
+                'Vezi rapid',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.75),
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -786,15 +856,147 @@ class _MesajeCard extends StatelessWidget {
     required this.onTap,
   });
 
+  DateTime? _readDateTime(dynamic value) {
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+    if (value is DateTime) {
+      return value;
+    }
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+    return null;
+  }
+
+  DateTime? _decisionMessageTime(Map<String, dynamic> data) {
+    return _readDateTime(data['reviewedAt']) ??
+        _readDateTime(data['updatedAt']) ??
+        _readDateTime(data['requestedAt']);
+  }
+
+  int _countUnreadDecisions(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final lastViewed = inboxLastOpened;
+    return docs.where((doc) {
+      final data = doc.data();
+      final source = (data['source'] ?? '').toString();
+      if (source == 'secretariat') {
+        return false;
+      }
+
+      final when = _decisionMessageTime(data);
+      if (when == null) {
+        return lastViewed == null;
+      }
+      return lastViewed == null || when.isAfter(lastViewed);
+    }).length;
+  }
+
+  int _countUnreadSecretariat(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final lastViewed = inboxLastOpened;
+    final uniqueDocs = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{
+      for (final doc in docs) doc.id: doc,
+    };
+    return uniqueDocs.values.where((doc) {
+      final when = _readDateTime(doc.data()['createdAt']) ??
+          _readDateTime(doc.data()['reviewedAt']) ??
+          _readDateTime(doc.data()['requestedAt']);
+      if (when == null) {
+        return lastViewed == null;
+      }
+      return lastViewed == null || when.isAfter(lastViewed);
+    }).length;
+  }
+
+  int _countUnreadPendingRequests(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final lastViewed = inboxLastOpened;
+    return docs.where((doc) {
+      final when = _readDateTime(doc.data()['requestedAt']) ??
+          _readDateTime(doc.data()['createdAt']) ??
+          _readDateTime(doc.data()['updatedAt']);
+      if (when == null) {
+        return lastViewed == null;
+      }
+      return lastViewed == null || when.isAfter(lastViewed);
+    }).length;
+  }
+
+  List<Stream<QuerySnapshot<Map<String, dynamic>>>> _buildSecretariatStreams() {
+    if (childrenUids.isEmpty) {
+      return const <Stream<QuerySnapshot<Map<String, dynamic>>>>[];
+    }
+
+    final base = FirebaseFirestore.instance.collection('secretariatMessages');
+    return [
+      base
+          .where('recipientRole', isEqualTo: 'parent')
+          .where('studentUid', isEqualTo: '')
+          .snapshots(),
+      ...childrenUids.map(
+        (childUid) => base
+            .where('recipientRole', isEqualTo: 'parent')
+            .where('studentUid', isEqualTo: childUid)
+            .snapshots(),
+      ),
+    ];
+  }
+
+  Widget _buildMergedStream(
+    List<Stream<QuerySnapshot<Map<String, dynamic>>>> streams,
+    Widget Function(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs)
+    onReady,
+  ) {
+    if (streams.isEmpty) {
+      return onReady(const <QueryDocumentSnapshot<Map<String, dynamic>>>[]);
+    }
+
+    Widget step(
+      int index,
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> acc,
+    ) {
+      if (index >= streams.length) {
+        return onReady(acc);
+      }
+
+      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: streams[index],
+        builder: (context, snap) {
+          if (!snap.hasData) {
+            return onReady(acc);
+          }
+          return step(index + 1, [...acc, ...snap.data!.docs]);
+        },
+      );
+    }
+
+    return step(0, const <QueryDocumentSnapshot<Map<String, dynamic>>>[]);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final msgStream = childrenUids.isNotEmpty
+      final parentUid = (AppSession.uid ?? '').trim();
+    final decisionStream = childrenUids.isNotEmpty
         ? FirebaseFirestore.instance
               .collection('leaveRequests')
               .where('studentUid', whereIn: childrenUids)
               .where('status', whereIn: ['approved', 'rejected'])
               .snapshots()
         : null;
+      final pendingRequestsStream = parentUid.isNotEmpty
+      ? FirebaseFirestore.instance
+        .collection('leaveRequests')
+        .where('targetUid', isEqualTo: parentUid)
+        .where('targetRole', isEqualTo: 'parent')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+      : null;
+    final secretariatStreams = _buildSecretariatStreams();
 
     return Material(
       color: _surfaceContainerLow,
@@ -803,21 +1005,21 @@ class _MesajeCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(22),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color: _primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.chat_bubble_outline_rounded,
                   color: _primary,
-                  size: 26,
+                  size: 22,
                 ),
               ),
               const Spacer(),
@@ -825,65 +1027,56 @@ class _MesajeCard extends StatelessWidget {
                 'Mesaje',
                 style: TextStyle(
                   color: _onSurface,
-                  fontSize: 17,
+                  fontSize: 15,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 4),
-              if (msgStream != null)
-                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: msgStream,
-                  builder: (context, snap) {
-                    int unread = 0;
-                    if (snap.hasData) {
-                      for (final doc in snap.data!.docs) {
-                        final d = doc.data();
-                        if (d['viewedByParent'] != true) {
-                          final ts =
-                              ((d['reviewedAt'] ?? d['updatedAt'])
-                                      as Timestamp?)
-                                  ?.toDate();
-                          if (inboxLastOpened == null ||
-                              (ts != null && ts.isAfter(inboxLastOpened!))) {
-                            unread++;
-                          }
-                        }
-                      }
-                    }
-                    return Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: unread > 0 ? _primary : _outline,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          unread > 0
-                              ? '$unread mesaje noi'
-                              : 'Niciun mesaj nou',
-                          style: TextStyle(
-                            color: unread > 0 ? _primary : _outline,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                )
-              else
-                const Text(
-                  'Niciun mesaj nou',
-                  style: TextStyle(
-                    color: _outline,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: pendingRequestsStream,
+                builder: (context, pendingSnap) {
+                  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: decisionStream,
+                    builder: (context, decisionSnap) {
+                      return _buildMergedStream(secretariatStreams, (
+                        secretariatDocs,
+                      ) {
+                        final unread =
+                            _countUnreadPendingRequests(
+                              pendingSnap.data?.docs ?? const [],
+                            ) +
+                            _countUnreadDecisions(
+                              decisionSnap.data?.docs ?? const [],
+                            ) +
+                            _countUnreadSecretariat(secretariatDocs);
+                        return Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: unread > 0 ? _primary : _outline,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              unread > 0
+                                  ? '$unread mesaje noi'
+                                  : 'Niciun mesaj nou',
+                              style: TextStyle(
+                                color: unread > 0 ? _primary : _outline,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        );
+                      });
+                    },
+                  );
+                },
+              ),
             ],
           ),
         ),
