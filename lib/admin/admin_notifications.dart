@@ -35,7 +35,10 @@ class _AdminNotificationBellState extends State<AdminNotificationBell> {
     final button = buttonContext.findRenderObject() as RenderBox;
     final buttonRect = Rect.fromPoints(
       button.localToGlobal(Offset.zero, ancestor: overlay),
-      button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+      button.localToGlobal(
+        button.size.bottomRight(Offset.zero),
+        ancestor: overlay,
+      ),
     );
 
     final selected = await showMenu<String>(
@@ -99,7 +102,8 @@ class _AdminNotificationBellState extends State<AdminNotificationBell> {
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton(
-                            onPressed: () => Navigator.of(menuContext).pop('all'),
+                            onPressed: () =>
+                                Navigator.of(menuContext).pop('all'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFF0A7A21),
                               side: const BorderSide(color: Color(0xFFBFD4BF)),
@@ -174,7 +178,7 @@ class _AdminNotificationBellState extends State<AdminNotificationBell> {
                 child: ListView.separated(
                   padding: const EdgeInsets.all(20),
                   itemCount: _adminNotifications.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (_, index) {
                     final notification = _adminNotifications[index];
                     return Container(

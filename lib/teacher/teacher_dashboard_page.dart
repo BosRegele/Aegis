@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
@@ -202,7 +202,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.18),
+                      color: Colors.white.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(13),
                     ),
                     child: const Icon(
@@ -250,7 +250,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
               width: 170,
               height: 170,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.07),
+                color: Colors.white.withValues(alpha: 0.07),
                 shape: BoxShape.circle,
               ),
             ),
@@ -264,7 +264,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.07),
+                color: Colors.white.withValues(alpha: 0.07),
                 shape: BoxShape.circle,
               ),
             ),
@@ -326,7 +326,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.07),
+                color: Colors.black.withValues(alpha: 0.07),
                 blurRadius: 14,
                 offset: const Offset(0, 4),
               ),
@@ -447,7 +447,7 @@ class _DotPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.14)
+      ..color = Colors.white.withValues(alpha: 0.14)
       ..style = PaintingStyle.fill;
     const spacing = 20.0;
     const radius = 1.8;
@@ -553,12 +553,12 @@ class _GridCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bg = isDark ? _kGreen : const Color(0xFFE8E9E4);
     final iconBg = isDark
-        ? Colors.white.withOpacity(0.18)
-        : _kGreen.withOpacity(0.12);
+        ? Colors.white.withValues(alpha: 0.18)
+        : _kGreen.withValues(alpha: 0.12);
     final iconColor = isDark ? Colors.white : _kGreen;
     final titleColor = isDark ? Colors.white : const Color(0xFF1A2E1D);
     final subtitleColor = isDark
-        ? Colors.white.withOpacity(0.72)
+        ? Colors.white.withValues(alpha: 0.72)
         : const Color(0xFF6B7A6D);
 
     return GestureDetector(

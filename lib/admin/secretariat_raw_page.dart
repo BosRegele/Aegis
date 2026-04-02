@@ -13,7 +13,6 @@ import 'services/admin_store.dart';
 import 'admin_classes_page.dart';
 import 'admin_students_page.dart';
 import 'admin_teachers_page.dart';
-import 'admin_admins_page.dart';
 import 'admin_parents_page.dart';
 import 'admin_turnstiles_page.dart';
 import 'admin_vacante.dart' as admin_vacante;
@@ -402,9 +401,8 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
           TextButton(
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              if (mounted) {
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              }
+              if (!context.mounted) return;
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
             child: const Text(
               "Da",
@@ -889,7 +887,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                         return DropdownButtonFormField<
                                                           String
                                                         >(
-                                                          value:
+                                                          initialValue:
                                                               hasSelectedClass
                                                               ? selectedCreateUserClassId
                                                               : null,
@@ -1096,8 +1094,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                   'Utilizator creat: $uname',
                                                                 );
 
-                                                                if (!mounted)
+                                                                if (!mounted) {
                                                                   return;
+                                                                }
                                                                 _showInfoMessage(
                                                                   csvPath ==
                                                                           null
@@ -1179,12 +1178,11 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     12,
                                                                     (i) =>
                                                                         i + 1,
-                                                                  ).map((num) {
+                                                                  ).map((n) {
                                                                     return DropdownMenuItem(
-                                                                      value:
-                                                                          num,
+                                                                      value: n,
                                                                       child: Text(
-                                                                        num.toString(),
+                                                                        n.toString(),
                                                                       ),
                                                                     );
                                                                   }).toList(),
@@ -2128,8 +2126,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                 _logSuccess(
                                                                   'Parola a fost resetată cu succes.',
                                                                 );
-                                                                if (!mounted)
+                                                                if (!mounted) {
                                                                   return;
+                                                                }
                                                                 _showInfoMessage(
                                                                   'Parola a fost actualizată.',
                                                                 );
@@ -2332,8 +2331,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                           'Emailul personal al utilizatorului "${targetUserC.text.trim()}" va fi sters. '
                                                                           'La urmatorul login va trebui sa parcurga din nou onboarding-ul.',
                                                                     );
-                                                                if (!shouldProceed)
+                                                                if (!shouldProceed) {
                                                                   return;
+                                                                }
                                                                 try {
                                                                   await api.removePersonalEmail(
                                                                     username:
@@ -2624,8 +2624,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     message:
                                                                         'Esti sigur ca vrei sa stergi utilizatorul selectat?',
                                                                   );
-                                                              if (!shouldProceed)
+                                                              if (!shouldProceed) {
                                                                 return;
+                                                              }
 
                                                               final uname =
                                                                   targetUserC
@@ -2782,7 +2783,8 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                       return DropdownButtonFormField<
                                                         String
                                                       >(
-                                                        value: hasSelectedClass
+                                                        initialValue:
+                                                            hasSelectedClass
                                                             ? selectedScheduleClassId
                                                             : null,
                                                         isExpanded: true,
@@ -3458,8 +3460,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                       if (!hasSelected &&
                           selectedCreateUserClassId.isNotEmpty) {
                         WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted)
+                          if (mounted) {
                             setState(() => selectedCreateUserClassId = '');
+                          }
                         });
                       }
                       return Column(
@@ -4090,20 +4093,6 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
     return buttons;
   }
 
-  String _formatAccessTime(dynamic rawTimestamp) {
-    DateTime? time;
-    if (rawTimestamp is Timestamp) {
-      time = rawTimestamp.toDate();
-    } else if (rawTimestamp is DateTime) {
-      time = rawTimestamp;
-    }
-    if (time == null) return '--:--';
-    final local = time.toLocal();
-    final hh = local.hour.toString().padLeft(2, '0');
-    final mm = local.minute.toString().padLeft(2, '0');
-    return '$hh:$mm';
-  }
-
   Future<void> _sendDashboardGlobalMessage() async {
     final message = _globalMsgController.text.trim();
     if (message.isEmpty) {
@@ -4539,7 +4528,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                     ),
                   ),
                   Switch.adaptive(
-                    activeColor: const Color(0xFF5A9641),
+                    activeTrackColor: const Color(0xFF5A9641),
                     value: flags.onboardingEnabled,
                     onChanged: _isActionBusy('toggle-onboarding-global')
                         ? null
@@ -4588,7 +4577,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                     ),
                   ),
                   Switch.adaptive(
-                    activeColor: const Color(0xFF5A9641),
+                    activeTrackColor: const Color(0xFF5A9641),
                     value: flags.twoFactorEnabled,
                     onChanged: _isActionBusy('toggle-2fa-global')
                         ? null

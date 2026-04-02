@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firster/student/cereri.dart';
 import 'package:firster/student/meniu.dart';
 import 'package:firster/core/session.dart';
 import 'package:flutter/material.dart';
@@ -60,17 +59,6 @@ class _InboxScreenState extends State<InboxScreen> {
     navigator.pushReplacement(
       MaterialPageRoute(builder: (_) => const MeniuScreen()),
     );
-  }
-
-  void _openCereri(BuildContext context) {
-    if (widget.onNavigateTab != null) {
-      widget.onNavigateTab!(2);
-      return;
-    }
-
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const CereriScreen()));
   }
 
   Future<void> _logout() async {
@@ -540,64 +528,6 @@ class _StatusBadge extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _CreateRequestButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _CreateRequestButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
-      child: Ink(
-        height: compact ? 84 : 92,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0D631B), Color(0xFF19802E)],
-          ),
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x260D631B),
-              blurRadius: 26,
-              offset: Offset(0, 12),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: compact ? 15 : 16,
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.add_rounded,
-                color: _primary,
-                size: compact ? 24 : 28,
-              ),
-            ),
-            SizedBox(width: compact ? 14 : 16),
-            Text(
-              'Creează Cerere Nouă',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: compact ? 19 : 22,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.4,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

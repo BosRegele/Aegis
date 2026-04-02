@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -269,28 +269,28 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
               ),
             ),
           ),
-          Container(color: Colors.black.withOpacity(0.03)),
+          Container(color: Colors.black.withValues(alpha: 0.03)),
           Center(
             child: Container(
               width: 360,
               padding: const EdgeInsets.all(35),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(30),
-                color: Colors.white.withOpacity(0.95),
+                color: Colors.white.withValues(alpha: 0.95),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.25),
+                    color: Colors.black.withValues(alpha: 0.25),
                     blurRadius: 30,
                     offset: const Offset(0, 15),
                   ),
                   BoxShadow(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     blurRadius: 25,
                     spreadRadius: -10,
                   ),
                 ],
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
+                  color: Colors.white.withValues(alpha: 0.3),
                   width: 1.5,
                 ),
               ),
@@ -382,7 +382,7 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
                         foregroundColor: Colors.white,
                         disabledBackgroundColor: const Color(
                           0xFF7AAF5B,
-                        ).withOpacity(0.6),
+                        ).withValues(alpha: 0.6),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

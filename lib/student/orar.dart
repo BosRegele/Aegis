@@ -24,7 +24,6 @@ class OrarScreen extends StatefulWidget {
 
 class _OrarScreenState extends State<OrarScreen> {
   Stream<DocumentSnapshot<Map<String, dynamic>>>? _userDocStream;
-  Stream<QuerySnapshot<Map<String, dynamic>>>? _lastScanStream;
 
   @override
   void initState() {
@@ -36,12 +35,6 @@ class _OrarScreenState extends State<OrarScreen> {
     _userDocStream = FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
-        .snapshots();
-    _lastScanStream = FirebaseFirestore.instance
-        .collection('accessEvents')
-        .where('userId', isEqualTo: uid)
-        .orderBy('timestamp', descending: true)
-        .limit(1)
         .snapshots();
   }
 
@@ -66,27 +59,6 @@ class _OrarScreenState extends State<OrarScreen> {
       return;
     }
     Navigator.of(context).maybePop();
-  }
-
-  String _formatLastScan(dynamic rawValue) {
-    DateTime? lastScanTime;
-
-    if (rawValue is Timestamp) {
-      lastScanTime = rawValue.toDate();
-    } else if (rawValue is String) {
-      lastScanTime = DateTime.tryParse(rawValue);
-    }
-
-    if (lastScanTime == null) {
-      return '--';
-    }
-
-    final day = lastScanTime.day.toString().padLeft(2, '0');
-    final month = lastScanTime.month.toString().padLeft(2, '0');
-    final year = lastScanTime.year;
-    final hour = lastScanTime.hour.toString().padLeft(2, '0');
-    final minute = lastScanTime.minute.toString().padLeft(2, '0');
-    return '$day.$month.$year $hour:$minute';
   }
 
   @override
@@ -521,34 +493,6 @@ class _SettingsSheet extends StatelessWidget {
       isScrollControlled: true,
       builder: (_) => _EditProfileSheet(),
     );
-  }
-
-  void _sendPasswordReset(BuildContext context) async {
-    final email = FirebaseAuth.instance.currentUser?.email;
-    if (email == null || email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nu există o adresă de email asociată contului.'),
-        ),
-      );
-      return;
-    }
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Email de resetare trimis la $email.')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Eroare la trimiterea emailului de resetare.'),
-          ),
-        );
-      }
-    }
   }
 }
 

@@ -1,21 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../core/session.dart';
 
-const _heroGreen = Color(0xFF0C6A1D);
-const _surface = Color(0xFFF7F9EE);
-const _surfaceTint = Color(0xFFEFF4E3);
-const _cardColor = Color(0xFFFFFFFF);
-const _textPrimary = Color(0xFF111712);
-const _textSecondary = Color(0xFF657063);
-const _dividerColor = Color(0xFFE5EBDD);
-
 enum UnifiedInboxRole { student, parent, teacher }
-
-enum _InboxItemKind { announcement, decision }
-
-enum _InboxDecisionState { pending, approved, rejected, system }
 
 class UnifiedMessagesPage extends StatefulWidget {
   final UnifiedInboxRole role;
@@ -29,36 +17,14 @@ class UnifiedMessagesPage extends StatefulWidget {
 
 class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
   bool _loadingChildren = false;
-  List<String> _childrenUids = const <String>[];
-  Map<String, String> _childNames = const <String, String>{};
-
-  Future<void> _markParentInboxOpened() async {
-    final uid = (AppSession.uid ?? '').trim();
-    if (uid.isEmpty) return;
-
-    try {
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'inboxLastOpenedAt': Timestamp.fromDate(DateTime.now()),
-      }, SetOptions(merge: true));
-    } catch (_) {}
-  }
 
   @override
   void initState() {
     super.initState();
     if (widget.role == UnifiedInboxRole.parent) {
-      _markParentInboxOpened();
       _loadingChildren = true;
       _loadChildren();
     }
-  }
-
-  @override
-  void dispose() {
-    if (widget.role == UnifiedInboxRole.parent) {
-      _markParentInboxOpened();
-    }
-    super.dispose();
   }
 
   Future<void> _loadChildren() async {
@@ -67,48 +33,28 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
       if (mounted) {
         setState(() {
           _loadingChildren = false;
-          _childrenUids = const <String>[];
-          _childNames = const <String, String>{};
         });
       }
       return;
     }
 
     try {
-      final parentDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
-      final parentData = parentDoc.data() ?? const <String, dynamic>{};
-      final rawChildren = parentData['children'];
-      final children = rawChildren is List
-          ? List<String>.from(rawChildren)
-              .where((childUid) => childUid.trim().isNotEmpty)
-              .toList()
-          : <String>[];
-      final childNames = await _loadUsernames(children.toSet());
-
+      await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (mounted) {
         setState(() {
           _loadingChildren = false;
-          _childrenUids = children;
-          _childNames = childNames;
         });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
           _loadingChildren = false;
-          _childrenUids = const <String>[];
-          _childNames = const <String, String>{};
         });
       }
     }
   }
 
-  List<Stream<QuerySnapshot<Map<String, dynamic>>>> _buildSecretariatStreams(
-    String uid,
-  ) {
+  List<Stream<QuerySnapshot<Map<String, dynamic>>>> _buildStreams(String uid) {
     final base = FirebaseFirestore.instance.collection('secretariatMessages');
     switch (widget.role) {
       case UnifiedInboxRole.student:
@@ -139,50 +85,17 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
               .where('recipientRole', isEqualTo: 'parent')
               .where('studentUid', isEqualTo: '')
               .snapshots(),
-          ..._childrenUids.map(
-            (childUid) => base
-                .where('recipientRole', isEqualTo: 'parent')
-                .where('studentUid', isEqualTo: childUid)
-                .snapshots(),
-          ),
         ];
     }
   }
 
-  List<Stream<QuerySnapshot<Map<String, dynamic>>>> _buildParentDecisionStreams() {
-    return _childrenUids
-        .map(
-          (childUid) => FirebaseFirestore.instance
-              .collection('leaveRequests')
-              .where('studentUid', isEqualTo: childUid)
-              .where('status', whereIn: ['approved', 'rejected'])
-              .orderBy('reviewedAt', descending: true)
-              .limit(30)
-              .snapshots(),
-        )
-        .toList();
-  }
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> _buildParentPendingRequestsStream(
-    String uid,
-  ) {
-    return FirebaseFirestore.instance
-        .collection('leaveRequests')
-        .where('targetUid', isEqualTo: uid)
-        .where('targetRole', isEqualTo: 'parent')
-        .where('status', isEqualTo: 'pending')
-        .orderBy('requestedAt', descending: true)
-        .limit(50)
-        .snapshots();
-  }
-
-  Widget _buildMergedStream(
+  Widget _buildMergedSecretariatStream(
     List<Stream<QuerySnapshot<Map<String, dynamic>>>> streams,
     Widget Function(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs)
     onReady,
   ) {
     if (streams.isEmpty) {
-      return onReady(const <QueryDocumentSnapshot<Map<String, dynamic>>>[]);
+      return onReady(<QueryDocumentSnapshot<Map<String, dynamic>>>[]);
     }
 
     Widget step(
@@ -212,7 +125,7 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
       );
     }
 
-    return step(0, const <QueryDocumentSnapshot<Map<String, dynamic>>>[]);
+    return step(0, <QueryDocumentSnapshot<Map<String, dynamic>>>[]);
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _buildStudentDecisionsStream(
@@ -233,19 +146,17 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
     const chunkSize = 10;
     final ids = uids.toList();
 
-    for (int index = 0; index < ids.length; index += chunkSize) {
-      final chunk = ids.skip(index).take(chunkSize).toList();
+    for (int i = 0; i < ids.length; i += chunkSize) {
+      final chunk = ids.skip(i).take(chunkSize).toList();
       final snap = await FirebaseFirestore.instance
           .collection('users')
           .where(FieldPath.documentId, whereIn: chunk)
           .get();
       for (final doc in snap.docs) {
         final data = doc.data();
-        final fullName = (data['fullName'] ?? '').toString().trim();
         final username = (data['username'] ?? '').toString().trim();
-        final label = fullName.isNotEmpty ? fullName : username;
-        if (label.isNotEmpty) {
-          result[doc.id] = label;
+        if (username.isNotEmpty) {
+          result[doc.id] = username;
         }
       }
     }
@@ -255,53 +166,21 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
 
   String _timeAgo(DateTime dateTime) {
     final diff = DateTime.now().difference(dateTime);
-    if (diff.inMinutes < 1) return 'ACUM';
-    if (diff.inMinutes < 60) return 'ACUM ${diff.inMinutes} MIN';
-    if (diff.inHours < 24) return 'ACUM ${diff.inHours} ORE';
-    if (diff.inDays == 1) return 'IERI';
-    if (diff.inDays < 7) return '${diff.inDays} ZILE';
-    return _formatDate(dateTime).toUpperCase();
-  }
-
-  String _formatDate(DateTime date) {
-    const months = [
-      'Ian',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mai',
-      'Iun',
-      'Iul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Noi',
-      'Dec',
-    ];
-    return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
+    if (diff.inMinutes < 1) return 'acum';
+    if (diff.inMinutes < 60) return 'acum ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'acum ${diff.inHours} h';
+    return '${diff.inDays} zile';
   }
 
   String _audienceFallback() {
     switch (widget.role) {
       case UnifiedInboxRole.student:
-        return 'Elevi';
+        return 'Destinatari: Elevi';
       case UnifiedInboxRole.parent:
-        return 'Părinți';
+        return 'Destinatari: Părinți';
       case UnifiedInboxRole.teacher:
-        return 'Diriginți';
+        return 'Destinatari: Diriginți';
     }
-  }
-
-  String _normalizeSenderLabel(String sender) {
-    final normalized = sender.trim();
-    if (normalized.isEmpty) return 'Secretariat';
-    final lower = normalized.toLowerCase();
-    if (lower.contains('secretariat')) return 'Secretariat';
-    if (lower.contains('parinte')) return 'Părinte';
-    if (lower.contains('dirigin') || lower.contains('prof')) {
-      return 'Prof. Diriginte';
-    }
-    return normalized;
   }
 
   void _goBack(BuildContext context) {
@@ -320,76 +199,51 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
     }
 
     return Scaffold(
-      backgroundColor: _surface,
-      body: Column(
-        children: [
-          _InboxHeroHeader(onBack: () => _goBack(context)),
-          Expanded(
-            child: Transform.translate(
-              offset: const Offset(0, 10),
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: _surface,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(34),
-                    topRight: Radius.circular(34),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x190C6A1D),
-                      blurRadius: 26,
-                      offset: Offset(0, -3),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 34, 16, 0),
-                  child: _loadingChildren
-                      ? const Center(child: CircularProgressIndicator())
-                      : _buildBody(uid),
-                ),
-              ),
+      backgroundColor: const Color(0xFF7AAF5B),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF7AAF5B),
+        toolbarHeight: 68,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => _goBack(context),
+        ),
+        title: const Text(
+          'Mesaje',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 34,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        top: false,
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF5F7FA),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
             ),
           ),
-        ],
+          child: _loadingChildren
+              ? const Center(child: CircularProgressIndicator())
+              : _buildBody(uid),
+        ),
       ),
     );
   }
 
   Widget _buildBody(String uid) {
-    final streams = _buildSecretariatStreams(uid);
-    return _buildMergedStream(streams, (secretariatDocs) {
+    final streams = _buildStreams(uid);
+    return _buildMergedSecretariatStream(streams, (secretariatDocs) {
       final secretariatItems = _mapSecretariatItems(secretariatDocs)
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-      if (widget.role == UnifiedInboxRole.parent) {
-        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: _buildParentPendingRequestsStream(uid),
-          builder: (context, pendingSnap) {
-            if (pendingSnap.hasError) {
-              return Center(child: Text('Eroare: ${pendingSnap.error}'));
-            }
-
-            final pendingItems = _mapParentPendingRequestItems(
-              pendingSnap.data?.docs ??
-                  const <QueryDocumentSnapshot<Map<String, dynamic>>>[],
-            );
-
-            return _buildMergedStream(_buildParentDecisionStreams(), (
-              decisionDocs,
-            ) {
-              final decisionItems = _mapParentDecisionItems(decisionDocs);
-              final allItems = <_UnifiedMessageItem>[
-                ...secretariatItems,
-                ...pendingItems,
-                ...decisionItems,
-              ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-              return _buildItemsList(allItems);
-            });
-          },
-        );
-      }
 
       if (widget.role != UnifiedInboxRole.student) {
         return _buildItemsList(secretariatItems);
@@ -404,12 +258,12 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
 
           final decisionDocs =
               leaveSnap.data?.docs ??
-              const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+              <QueryDocumentSnapshot<Map<String, dynamic>>>[];
           final reviewerUids = decisionDocs
               .map(
                 (doc) => (doc.data()['reviewedByUid'] ?? '').toString().trim(),
               )
-              .where((reviewerUid) => reviewerUid.isNotEmpty)
+              .where((uid) => uid.isNotEmpty)
               .toSet();
 
           return FutureBuilder<Map<String, String>>(
@@ -438,13 +292,11 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
   ) {
     return docs.map((doc) {
       final data = doc.data();
-      final title = (data['title'] ?? 'Mesaj Secretariat').toString().trim();
-      final sender = _normalizeSenderLabel(
-        (data['senderName'] ?? 'Secretariat').toString(),
-      );
-      final message = (data['message'] ?? '').toString().trim();
-      final classId = (data['classId'] ?? '').toString().trim();
-      final studentName = (data['studentName'] ?? '').toString().trim();
+      final title = (data['title'] ?? 'Mesaj Secretariat').toString();
+      final sender = (data['senderName'] ?? 'Secretariat').toString();
+      final message = (data['message'] ?? '').toString();
+      final classId = (data['classId'] ?? '').toString();
+      final studentName = (data['studentName'] ?? '').toString();
       final audienceLabel = (data['audienceLabel'] ?? '').toString().trim();
       final createdAt =
           ((data['createdAt'] as Timestamp?)?.toDate() ??
@@ -452,20 +304,25 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
               (data['requestedAt'] as Timestamp?)?.toDate()) ??
           DateTime.fromMillisecondsSinceEpoch(0);
 
-      final targetLine = audienceLabel.isNotEmpty
+      final legacyLine = widget.role == UnifiedInboxRole.parent
+          ? (studentName.isEmpty && classId.isEmpty
+                ? ''
+                : 'Elev: ${studentName.isEmpty ? '-' : studentName}${classId.isEmpty ? '' : ' ($classId)'}')
+          : (classId.isEmpty ? '' : 'Clasa $classId');
+
+      final audienceLine = audienceLabel.isNotEmpty
           ? audienceLabel
-          : (studentName.isNotEmpty
-                ? 'Elev: $studentName${classId.isEmpty ? '' : ' ($classId)'}'
-                : (classId.isNotEmpty ? 'Clasa $classId' : _audienceFallback()));
+          : (legacyLine.isNotEmpty ? legacyLine : _audienceFallback());
 
       return _UnifiedMessageItem(
-        kind: _InboxItemKind.announcement,
-        state: _InboxDecisionState.system,
         title: title,
+        audienceLine: audienceLine,
+        sender: sender,
         message: message,
         createdAt: createdAt,
-        sender: sender,
-        subtitle: targetLine,
+        icon: Icons.campaign_rounded,
+        accent: const Color(0xFF1E5EC8),
+        iconBg: const Color(0xFFDCEBFF),
       );
     }).toList();
   }
@@ -485,108 +342,38 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
         .map((doc) {
           final data = doc.data();
           final status = (data['status'] ?? '').toString();
+          final dateText = (data['dateText'] ?? '').toString();
+          final timeText = (data['timeText'] ?? '').toString();
           final reviewedByUid = (data['reviewedByUid'] ?? '').toString().trim();
-          final sender = usernamesByUid[reviewedByUid] ??
+          final sender =
+              usernamesByUid[reviewedByUid] ??
               (data['reviewedByName'] ?? 'Diriginte').toString();
+          final message = (data['message'] ?? '').toString();
           final reviewedAt = (data['reviewedAt'] as Timestamp?)?.toDate();
           final requestedAt = (data['requestedAt'] as Timestamp?)?.toDate();
           final when =
-              reviewedAt ?? requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+              reviewedAt ??
+              requestedAt ??
+              DateTime.fromMillisecondsSinceEpoch(0);
           final approved = status == 'approved';
 
-          return _UnifiedMessageItem(
-            kind: _InboxItemKind.decision,
-            state: approved
-                ? _InboxDecisionState.approved
-                : _InboxDecisionState.rejected,
-            title: approved ? 'Cerere Aprobată' : 'Cerere Respinsă',
-            message: (data['message'] ?? '').toString().trim(),
-            createdAt: when,
-            sender: _normalizeSenderLabel(sender),
-            dateLabel: (data['dateText'] ?? '').toString().trim(),
-            timeLabel: (data['timeText'] ?? '').toString().trim(),
-          );
-        })
-        .toList();
-  }
-
-  List<_UnifiedMessageItem> _mapParentDecisionItems(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
-  ) {
-    return docs
-        .where((doc) {
-          final data = doc.data();
-          final status = (data['status'] ?? '').toString();
-          final source = (data['source'] ?? '').toString();
-          return source != 'secretariat' &&
-              (status == 'approved' || status == 'rejected');
-        })
-        .map((doc) {
-          final data = doc.data();
-          final status = (data['status'] ?? '').toString();
-          final studentUid = (data['studentUid'] ?? '').toString().trim();
-          final studentName = (data['studentName'] ?? '').toString().trim();
-          final sender = _normalizeSenderLabel(
-            (data['reviewedByName'] ?? 'Diriginte').toString(),
-          );
-          final reviewedAt = (data['reviewedAt'] as Timestamp?)?.toDate();
-          final requestedAt = (data['requestedAt'] as Timestamp?)?.toDate();
-          final when =
-              reviewedAt ?? requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final approved = status == 'approved';
-          final resolvedStudentName = studentName.isNotEmpty
-              ? studentName
-              : (_childNames[studentUid] ?? 'Elev');
+          final audience = timeText.trim().isEmpty
+              ? 'Cerere: $dateText'
+              : 'Cerere: $dateText, $timeText';
 
           return _UnifiedMessageItem(
-            kind: _InboxItemKind.decision,
-            state: approved
-                ? _InboxDecisionState.approved
-                : _InboxDecisionState.rejected,
-            title:
-                '${approved ? 'Cerere Aprobată' : 'Cerere Respinsă'} - $resolvedStudentName',
-            message: (data['message'] ?? '').toString().trim(),
-            createdAt: when,
+            title: approved ? 'Cerere aprobată' : 'Cerere respinsă',
+            audienceLine: audience,
             sender: sender,
-            dateLabel: (data['dateText'] ?? '').toString().trim(),
-            timeLabel: (data['timeText'] ?? '').toString().trim(),
-          );
-        })
-        .toList();
-  }
-
-  List<_UnifiedMessageItem> _mapParentPendingRequestItems(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
-  ) {
-    return docs
-        .where((doc) {
-          final data = doc.data();
-          final status = (data['status'] ?? '').toString().trim();
-          final source = (data['source'] ?? '').toString().trim();
-          final targetRole = (data['targetRole'] ?? '').toString().trim();
-          return status == 'pending' &&
-              source != 'secretariat' &&
-              targetRole == 'parent';
-        })
-        .map((doc) {
-          final data = doc.data();
-          final studentUid = (data['studentUid'] ?? '').toString().trim();
-          final studentName = (data['studentName'] ?? '').toString().trim();
-          final requestedAt = (data['requestedAt'] as Timestamp?)?.toDate();
-          final when = requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final resolvedStudentName = studentName.isNotEmpty
-              ? studentName
-              : (_childNames[studentUid] ?? 'Elev');
-
-          return _UnifiedMessageItem(
-            kind: _InboxItemKind.decision,
-            state: _InboxDecisionState.pending,
-            title: 'Cerere Nouă - $resolvedStudentName',
-            message: (data['message'] ?? '').toString().trim(),
+            message: message,
             createdAt: when,
-            sender: 'Necesită aprobarea părintelui',
-            dateLabel: (data['dateText'] ?? '').toString().trim(),
-            timeLabel: (data['timeText'] ?? '').toString().trim(),
+            icon: approved ? Icons.check_circle_rounded : Icons.cancel_rounded,
+            accent: approved
+                ? const Color(0xFF2E7D32)
+                : const Color(0xFFC62828),
+            iconBg: approved
+                ? const Color(0xFFE4F3E5)
+                : const Color(0xFFF8E1E1),
           );
         })
         .toList();
@@ -597,456 +384,119 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
       return const Center(
         child: Text(
           'Nu există mesaje.',
-          style: TextStyle(
-            color: _textSecondary,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: Colors.grey, fontSize: 16),
         ),
       );
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.only(top: 30, bottom: 28),
       itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 16),
-      itemBuilder: (context, index) => _InboxCard(
-        item: items[index],
-        timeAgoLabel: _timeAgo(items[index].createdAt),
-        fallbackDate: _formatDate(items[index].createdAt),
-      ),
-    );
-  }
-}
-
-class _InboxHeroHeader extends StatelessWidget {
-  final VoidCallback onBack;
-
-  const _InboxHeroHeader({required this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
-
-    return ClipRRect(
-      borderRadius: const BorderRadius.only(
-        bottomLeft: Radius.circular(46),
-        bottomRight: Radius.circular(46),
-      ),
-      child: Container(
-        height: topPadding + 148,
-        color: _heroGreen,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              right: -46,
-              top: -34,
-              child: _HeroBubble(size: 122, opacity: 0.12),
-            ),
-            Positioned(
-              left: 182,
-              top: 104,
-              child: _HeroBubble(size: 78, opacity: 0.11),
-            ),
-            Positioned(
-              right: 24,
-              top: 40 + topPadding,
-              child: _HeroBubble(size: 66, opacity: 0.14),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(22, topPadding + 38, 22, 24),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: onBack,
-                    icon: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: Colors.white,
-                      size: 34,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Mesaje',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroBubble extends StatelessWidget {
-  final double size;
-  final double opacity;
-
-  const _HeroBubble({required this.size, required this.opacity});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: opacity),
-        shape: BoxShape.circle,
-      ),
-    );
-  }
-}
-
-class _InboxCard extends StatelessWidget {
-  final _UnifiedMessageItem item;
-  final String timeAgoLabel;
-  final String fallbackDate;
-
-  const _InboxCard({
-    required this.item,
-    required this.timeAgoLabel,
-    required this.fallbackDate,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = _cardScheme(item.state);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border(left: BorderSide(color: scheme.accent, width: 4)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A0C6A1D),
-            blurRadius: 18,
-            offset: Offset(0, 8),
+            ],
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _StatusPill(
-                  label: scheme.label,
-                  background: scheme.pillBg,
-                  foreground: scheme.pillFg,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: item.iconBg,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const Spacer(),
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    timeAgoLabel,
-                    style: const TextStyle(
-                      color: _textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.1,
+                child: Icon(item.icon, size: 32, color: item.accent),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 22,
+                              color: item.accent,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          _timeAgo(item.createdAt),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF90A4AE),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              item.title,
-              style: const TextStyle(
-                color: _textPrimary,
-                fontSize: 20,
-                height: 1.18,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.4,
-              ),
-            ),
-            if (item.kind == _InboxItemKind.decision) ...[
-              const SizedBox(height: 18),
-              _MetaRow(
-                icon: Icons.calendar_today_rounded,
-                iconColor: scheme.accent,
-                text: item.dateLabel?.isNotEmpty == true
-                    ? item.dateLabel!
-                    : fallbackDate,
-              ),
-              const SizedBox(height: 16),
-              _MetaRow(
-                icon: Icons.access_time_filled_rounded,
-                iconColor: scheme.accent,
-                text: item.timeLabel?.isNotEmpty == true ? item.timeLabel! : '-',
-              ),
-              const SizedBox(height: 18),
-              _ReasonCard(
-                accent: scheme.accent,
-                text: item.message.isNotEmpty ? item.message : 'Fără detalii.',
-              ),
-            ] else ...[
-              const SizedBox(height: 12),
-              if (item.subtitle?.isNotEmpty == true) ...[
-                Text(
-                  item.subtitle!,
-                  style: const TextStyle(
-                    color: _textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 10),
-              ],
-              Text(
-                item.message.isNotEmpty ? item.message : 'Fără conținut.',
-                style: const TextStyle(
-                  color: _textPrimary,
-                  fontSize: 15,
-                  height: 1.45,
-                  fontWeight: FontWeight.w500,
+                    const SizedBox(height: 4),
+                    Text(
+                      item.audienceLine,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        color: Color(0xFF1F252B),
+                      ),
+                    ),
+                    Text(
+                      'De la: ${item.sender}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF3B4350),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.message,
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  ],
                 ),
               ),
             ],
-            const SizedBox(height: 16),
-            const Divider(height: 1, thickness: 1, color: _dividerColor),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: scheme.iconBg,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(scheme.footerIcon, color: scheme.accent, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    item.sender,
-                    style: const TextStyle(
-                      color: _textSecondary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  final String label;
-  final Color background;
-  final Color foreground;
-
-  const _StatusPill({
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: foreground,
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.1,
-        ),
-      ),
-    );
-  }
-}
-
-class _MetaRow extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String text;
-
-  const _MetaRow({
-    required this.icon,
-    required this.iconColor,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 28, color: iconColor),
-        const SizedBox(width: 18),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: _textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ReasonCard extends StatelessWidget {
-  final Color accent;
-  final String text;
-
-  const _ReasonCard({required this.accent, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-      decoration: BoxDecoration(
-        color: _surfaceTint,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(Icons.description_rounded, color: accent, size: 28),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'MOTIV SOLICITARE',
-                  style: TextStyle(
-                    color: _textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.9,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '"$text"',
-                  style: const TextStyle(
-                    color: _textPrimary,
-                    fontSize: 17,
-                    height: 1.35,
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
 class _UnifiedMessageItem {
-  final _InboxItemKind kind;
-  final _InboxDecisionState state;
   final String title;
+  final String audienceLine;
+  final String sender;
   final String message;
   final DateTime createdAt;
-  final String sender;
-  final String? dateLabel;
-  final String? timeLabel;
-  final String? subtitle;
+  final IconData icon;
+  final Color accent;
+  final Color iconBg;
 
   const _UnifiedMessageItem({
-    required this.kind,
-    required this.state,
     required this.title,
+    required this.audienceLine,
+    required this.sender,
     required this.message,
     required this.createdAt,
-    required this.sender,
-    this.dateLabel,
-    this.timeLabel,
-    this.subtitle,
-  });
-}
-
-class _CardScheme {
-  final String label;
-  final Color accent;
-  final Color pillBg;
-  final Color pillFg;
-  final Color iconBg;
-  final IconData footerIcon;
-
-  const _CardScheme({
-    required this.label,
+    required this.icon,
     required this.accent,
-    required this.pillBg,
-    required this.pillFg,
     required this.iconBg,
-    required this.footerIcon,
   });
-}
-
-_CardScheme _cardScheme(_InboxDecisionState state) {
-  switch (state) {
-    case _InboxDecisionState.pending:
-      return const _CardScheme(
-        label: 'NOUĂ',
-        accent: Color(0xFF9A6B00),
-        pillBg: Color(0xFFFFF4D9),
-        pillFg: Color(0xFF8A5D00),
-        iconBg: Color(0xFFFFF4D9),
-        footerIcon: Icons.pending_actions_rounded,
-      );
-    case _InboxDecisionState.approved:
-      return const _CardScheme(
-        label: 'APROBATĂ',
-        accent: Color(0xFF0E7A2D),
-        pillBg: Color(0xFFE7F0E4),
-        pillFg: Color(0xFF0E6A1F),
-        iconBg: Color(0xFFE7F0E4),
-        footerIcon: Icons.check_circle_rounded,
-      );
-    case _InboxDecisionState.rejected:
-      return const _CardScheme(
-        label: 'RESPINSĂ',
-        accent: Color(0xFFAF2C68),
-        pillBg: Color(0xFFF6E7EE),
-        pillFg: Color(0xFFAF2C68),
-        iconBg: Color(0xFFE7EDE1),
-        footerIcon: Icons.cancel_rounded,
-      );
-    case _InboxDecisionState.system:
-      return const _CardScheme(
-        label: 'SISTEM',
-        accent: Color(0xFF7E8B7A),
-        pillBg: Color(0xFFE5EBDD),
-        pillFg: Color(0xFF495445),
-        iconBg: Color(0xFFE5EBDD),
-        footerIcon: Icons.info_rounded,
-      );
-  }
 }

@@ -280,7 +280,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                     0,
                                   ),
                                   itemCount: visibleDocs.length,
-                                  separatorBuilder: (_, __) =>
+                                  separatorBuilder: (_, _) =>
                                       const SizedBox(height: 12),
                                   itemBuilder: (_, i) {
                                     final d = visibleDocs[i];
@@ -297,8 +297,6 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                     final email = data['email']?.toString();
                                     final status = (data['status'] ?? 'active')
                                         .toString();
-                                    final isActive = status != 'disabled';
-
                                     return Padding(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 12,

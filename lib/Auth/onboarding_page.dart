@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../admin/services/admin_api.dart';
@@ -339,8 +339,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           backgroundColor: primaryGreen,
-                          disabledBackgroundColor: primaryGreen.withOpacity(
-                            0.5,
+                          disabledBackgroundColor: primaryGreen.withValues(alpha: 0.5,
                           ),
                         ),
                         child: _loading
@@ -430,8 +429,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               backgroundColor: primaryGreen,
-                              disabledBackgroundColor: primaryGreen.withOpacity(
-                                0.5,
+                              disabledBackgroundColor: primaryGreen.withValues(alpha: 0.5,
                               ),
                             ),
                             child: _loading
@@ -541,8 +539,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               backgroundColor: primaryGreen,
-                              disabledBackgroundColor: primaryGreen.withOpacity(
-                                0.5,
+                              disabledBackgroundColor: primaryGreen.withValues(alpha: 0.5,
                               ),
                             ),
                             child: _loading
