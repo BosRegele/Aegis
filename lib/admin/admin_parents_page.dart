@@ -23,11 +23,11 @@ class AdminParentsPage extends StatefulWidget {
 }
 
 class _AdminParentsPageState extends State<AdminParentsPage> {
-  bool _sidebarBusy = false;
+  final store = AdminStore();
+  int _currentPage = 0;
+  static const int _pageSize = 7;
   String _searchQuery = '';
-  final TextEditingController _searchC = TextEditingController();
-  int _page = 0;
-  static const int _pageSize = 8;
+  String _sortBy = 'name';
 
   @override
   void dispose() {
@@ -104,37 +104,219 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                   onParintiTap: () {},
                   onLogoutTap: _showLogoutDialog,
                 ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(40, 16, 40, 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 420),
+                              child: TextField(
+                                onChanged: (v) => setState(() {
+                                  _searchQuery = v.trim().toLowerCase();
+                                  _currentPage = 0;
+                                }),
+                                decoration: InputDecoration(
+                                  hintText:
+                                      'Caută părinte după nume sau username...',
+                                  hintStyle: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFFA0B090),
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.search_rounded,
+                                    size: 20,
+                                    color: Color(0xFF7A9070),
+                                  ),
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF4F9F3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFDDE8D5),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFDDE8D5),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF5C8B42),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF4F9F3),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFDDE8D5),
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _sortBy,
+                                icon: const Icon(
+                                  Icons.unfold_more_rounded,
+                                  size: 18,
+                                  color: Color(0xFF7A9070),
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF2E4A2E),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'name',
+                                    child: Text('Sortare: Nume'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'children',
+                                    child: Text('Sortare: Nr. elevi'),
+                                  ),
+                                ],
+                                onChanged: (v) => setState(() {
+                                  _sortBy = v!;
+                                  _currentPage = 0;
+                                }),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(40, 16, 40, 16),
+                      decoration: const BoxDecoration(color: Color(0xFFF4F9F3)),
+                      child: Row(
+                        children: [
+                          Expanded(flex: 5, child: _colHeader('NUME PĂRINTE')),
+                          Expanded(
+                            flex: 3,
+                            child: Center(child: _colHeader('ELEVI ATRIBUIȚI')),
+                          ),
+                          Expanded(
+                            flex: 4,
+                            child: Center(child: _colHeader('EMAIL')),
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: Center(child: _colHeader('SETĂRI')),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1, color: Color(0xFFE8F5E0)),
+                    Expanded(
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .where('role', isEqualTo: 'parent')
+                            .snapshots(),
+                        builder: (context, snap) {
+                          if (snap.hasError) {
+                            return Center(
+                              child: SelectableText("Eroare:\n${snap.error}"),
+                            );
+                          }
+                          if (!snap.hasData) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
 
-                // ── Content ──────────────────────────────────────────────────────
-                Expanded(
-                  child: Container(
-                    color: const Color(0xFFF0F3EC),
-                    child: Column(
-                      children: [
-                        _ParentsTopBar(
-                          displayName: AppSession.username ?? 'Admin',
-                          searchController: _searchC,
-                          onSearch: (value) => setState(() {
-                            _searchQuery = value.trim().toLowerCase();
-                            _page = 0;
-                          }),
-                        ),
-                        Expanded(
-                          child: StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance
-                                .collection('users')
-                                .where('role', isEqualTo: 'parent')
-                                .snapshots(),
-                            builder: (context, parentSnap) {
-                              return StreamBuilder<QuerySnapshot>(
-                                stream: FirebaseFirestore.instance
-                                    .collection('users')
-                                    .where('role', isEqualTo: 'student')
-                                    .snapshots(),
-                                builder: (context, studentSnap) {
-                                  final studentMap = <String, String>{};
-                                  for (final student in
-                                      studentSnap.data?.docs ?? []) {
+                          final docs = [...snap.data!.docs];
+                          docs.sort((a, b) {
+                            final ad = a.data() as Map;
+                            final bd = b.data() as Map;
+                            if (_sortBy == 'children') {
+                              final ac = (ad['children'] as List?)?.length ?? 0;
+                              final bc = (bd['children'] as List?)?.length ?? 0;
+                              final cmp = bc.compareTo(ac);
+                              if (cmp != 0) return cmp;
+                            }
+                            return (ad['fullName'] ?? '')
+                                .toString()
+                                .toLowerCase()
+                                .compareTo(
+                                  (bd['fullName'] ?? '')
+                                      .toString()
+                                      .toLowerCase(),
+                                );
+                          });
+
+                          final filtered = _searchQuery.isEmpty
+                              ? docs
+                              : docs.where((d) {
+                                  final data = d.data() as Map;
+                                  final name = (data['fullName'] ?? '')
+                                      .toString()
+                                      .toLowerCase();
+                                  final user = (data['username'] ?? '')
+                                      .toString()
+                                      .toLowerCase();
+                                  return name.contains(_searchQuery) ||
+                                      user.contains(_searchQuery);
+                                }).toList();
+
+                          if (filtered.isEmpty) {
+                            return Center(
+                              child: Text(
+                                _searchQuery.isEmpty
+                                    ? 'Nu există părinți'
+                                    : 'Niciun rezultat pentru "$_searchQuery"',
+                                style: const TextStyle(
+                                  color: Color(0xFF7A9070),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            );
+                          }
+
+                          final visibleDocs = filtered
+                              .skip(_currentPage * _pageSize)
+                              .take(_pageSize)
+                              .toList();
+                          final totalPages = (filtered.length / _pageSize)
+                              .ceil();
+
+                          return Column(
+                            children: [
+                              Expanded(
+                                child: ListView.separated(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    40,
+                                    16,
+                                    40,
+                                    0,
+                                  ),
+                                  itemCount: visibleDocs.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 12),
+                                  itemBuilder: (_, i) {
+                                    final d = visibleDocs[i];
                                     final data =
                                         student.data() as Map<String, dynamic>;
                                     studentMap[student.id] =
