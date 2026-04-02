@@ -14,39 +14,49 @@ class ParentRequestsPage extends StatefulWidget {
 }
 
 class _ParentRequestsPageState extends State<ParentRequestsPage> {
-  List<String> _childrenUids = [];
-  bool _isLoadingChildren = true;
+  bool _loadedOnce = false;
+  Stream<QuerySnapshot<Map<String, dynamic>>>? _leaveRequestsStream;
 
   @override
   void initState() {
     super.initState();
-    _loadChildren();
+    _setupStream();
   }
 
-  Future<void> _loadChildren() async {
-    if (AppSession.uid != null) {
-      try {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(AppSession.uid).get();
-        final children = doc.data()?['children'];
-        if (children is List) {
-          _childrenUids = List<String>.from(children);
-        }
-      } catch (_) {}
+  void _setupStream() {
+    final parentUid = (AppSession.uid ?? '').trim();
+    if (parentUid.isEmpty) {
+      setState(() => _loadedOnce = true);
+      return;
     }
-    if (mounted) setState(() => _isLoadingChildren = false);
+
+    setState(() {
+      _leaveRequestsStream = FirebaseFirestore.instance
+          .collection('leaveRequests')
+          .where('targetUid', isEqualTo: parentUid)
+          .snapshots();
+      _loadedOnce = true;
+    });
   }
+
+  @override
+  void dispose() => super.dispose();
 
   Future<void> _handleRequest(String docId, bool approved) async {
-    final parentName = (AppSession.fullName != null && AppSession.fullName!.isNotEmpty)
+    final parentName =
+        (AppSession.fullName != null && AppSession.fullName!.isNotEmpty)
         ? AppSession.fullName!
         : (AppSession.username ?? 'Parinte');
     try {
-      await FirebaseFirestore.instance.collection('leaveRequests').doc(docId).update({
-        'status': approved ? 'approved' : 'rejected',
-        'reviewedAt': FieldValue.serverTimestamp(),
-        'reviewedByUid': AppSession.uid,
-        'reviewedByName': parentName,
-      });
+      await FirebaseFirestore.instance
+          .collection('leaveRequests')
+          .doc(docId)
+          .update({
+            'status': approved ? 'approved' : 'rejected',
+            'reviewedAt': FieldValue.serverTimestamp(),
+            'reviewedByUid': AppSession.uid,
+            'reviewedByName': parentName,
+          });
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -57,7 +67,9 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Eroare: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Eroare: $e')));
     }
   }
 
@@ -71,86 +83,77 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
           children: [
             _TopHeader(onBack: () => Navigator.of(context).pop()),
             Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(painter: _BgDotsPainter()),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
-                    child: _isLoadingChildren
-                        ? const Center(child: CircularProgressIndicator())
-                        : _childrenUids.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'Nu exista elevi atribuiti.',
-                                  style: TextStyle(color: Color(0xFF7A8077), fontSize: 16),
-                                ),
-                              )
-                            : StreamBuilder<QuerySnapshot>(
-                                stream: FirebaseFirestore.instance
-                                    .collection('leaveRequests')
-                                    .where('studentUid', whereIn: _childrenUids)
-                                    .snapshots(),
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState == ConnectionState.waiting) {
-                                    return const Center(child: CircularProgressIndicator());
-                                  }
-                                  if (snapshot.hasError) {
-                                    return Center(child: Text('Eroare: ${snapshot.error}'));
-                                  }
-                                  if (!snapshot.hasData) {
-                                    return const SizedBox();
-                                  }
-
-                                  final docs = snapshot.data!.docs.where((doc) {
-                                    final data = doc.data() as Map<String, dynamic>;
-                                    final targetRole = (data['targetRole'] ?? '').toString().trim();
-                                    final status = (data['status'] ?? '').toString().trim();
-                                    final source = (data['source'] ?? '').toString().trim();
-                                    return targetRole == 'parent' && status == 'pending' && source != 'secretariat';
-                                  }).toList()
-                                    ..sort((a, b) {
-                                      final aTs = (a.data() as Map<String, dynamic>)['requestedAt'] as Timestamp?;
-                                      final bTs = (b.data() as Map<String, dynamic>)['requestedAt'] as Timestamp?;
-                                      final aMs = aTs?.millisecondsSinceEpoch ?? 0;
-                                      final bMs = bTs?.millisecondsSinceEpoch ?? 0;
-                                      return bMs.compareTo(aMs);
-                                    });
-
-                                  if (docs.isEmpty) {
-                                    return const Center(
-                                      child: Text(
-                                        'Nu exista cereri noi.',
-                                        style: TextStyle(color: Color(0xFF7A8077), fontSize: 16),
-                                      ),
-                                    );
-                                  }
-
-                                  return ListView.separated(
-                                    physics: const BouncingScrollPhysics(),
-                                    padding: const EdgeInsets.only(top: 2, bottom: 24),
-                                    itemCount: docs.length,
-                                    separatorBuilder: (_, _) => const SizedBox(height: 14),
-                                    itemBuilder: (context, index) {
-                                      final doc = docs[index];
-                                      final data = doc.data() as Map<String, dynamic>? ?? {};
-                                      return _RequestCard(
-                                        data: data,
-                                        onAccept: () => _handleRequest(doc.id, true),
-                                        onReject: () => _handleRequest(doc.id, false),
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+                child: _loadedOnce
+                    ? _buildRequests()
+                    : const Center(child: CircularProgressIndicator()),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildRequests() {
+    final parentUid = (AppSession.uid ?? '').trim();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _leaveRequestsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Eroare: ${snapshot.error}'));
+        }
+
+        final docs =
+            (snapshot.data?.docs ?? []).where((doc) {
+              final data = doc.data();
+              final status = (data['status'] ?? '').toString().trim();
+              final source = (data['source'] ?? '').toString().trim();
+              final targetRole = (data['targetRole'] ?? '').toString().trim();
+              final targetUid = (data['targetUid'] ?? '').toString().trim();
+              return status == 'pending' &&
+                  source != 'secretariat' &&
+                  targetRole == 'parent' &&
+                  targetUid == parentUid;
+            }).toList()..sort((a, b) {
+              final aTs = a.data()['requestedAt'] as Timestamp?;
+              final bTs = b.data()['requestedAt'] as Timestamp?;
+              return (bTs?.millisecondsSinceEpoch ?? 0).compareTo(
+                aTs?.millisecondsSinceEpoch ?? 0,
+              );
+            });
+
+        if (docs.isEmpty) {
+          return const Center(
+            child: Text(
+              'Nu exista cereri noi.',
+              style: TextStyle(color: Color(0xFF7A8077), fontSize: 16),
+            ),
+          );
+        }
+
+        return ListView.separated(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.only(top: 2, bottom: 24),
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 14),
+          itemBuilder: (context, index) {
+            final doc = docs[index];
+            final data = doc.data() as Map<String, dynamic>? ?? {};
+            return _RequestCard(
+              data: data,
+              onAccept: () => _handleRequest(doc.id, true),
+              onReject: () => _handleRequest(doc.id, false),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -162,43 +165,45 @@ class _TopHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(46),
+        bottomRight: Radius.circular(46),
+      ),
       child: SizedBox(
         width: double.infinity,
-        height: 176,
+        height: topPadding + 148,
         child: Stack(
-          fit: StackFit.expand,
           children: [
-            Container(color: _kHeaderGreen),
-            CustomPaint(painter: _HeaderDotsPainter()),
-            Positioned(right: 160, top: -42, child: _circle(122)),
-            Positioned(left: 200, bottom: -34, child: _circle(72)),
+            Positioned.fill(child: Container(color: _kHeaderGreen)),
+            Positioned(right: -46, top: -34, child: _circle(122, 0.12)),
+            Positioned(left: 182, top: 104, child: _circle(78, 0.11)),
+            Positioned(
+              right: 24,
+              top: 40 + topPadding,
+              child: _circle(66, 0.14),
+            ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 24, 20, 0),
+              padding: EdgeInsets.fromLTRB(22, topPadding + 38, 22, 24),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
                     onPressed: onBack,
-                    splashRadius: 22,
                     icon: const Icon(
                       Icons.arrow_back_rounded,
                       color: Colors.white,
                       size: 32,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 10),
-                    child: Text(
-                      'Cereri de invoire',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 23,
-                        fontWeight: FontWeight.w700,
-                        height: 1,
-                      ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Cereri de invoire',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -210,12 +215,12 @@ class _TopHeader extends StatelessWidget {
     );
   }
 
-  Widget _circle(double size) {
+  Widget _circle(double size, double opacity) {
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: Colors.white.withValues(alpha: opacity),
         shape: BoxShape.circle,
       ),
     );
@@ -227,18 +232,26 @@ class _RequestCard extends StatelessWidget {
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
-  const _RequestCard({required this.data, required this.onAccept, required this.onReject});
+  const _RequestCard({
+    required this.data,
+    required this.onAccept,
+    required this.onReject,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final studentName = (data['studentName'] ?? 'Elev necunoscut').toString().trim();
+    final studentName = (data['studentName'] ?? 'Elev necunoscut')
+        .toString()
+        .trim();
     final classId = (data['classId'] ?? '').toString().trim();
     final dateText = (data['dateText'] ?? '-').toString();
     final timeText = (data['timeText'] ?? '-').toString();
     final reason = (data['message'] ?? 'Fara motiv').toString().trim();
 
     final initials = _initials(studentName);
-    final classLabel = classId.isEmpty ? 'ELEV' : 'ELEV • CLASA ${classId.toUpperCase()}';
+    final classLabel = classId.isEmpty
+        ? 'ELEV'
+        : 'ELEV • CLASA ${classId.toUpperCase()}';
 
     return Container(
       width: double.infinity,
@@ -291,7 +304,10 @@ class _RequestCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFDDE9DD),
                           borderRadius: BorderRadius.circular(14),
@@ -388,7 +404,11 @@ class _RequestCard extends StatelessWidget {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_circle_rounded, color: Colors.white, size: 28),
+                        Icon(
+                          Icons.check_circle_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                         SizedBox(width: 10),
                         Text(
                           'Accepta',
@@ -417,7 +437,11 @@ class _RequestCard extends StatelessWidget {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.cancel_rounded, color: Color(0xFF9C2A60), size: 28),
+                        Icon(
+                          Icons.cancel_rounded,
+                          color: Color(0xFF9C2A60),
+                          size: 28,
+                        ),
                         SizedBox(width: 10),
                         Text(
                           'Respinge',
@@ -480,7 +504,7 @@ class _HeaderDotsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = Colors.white.withOpacity(0.12);
-    const spacing = 26.0;
+    const spacing = 28.0;
     for (double y = 16; y < size.height; y += spacing) {
       for (double x = 14; x < size.width; x += spacing) {
         canvas.drawCircle(Offset(x, y), 2, paint);
