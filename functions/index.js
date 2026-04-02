@@ -1389,12 +1389,56 @@ exports.redeemQrToken = onCall(async (request) => {
     const tokenRef = db.collection("qrTokens").doc(tokenId);
 
     let accessEventToLog = null;
+    const scanTimestamp = admin.firestore.Timestamp.now();
+
+    // Pre-read the token outside the transaction to get userId for the leave-request query.
+    // (tx.get(query) is unreliable with multi-field filters in firebase-admin v13)
+    const preScanSnap = await tokenRef.get();
+    const preUserId = preScanSnap.exists ? String(preScanSnap.data().userId || "") : "";
+
+    let approvedLeaveExit = false;
+    if (preUserId) {
+        const roNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
+        const roDay = String(roNow.getDate()).padStart(2, "0");
+        const roMonth = String(roNow.getMonth() + 1).padStart(2, "0");
+        const roYear = roNow.getFullYear();
+        const todayText = `${roDay}/${roMonth}/${roYear}`;
+        const nowMinutes = roNow.getHours() * 60 + roNow.getMinutes();
+
+        // Query approved leave requests for today, then check timeText in code
+        const leaveSnap = await db.collection("leaveRequests")
+            .where("studentUid", "==", preUserId)
+            .where("status", "==", "approved")
+            .where("dateText", "==", todayText)
+            .get();
+
+        // approvedLeaveExit is true if at least one request's timeText (HH:mm) is <= now
+        approvedLeaveExit = leaveSnap.docs.some((doc) => {
+            const timeText = String(doc.data().timeText || "");
+            const parts = timeText.split(":").map((x) => parseInt(x, 10));
+            if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return false;
+            const requestMinutes = parts[0] * 60 + parts[1];
+            return nowMinutes >= requestMinutes;
+        });
+    }
 
     const result = await db.runTransaction(async (tx) => {
+        let result = null;
+
+        scan : {
         const snap = await tx.get(tokenRef);
 
         if (!snap.exists) {
-            return { ok: false, reason: "NOT_FOUND", type: "deny" };
+            result = { ok: false, reason: "NOT_FOUND", type: "deny"};
+            accessEventToLog = {
+                gateUid: callerUid,
+                type: "deny",
+                timestamp: scanTimestamp,
+                tokenId,
+                scanResult: "denied",
+                reason: result.reason || null,
+            };
+            break scan;
         }
 
         const data = snap.data() || {};
@@ -1403,25 +1447,65 @@ exports.redeemQrToken = onCall(async (request) => {
         const expiresAt = data.expiresAt;
 
         if (used) {
-            return { ok: false, reason: "ALREADY_USED", userId, type: "deny" };
+            result = { ok: false, reason: "ALREADY_USED", userId, type: "deny" };
+            accessEventToLog = {
+                gateUid: callerUid,
+                userId,
+                type: "deny",
+                timestamp: scanTimestamp,
+                tokenId,
+                scanResult: "denied",
+                reason: result.reason || null,
+            };
+            break scan;
         }
 
         if (!expiresAt || typeof expiresAt.toDate !== "function") {
-            return { ok: false, reason: "BAD_EXPIRES", userId };
+            result = { ok: false, reason: "BAD_EXPIRES", userId, type: "deny" };
+            accessEventToLog = {
+                gateUid: callerUid,
+                userId,
+                type: "deny",
+                timestamp: scanTimestamp,
+                tokenId,
+                scanResult: "denied",
+                reason: result.reason || null,
+            };
+            break scan;
         }
 
         const nowMs = Date.now();
         const expMs = expiresAt.toDate().getTime();
 
         if (expMs <= nowMs) {
-            return { ok: false, reason: "EXPIRED", userId, type: "deny" };
+            result = { ok: false, reason: "EXPIRED", userId, type: "deny" };
+            accessEventToLog = {
+                gateUid: callerUid,
+                userId,
+                type: "deny",
+                timestamp: scanTimestamp,
+                tokenId,
+                scanResult: "denied",
+                reason: result.reason || null,
+            };
+            break scan;
         }
 
         const userRef = db.collection("users").doc(userId);
         const userSnap = await tx.get(userRef);
 
         if (!userSnap.exists) {
-            return { ok: false, reason: "USER_NOT_FOUND", userId, type: "deny" };
+            result = { ok: false, reason: "USER_NOT_FOUND", userId, type: "deny" };
+            accessEventToLog = {
+                gateUid: callerUid,
+                userId,
+                type: "deny",
+                timestamp: scanTimestamp,
+                tokenId,
+                scanResult: "denied",
+                reason: result.reason || null,
+            };
+            break scan;
         }
 
         const userData = userSnap.data() || {};
@@ -1431,26 +1515,36 @@ exports.redeemQrToken = onCall(async (request) => {
         const classId = String(userData.classId || "");
 
         if (status === "disabled") {
-            return {
-                ok: false,
-                reason: "USER_DISABLED",
+            result = {ok: false, reason: "USER_DISABLED", userId, fullName, classId, type: "deny"};
+            accessEventToLog = {
+                gateUid: callerUid,
                 userId,
                 fullName,
                 classId,
-                type: "deny"
+                type: "deny",
+                timestamp: scanTimestamp,
+                tokenId,
+                scanResult: "denied",
+                reason: result.reason || null,
             };
+            break scan;
         }
 
         // --- Class timetable check added here ---
         if (!classId) {
-            return {
-                ok: false,
-                reason: "NO_CLASS_ASSIGNED",
+            result = {ok: false, reason: "NO_CLASS_ASSIGNED", userId, fullName, classId, type: "deny"};
+            accessEventToLog = {
+                gateUid: callerUid,
                 userId,
                 fullName,
                 classId,
-                type: "deny"
+                type: "deny",
+                timestamp: scanTimestamp,
+                tokenId,
+                scanResult: "denied",
+                reason: result.reason || null,
             };
+            break scan;
         }
 
         const classRef = db.collection("classes").doc(classId);
@@ -1462,63 +1556,69 @@ exports.redeemQrToken = onCall(async (request) => {
         // because Cloud Functions uses UTC by default and can be 2-3h behind local time.
         const localNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
         const dayIdx = localNow.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
-        if (dayIdx < 1 || dayIdx > 5) {
-            return {
-                ok: false,
-                reason: "OUTSIDE_CLASS_DAY",
-                userId,
-                fullName,
-                classId,
-                type: "deny"
-            };
-        }
+        const isWeekend = dayIdx === 0 || dayIdx === 6;
 
         const now = localNow;
 
-        const dayKey = String(dayIdx);
-        const daySchedule = schedule[dayKey];
-        if (!daySchedule || !daySchedule.start || !daySchedule.end) {
-            return {
-                ok: false,
-                reason: "NO_SCHEDULE",
-                userId,
-                fullName,
-                classId,
-                type: "deny"
-            };
-        }
+        let isAfterSchedule = false;
+        let isBeforeSchedule = false;
 
-        const parseTime = (s) => {
-            const parts = String(s).split(":").map((x) => parseInt(x, 10));
-            if (parts.length !== 2 || Number.isNaN(parts[0]) || Number.isNaN(parts[1])) {
-                return null;
+        
+
+            const dayKey = String(dayIdx);
+            const daySchedule = schedule[dayKey];
+            if (!daySchedule || !daySchedule.start || !daySchedule.end) {
+                result = {ok: false, reason: "NO_SCHEDULE", userId, fullName, classId, type: "deny"};
+                accessEventToLog = {
+                    gateUid: callerUid,
+                    userId,
+                    fullName,
+                    classId,
+                    type: "deny",
+                    timestamp: scanTimestamp,
+                    tokenId,
+                    scanResult: "denied",
+                    reason: result.reason || null,
+                };
+                break scan;
             }
-            return parts[0] * 60 + parts[1];
-        };
 
-        const startMinutes = parseTime(daySchedule.start);
-        const endMinutes = parseTime(daySchedule.end);
-
-        if (startMinutes == null || endMinutes == null || endMinutes < startMinutes) {
-            return {
-                ok: false,
-                reason: "BAD_SCHEDULE",
-                userId,
-                fullName,
-                classId,
-                type: "deny"
+            const parseTime = (s) => {
+                const parts = String(s).split(":").map((x) => parseInt(x, 10));
+                if (parts.length !== 2 || Number.isNaN(parts[0]) || Number.isNaN(parts[1])) {
+                    return null;
+                }
+                return parts[0] * 60 + parts[1];
             };
-        }
 
-        const nowMinutes = now.getHours() * 60 + now.getMinutes();
-        const isWithinSchedule = nowMinutes >= startMinutes && nowMinutes <= endMinutes;
-        const isAfterSchedule = nowMinutes > endMinutes;
-        const isBeforeSchedule = nowMinutes < startMinutes;
+            const startMinutes = parseTime(daySchedule.start);
+            const endMinutes = parseTime(daySchedule.end);
+
+            if (startMinutes == null || endMinutes == null || endMinutes < startMinutes) {
+                result = {ok: false, reason: "BAD_SCHEDULE", userId, fullName, classId, type: "deny"};
+                accessEventToLog = {
+                    gateUid: callerUid,
+                    userId,
+                    fullName,
+                    classId,
+                    type: "deny",
+                    timestamp: scanTimestamp,
+                    tokenId,
+                    scanResult: "denied",
+                    reason: result.reason || null,
+                };
+                break scan;
+            }
+
+            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+            isAfterSchedule = nowMinutes > endMinutes;
+            isBeforeSchedule = nowMinutes < startMinutes;
+        
 
         // approvedLeaveExit was determined before the transaction via a plain query.
         // (tx.get(query) is unreliable with multi-field filters in firebase-admin v13)
 
-        const nowTs = admin.firestore.FieldValue.serverTimestamp();
+        const nowTs = scanTimestamp;
 
         tx.update(tokenRef, {
             used: true,
@@ -1527,7 +1627,7 @@ exports.redeemQrToken = onCall(async (request) => {
         });
 
         let eventType = "entry";
-        let result = {
+        result = {
             ok: true,
             userId,
             fullName,
@@ -1536,14 +1636,14 @@ exports.redeemQrToken = onCall(async (request) => {
         };
 
         if (!inSchool) {
-            // student entering school (now allowed regardless of timetable)
+            // student entering school
             tx.update(userRef, {
                 inSchool: true,
                 lastInAt: nowTs,
                 // keep lastOutAt as is, do not clear it
             });
-        } else if (inSchool && (isAfterSchedule || isBeforeSchedule)) {
-            // student exiting outside class hours (before or after schedule)
+        } else if (isWeekend || isAfterSchedule || isBeforeSchedule) {
+            // on weekends or outside class hours: allow free exit
             eventType = "exit";
             tx.update(userRef, {
                 inSchool: false,
@@ -1577,6 +1677,8 @@ exports.redeemQrToken = onCall(async (request) => {
                 type: "deny"
             };
         }
+
+    
         // Capture access event data — will be logged after the transaction commits
         accessEventToLog = {
             gateUid: callerUid,
@@ -1586,8 +1688,13 @@ exports.redeemQrToken = onCall(async (request) => {
             type: eventType,
             timestamp: nowTs,
             tokenId,
+            scanResult: result.ok === true ? "allowed" : "denied",
+            reason: result.reason || null,
         };
-        return result;
+    }
+    
+
+    return result;
     });
 
     // Log access event AFTER the transaction commits, properly awaited
