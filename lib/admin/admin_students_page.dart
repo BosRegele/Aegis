@@ -12,8 +12,8 @@ class AdminStudentsPage extends StatefulWidget {
 
 class _AdminStudentsPageState extends State<AdminStudentsPage> {
   final store = AdminStore();
-  bool _showAll = false;
-  static const int _initialLimit = 7;
+  int _currentPage = 0;
+  static const int _pageSize = 7;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +25,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FFF5),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,361 +44,477 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
               style: TextStyle(fontSize: 13, color: Color(0xFF5A8040)),
             ),
             const SizedBox(height: 20),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(40, 16, 40, 16),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF4F9F3),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(20),
-                        topRight: Radius.circular(20),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE0E8D8), width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(40, 16, 40, 16),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF4F9F3),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(flex: 5, child: _colHeader('NUME ELEV')),
+                          Expanded(
+                            flex: 2,
+                            child: Center(child: _colHeader('CLASĂ')),
+                          ),
+                          Expanded(
+                            flex: 4,
+                            child: Center(child: _colHeader('EMAIL')),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Center(child: _colHeader('STATUS')),
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: Center(child: _colHeader('SETĂRI')),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(flex: 5, child: _colHeader('NUME ELEV')),
-                        Expanded(
-                          flex: 2,
-                          child: Center(child: _colHeader('CLASĂ')),
-                        ),
-                        Expanded(
-                          flex: 4,
-                          child: Center(child: _colHeader('EMAIL')),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Center(child: _colHeader('STATUS')),
-                        ),
-                        Expanded(
-                          flex: 1,
-                          child: Center(child: _colHeader('SETĂRI')),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1, color: Color(0xFFE8F5E0)),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('users')
-                        .where('role', isEqualTo: 'student')
-                        .snapshots(),
-                    builder: (context, snap) {
-                      if (snap.hasError) {
-                        return Center(
-                          child: SelectableText("Eroare:\n${snap.error}"),
-                        );
-                      }
-                      if (!snap.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+                    const Divider(height: 1, color: Color(0xFFE8F5E0)),
+                    Expanded(
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .where('role', isEqualTo: 'student')
+                            .snapshots(),
+                        builder: (context, snap) {
+                          if (snap.hasError) {
+                            return Center(
+                              child: SelectableText("Eroare:\n${snap.error}"),
+                            );
+                          }
+                          if (!snap.hasData) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
 
-                      final docs = [...snap.data!.docs];
-                      docs.sort((a, b) {
-                        final an = ((a.data() as Map)['fullName'] ?? '')
-                            .toString()
-                            .toLowerCase();
-                        final bn = ((b.data() as Map)['fullName'] ?? '')
-                            .toString()
-                            .toLowerCase();
-                        return an.compareTo(bn);
-                      });
+                          final docs = [...snap.data!.docs];
+                          docs.sort((a, b) {
+                            final an = ((a.data() as Map)['fullName'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            final bn = ((b.data() as Map)['fullName'] ?? '')
+                                .toString()
+                                .toLowerCase();
+                            return an.compareTo(bn);
+                          });
 
-                      if (docs.isEmpty) {
-                        return const Center(child: Text("Nu există elevi"));
-                      }
+                          if (docs.isEmpty) {
+                            return const Center(child: Text("Nu există elevi"));
+                          }
 
-                      final visibleDocs = _showAll
-                          ? docs
-                          : docs.take(_initialLimit).toList();
-                      final hasMore = docs.length > _initialLimit;
+                          final visibleDocs = docs
+                              .skip(_currentPage * _pageSize)
+                              .take(_pageSize)
+                              .toList();
+                          final totalPages = (docs.length / _pageSize).ceil();
 
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(40, 16, 40, 0),
-                            itemCount: visibleDocs.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 12),
-                            itemBuilder: (_, i) {
-                              final d = visibleDocs[i];
-                              final data = d.data() as Map<String, dynamic>;
-                              final uid = d.id;
-                              final username = (data['username'] ?? uid)
-                                  .toString();
-                              final fullName = (data['fullName'] ?? username)
-                                  .toString();
-                              final classId = (data['classId'] ?? '')
-                                  .toString();
-                              final inSchool =
-                                  data['inSchool'] as bool? ?? false;
-                              final email = data['email']?.toString();
-                              final status = (data['status'] ?? 'active')
-                                  .toString();
-                              final onboardingComplete =
-                                  data['onboardingComplete'] as bool? ?? false;
-                              final emailVerified =
-                                  data['emailVerified'] as bool? ?? false;
-                              final passwordChanged =
-                                  data['passwordChanged'] as bool? ?? false;
-                              final parentUsernames = List<String>.from(
-                                data['parents'] ?? [],
-                              );
-                              final photoUrl =
-                                  (data['photoUrl'] ?? data['avatarUrl'] ?? '')
-                                      .toString();
+                          return Column(
+                            children: [
+                              Expanded(
+                                child: ListView.separated(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    40,
+                                    16,
+                                    40,
+                                    0,
+                                  ),
+                                  itemCount: visibleDocs.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 12),
+                                  itemBuilder: (_, i) {
+                                    final d = visibleDocs[i];
+                                    final data =
+                                        d.data() as Map<String, dynamic>;
+                                    final uid = d.id;
+                                    final username = (data['username'] ?? uid)
+                                        .toString();
+                                    final fullName =
+                                        (data['fullName'] ?? username)
+                                            .toString();
+                                    final classId = (data['classId'] ?? '')
+                                        .toString();
+                                    final inSchool =
+                                        data['inSchool'] as bool? ?? false;
+                                    final email = data['email']?.toString();
+                                    final status = (data['status'] ?? 'active')
+                                        .toString();
+                                    final onboardingComplete =
+                                        data['onboardingComplete'] as bool? ??
+                                        false;
+                                    final emailVerified =
+                                        data['emailVerified'] as bool? ?? false;
+                                    final passwordChanged =
+                                        data['passwordChanged'] as bool? ??
+                                        false;
+                                    final parentUsernames = List<String>.from(
+                                      data['parents'] ?? [],
+                                    );
+                                    final photoUrl =
+                                        (data['photoUrl'] ??
+                                                data['avatarUrl'] ??
+                                                '')
+                                            .toString();
 
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Expanded(
-                                      flex: 5,
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
                                       child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
                                         children: [
-                                          CircleAvatar(
-                                            radius: 20,
-                                            backgroundColor: _avatarColor(
-                                              fullName,
-                                            ),
-                                            backgroundImage: photoUrl.isNotEmpty
-                                                ? NetworkImage(photoUrl)
-                                                      as ImageProvider
-                                                : null,
-                                            child: photoUrl.isEmpty
-                                                ? Text(
-                                                    _initials(fullName),
-                                                    style: const TextStyle(
-                                                      color: Color(0xFF1A1A1A),
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                      fontSize: 13,
-                                                    ),
-                                                  )
-                                                : null,
-                                          ),
-                                          const SizedBox(width: 12),
                                           Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                            flex: 5,
+                                            child: Row(
                                               children: [
-                                                Text(
-                                                  fullName,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 14,
-                                                    color: Color(0xFF111111),
+                                                CircleAvatar(
+                                                  radius: 20,
+                                                  backgroundColor: _avatarColor(
+                                                    fullName,
                                                   ),
+                                                  backgroundImage:
+                                                      photoUrl.isNotEmpty
+                                                      ? NetworkImage(photoUrl)
+                                                            as ImageProvider
+                                                      : null,
+                                                  child: photoUrl.isEmpty
+                                                      ? Text(
+                                                          _initials(fullName),
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Color(
+                                                                  0xFF1A1A1A,
+                                                                ),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
+                                                                fontSize: 13,
+                                                              ),
+                                                        )
+                                                      : null,
                                                 ),
-                                                Text(
-                                                  'Username: $username',
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color: Color(0xFF7A9070),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        fullName,
+                                                        style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          fontSize: 14,
+                                                          color: Color(
+                                                            0xFF111111,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        'Username: $username',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color: Color(
+                                                            0xFF7A9070,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Align(
-                                        alignment: Alignment.center,
-                                        child: classId.isNotEmpty
-                                            ? Container(
+                                          Expanded(
+                                            flex: 2,
+                                            child: Align(
+                                              alignment: Alignment.center,
+                                              child: classId.isNotEmpty
+                                                  ? Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 14,
+                                                            vertical: 6,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFFDCEEDC,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              20,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        _formatClassName(
+                                                          classId,
+                                                        ),
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color: Color(
+                                                            0xFF2E7D32,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    )
+                                                  : const Text('-'),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 4,
+                                            child: Text(
+                                              (email != null &&
+                                                      email.isNotEmpty)
+                                                  ? email
+                                                  : '-',
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: Color(0xFF2E4A2E),
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 2,
+                                            child: Align(
+                                              alignment: Alignment.center,
+                                              child: Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
                                                       horizontal: 14,
                                                       vertical: 6,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: const Color(
-                                                    0xFFDCEEDC,
-                                                  ),
+                                                  color: inSchool
+                                                      ? const Color(0xFFDCEEDC)
+                                                      : const Color(0xFFFDEBEB),
                                                   borderRadius:
                                                       BorderRadius.circular(20),
                                                 ),
                                                 child: Text(
-                                                  _formatClassName(classId),
-                                                  style: const TextStyle(
+                                                  inSchool
+                                                      ? 'ÎN INCINTĂ'
+                                                      : 'ÎN AFARA INCINTEI',
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
                                                     fontSize: 12,
                                                     fontWeight: FontWeight.w700,
-                                                    color: Color(0xFF2E7D32),
+                                                    color: inSchool
+                                                        ? const Color(
+                                                            0xFF2E7D32,
+                                                          )
+                                                        : const Color(
+                                                            0xFFD32F2F,
+                                                          ),
                                                   ),
                                                 ),
-                                              )
-                                            : const Text('-'),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 4,
-                                      child: Text(
-                                        (email != null && email.isNotEmpty)
-                                            ? email
-                                            : '-',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          color: Color(0xFF2E4A2E),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Align(
-                                        alignment: Alignment.center,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 14,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: inSchool
-                                                ? const Color(0xFFDCEEDC)
-                                                : const Color(0xFFFDEBEB),
-                                            borderRadius: BorderRadius.circular(
-                                              20,
+                                              ),
                                             ),
                                           ),
-                                          child: Text(
-                                            inSchool
-                                                ? 'ÎN INCINTĂ'
-                                                : 'ÎN AFARA INCINTEI',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w700,
-                                              color: inSchool
-                                                  ? const Color(0xFF2E7D32)
-                                                  : const Color(0xFFD32F2F),
+                                          Expanded(
+                                            flex: 1,
+                                            child: Center(
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.settings_outlined,
+                                                  color: Color(0xFF424242),
+                                                  size: 22,
+                                                ),
+                                                onPressed: () =>
+                                                    _openStudentDialog(
+                                                      context,
+                                                      uid: uid,
+                                                      username: username,
+                                                      fullName: fullName,
+                                                      classId: classId,
+                                                      inSchool: inSchool,
+                                                      status: status,
+                                                      onboardingComplete:
+                                                          onboardingComplete,
+                                                      emailVerified:
+                                                          emailVerified,
+                                                      passwordChanged:
+                                                          passwordChanged,
+                                                      email: email,
+                                                      parentUsernames:
+                                                          parentUsernames,
+                                                    ),
+                                              ),
                                             ),
                                           ),
-                                        ),
+                                        ],
                                       ),
-                                    ),
-                                    Expanded(
-                                      flex: 1,
-                                      child: Center(
-                                        child: IconButton(
-                                          icon: const Icon(
-                                            Icons.settings_outlined,
-                                            color: Color(0xFF424242),
-                                            size: 22,
-                                          ),
-                                          onPressed: () => _openStudentDialog(
-                                            context,
-                                            uid: uid,
-                                            username: username,
-                                            fullName: fullName,
-                                            classId: classId,
-                                            inSchool: inSchool,
-                                            status: status,
-                                            onboardingComplete:
-                                                onboardingComplete,
-                                            emailVerified: emailVerified,
-                                            passwordChanged: passwordChanged,
-                                            email: email,
-                                            parentUsernames: parentUsernames,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                          if (hasMore || _showAll)
-                            Container(
-                              padding: const EdgeInsets.fromLTRB(
-                                40,
-                                10,
-                                40,
-                                12,
-                              ),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFF4F9F3),
-                                border: Border(
-                                  top: BorderSide(color: Color(0xFFE8E8E8)),
-                                ),
-                                borderRadius: BorderRadius.only(
-                                  bottomLeft: Radius.circular(20),
-                                  bottomRight: Radius.circular(20),
+                                    );
+                                  },
                                 ),
                               ),
-                              alignment: Alignment.centerRight,
-                              child: GestureDetector(
-                                onTap: () =>
-                                    setState(() => _showAll = !_showAll),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
+                              if (totalPages > 1)
+                                Container(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    40,
+                                    14,
+                                    40,
+                                    14,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE8E8E8),
-                                    borderRadius: BorderRadius.circular(10),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFF4F9F3),
+                                    border: Border(
+                                      top: BorderSide(color: Color(0xFFE8E8E8)),
+                                    ),
+                                    borderRadius: BorderRadius.only(
+                                      bottomLeft: Radius.circular(20),
+                                      bottomRight: Radius.circular(20),
+                                    ),
                                   ),
                                   child: Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        _showAll
-                                            ? 'Afișează mai puțin'
-                                            : 'Afișează mai mult',
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF333333),
-                                        ),
+                                      _PaginationButton(
+                                        icon: Icons.chevron_left_rounded,
+                                        enabled: _currentPage > 0,
+                                        onTap: () =>
+                                            setState(() => _currentPage--),
                                       ),
-                                      const SizedBox(width: 6),
-                                      Icon(
-                                        _showAll
-                                            ? Icons.keyboard_arrow_up
-                                            : Icons.keyboard_arrow_down,
-                                        size: 18,
-                                        color: const Color(0xFF333333),
+                                      const SizedBox(width: 4),
+                                      ..._buildPageButtons(totalPages),
+                                      const SizedBox(width: 4),
+                                      _PaginationButton(
+                                        icon: Icons.chevron_right_rounded,
+                                        enabled: _currentPage < totalPages - 1,
+                                        onTap: () =>
+                                            setState(() => _currentPage++),
                                       ),
                                     ],
                                   ),
                                 ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  List<Widget> _buildPageButtons(int totalPages) {
+    final pages = <Widget>[];
+    const maxVisible = 5;
+
+    void addPage(int index) {
+      pages.add(
+        GestureDetector(
+          onTap: () => setState(() => _currentPage = index),
+          child: Container(
+            width: 36,
+            height: 36,
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            decoration: BoxDecoration(
+              color: _currentPage == index
+                  ? const Color(0xFF424242)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _currentPage == index
+                    ? const Color(0xFF424242)
+                    : const Color(0xFFD0D0D0),
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${index + 1}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: _currentPage == index
+                    ? Colors.white
+                    : const Color(0xFF333333),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    void addEllipsis() {
+      pages.add(
+        Container(
+          width: 36,
+          height: 36,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          alignment: Alignment.center,
+          child: const Text(
+            '...',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF999999),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (totalPages <= maxVisible) {
+      for (int i = 0; i < totalPages; i++) {
+        addPage(i);
+      }
+    } else {
+      // Always show first page
+      addPage(0);
+
+      if (_currentPage > 2) {
+        addEllipsis();
+      }
+
+      // Pages around current
+      final start = (_currentPage - 1).clamp(1, totalPages - 2);
+      final end = (_currentPage + 1).clamp(1, totalPages - 2);
+      for (int i = start; i <= end; i++) {
+        addPage(i);
+      }
+
+      if (_currentPage < totalPages - 3) {
+        addEllipsis();
+      }
+
+      // Always show last page
+      addPage(totalPages - 1);
+    }
+
+    return pages;
   }
 
   String _formatClassName(String classId) {
@@ -1677,5 +1793,41 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
 
     addParentC.dispose();
     renameC.dispose();
+  }
+}
+
+class _PaginationButton extends StatelessWidget {
+  const _PaginationButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: enabled ? const Color(0xFFD0D0D0) : const Color(0xFFE8E8E8),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          size: 20,
+          color: enabled ? const Color(0xFF333333) : const Color(0xFFCCCCCC),
+        ),
+      ),
+    );
   }
 }

@@ -10,7 +10,8 @@ import 'admin_teachers_page.dart';
 import 'admin_turnstiles_page.dart';
 
 class AdminClassesPage extends StatefulWidget {
-  const AdminClassesPage({super.key});
+  const AdminClassesPage({super.key, this.embedded = false});
+  final bool embedded;
 
   @override
   State<AdminClassesPage> createState() => _AdminClassesPageState();
@@ -61,6 +62,18 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final content = Container(
+      color: const Color(0xFFF0F3EC),
+      child: Column(
+        children: [
+          if (!widget.embedded) const _TopBar(),
+          const Expanded(child: _VacanciesContent()),
+        ],
+      ),
+    );
+
+    if (widget.embedded) return content;
+
     final displayName = (AppSession.fullName?.trim().isNotEmpty == true)
         ? AppSession.fullName!.trim()
         : ((AppSession.username?.trim().isNotEmpty == true)
@@ -92,17 +105,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                       _openSidebarPage(const AdminParentsPage()),
                   onLogoutTap: _showLogoutDialog,
                 ),
-                Expanded(
-                  child: Container(
-                    color: const Color(0xFFF0F3EC),
-                    child: Column(
-                      children: [
-                        const _TopBar(),
-                        Expanded(child: _VacanciesContent()),
-                      ],
-                    ),
-                  ),
-                ),
+                Expanded(child: content),
               ],
             ),
           ),
@@ -403,6 +406,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
   DateTime? _endDate;
   DateTime _displayMonth = DateTime.now();
   String? _selectedDocId;
+  String? _selectedVacancyName;
 
   @override
   void dispose() {
@@ -438,6 +442,8 @@ class _VacanciesContentState extends State<_VacanciesContent> {
       _startDate = null;
       _endDate = null;
       _displayMonth = DateTime.now();
+      _selectedDocId = null;
+      _selectedVacancyName = null;
     });
   }
 
@@ -571,43 +577,43 @@ class _VacanciesContentState extends State<_VacanciesContent> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Setare Vacante Școlare',
-              style: TextStyle(
-                fontSize: 44,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF223624),
-                letterSpacing: -0.4,
-              ),
+    return Padding(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Setare Vacante Școlare',
+            style: TextStyle(
+              fontSize: 44,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF223624),
+              letterSpacing: -0.4,
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Configurați perioadele de repaus pentru anul academic 2023-2024.',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF5C6D58),
-                fontWeight: FontWeight.w500,
-              ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Configurați perioadele de repaus pentru anul academic 2023-2024.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF5C6D58),
+              fontWeight: FontWeight.w500,
             ),
-            const SizedBox(height: 24),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(flex: 3, child: _buildFormSection()),
+                Expanded(flex: 2, child: _buildFormSection()),
                 const SizedBox(width: 24),
-                Expanded(flex: 3, child: _buildUpcomingVacancies()),
+                Expanded(flex: 1, child: _buildUpcomingVacancies()),
               ],
             ),
-            const SizedBox(height: 24),
-            _buildImportantMessage(),
-          ],
-        ),
+          ),
+          const SizedBox(height: 24),
+          _buildImportantMessage(),
+        ],
       ),
     );
   }
@@ -620,7 +626,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
         border: Border.all(color: const Color(0xFFE2EBDD)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 3),
           ),
@@ -630,59 +636,38 @@ class _VacanciesContentState extends State<_VacanciesContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Configurare Vacanță Nouă',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF223624),
-            ),
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E7D32),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Configurare Vacanță Nouă',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF223624),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'NUME EVENIMENT / VACANȚĂ',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF7FA593),
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  hintText: 'Ex: Vacanța de Primăvară',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFDDE7D7)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFDDE7D7)),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFFF3F7EE),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'DATA INCEPUT',
+                      'NUME EVENIMENT / VACANȚĂ',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -691,189 +676,243 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _startDate ?? DateTime.now(),
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _startDate = picked;
-                            _displayMonth = picked;
-                            if (_endDate != null &&
-                                _endDate!.isBefore(picked)) {
-                              _endDate = null;
-                            }
-                          });
-                        }
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF3F7EE),
-                          border: Border.all(
-                            color: const Color(0xFFDDE7D7),
-                            width: 1,
-                          ),
+                    TextField(
+                      controller: _nameController,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        hintText: 'Ex: Vacanța de Primăvară',
+                        border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Color(0xFFDDE7D7)),
                         ),
-                        padding: const EdgeInsets.symmetric(
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Color(0xFFDDE7D7)),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF3F7EE),
+                        contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
-                          vertical: 12,
+                          vertical: 16,
                         ),
-                        child: Text(
-                          _startDate == null
-                              ? 'Selectati data'
-                              : _formatDate(_startDate!),
-                          style: TextStyle(
-                            color: _startDate == null
-                                ? const Color(0xFF999999)
-                                : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'DATA INCEPUT',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF7FA593),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _startDate ?? DateTime.now(),
+                                    firstDate: DateTime(2020),
+                                    lastDate: DateTime(2030),
+                                  );
+                                  if (picked != null) {
+                                    setState(() {
+                                      _startDate = picked;
+                                      _displayMonth = picked;
+                                      _selectedDocId = null;
+                                      _selectedVacancyName = null;
+                                      if (_endDate != null && _endDate!.isBefore(picked)) {
+                                        _endDate = null;
+                                      }
+                                    });
+                                  }
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF3F7EE),
+                                    border: Border.all(color: const Color(0xFFDDE7D7), width: 1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          _startDate == null ? 'dd/mm/yyyy' : _formatDate(_startDate!),
+                                          style: TextStyle(
+                                            color: _startDate == null ? const Color(0xFF999999) : Colors.black,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                      const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF999999)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'DATA SFARSIT',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF7FA593),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _endDate ?? _startDate ?? DateTime.now(),
+                                    firstDate: _startDate ?? DateTime(2020),
+                                    lastDate: DateTime(2030),
+                                  );
+                                  if (picked != null) {
+                                    setState(() {
+                                      _endDate = picked;
+                                      _selectedDocId = null;
+                                      _selectedVacancyName = null;
+                                    });
+                                  }
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF3F7EE),
+                                    border: Border.all(color: const Color(0xFFDDE7D7), width: 1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          _endDate == null ? 'dd/mm/yyyy' : _formatDate(_endDate!),
+                                          style: TextStyle(
+                                            color: _endDate == null ? const Color(0xFF999999) : Colors.black,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                      const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF999999)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: _addVacancy,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF2E7D32),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text(
+                              'Adaugă Vacanță',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _resetForm,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFD32F2F),
+                              side: const BorderSide(color: Color(0xFFDDE7D7), width: 1),
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            icon: const Icon(Icons.close, size: 18),
+                            label: const Text(
+                              'Anulează',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _showModifyDialog,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF2E7D32),
+                          side: const BorderSide(color: Color(0xFF2E7D32), width: 1),
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(Icons.calendar_month, size: 18),
+                        label: const Text(
+                          'Modifică Vacanța',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 24),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Text(
-                      'DATA SFARSIT',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF7FA593),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _endDate ?? _startDate ?? DateTime.now(),
-                          firstDate: _startDate ?? DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _endDate = picked;
-                          });
-                        }
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF3F7EE),
-                          border: Border.all(
-                            color: const Color(0xFFDDE7D7),
-                            width: 1,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
+                    Expanded(child: _buildCalendar()),
+                    if (_selectedVacancyName != null || _nameController.text.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          _endDate == null
-                              ? 'Selectati data'
-                              : _formatDate(_endDate!),
-                          style: TextStyle(
-                            color: _endDate == null
-                                ? const Color(0xFF999999)
-                                : Colors.black,
+                          '* Previzualizare: ${_selectedVacancyName ?? _nameController.text}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF2E7D32),
+                            fontStyle: FontStyle.italic,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'CALENDAR',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF7FA593),
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _buildCalendar(),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _addVacancy,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text(
-                    'Adaugă Vacanță',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _resetForm,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.black87,
-                    side: const BorderSide(color: Color(0xFFBDBDBD), width: 1),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  icon: const Icon(Icons.close, size: 18),
-                  label: const Text(
-                    'Anulează',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _showModifyDialog,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF2E7D32),
-                side: const BorderSide(color: Color(0xFF2E7D32), width: 1),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              icon: const Icon(Icons.edit, size: 18),
-              label: const Text(
-                'Modifică Vacanță',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
             ),
           ),
         ],
@@ -890,20 +929,20 @@ class _VacanciesContentState extends State<_VacanciesContent> {
     final firstWeekday = firstDay.weekday;
 
     const monthNames = [
-      'ianuarie',
-      'februarie',
-      'martie',
-      'aprilie',
-      'mai',
-      'iunie',
-      'iulie',
-      'august',
-      'septembrie',
-      'octombrie',
-      'noiembrie',
-      'decembrie',
+      'Ianuarie',
+      'Februarie',
+      'Martie',
+      'Aprilie',
+      'Mai',
+      'Iunie',
+      'Iulie',
+      'August',
+      'Septembrie',
+      'Octombrie',
+      'Noiembrie',
+      'Decembrie',
     ];
-    const dayNames = ['L', 'Ma', 'Mi', 'J', 'V', 'S', 'D'];
+    const dayNames = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
     return Container(
       decoration: BoxDecoration(
@@ -968,14 +1007,20 @@ class _VacanciesContentState extends State<_VacanciesContent> {
             ],
           ),
           const SizedBox(height: 8),
-          GridView.count(
-            crossAxisCount: 7,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 1.1,
-            mainAxisSpacing: 4,
-            crossAxisSpacing: 4,
-            children: [
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final rows = ((firstWeekday - 1 + daysInMonth) / 7).ceil();
+                final cellWidth = constraints.maxWidth / 7;
+                final cellHeight = constraints.maxHeight / rows;
+                return GridView.count(
+                  crossAxisCount: 7,
+                  shrinkWrap: false,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: cellWidth / cellHeight,
+                  mainAxisSpacing: 0,
+                  crossAxisSpacing: 4,
+                  children: [
               ...List.generate(firstWeekday - 1, (_) => const SizedBox()),
               ...List.generate(daysInMonth, (index) {
                 final day = index + 1;
@@ -1028,7 +1073,10 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                   ),
                 );
               }),
-            ],
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -1043,86 +1091,85 @@ class _VacanciesContentState extends State<_VacanciesContent> {
         border: Border.all(color: const Color(0xFFE2EBDD)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 3),
           ),
         ],
       ),
       padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Vacante Salvate',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF223624),
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Total 5 perioade active',
-            style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
-          ),
-          const SizedBox(height: 20),
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('vacancies')
-                .orderBy('startDate')
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: Text(
-                      'Nu exista vacante create',
-                      style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
-                    ),
-                  ),
-                );
-              }
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('vacancies')
+            .orderBy('startDate')
+            .snapshots(),
+        builder: (context, snapshot) {
+          final vacancies = snapshot.hasData
+              ? snapshot.data!.docs.toList()
+              : <QueryDocumentSnapshot>[];
 
-              if (!snapshot.hasData) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(12),
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              }
-
-              final vacancies = snapshot.data!.docs.toList();
-
-              if (vacancies.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: Text(
-                      'Nu exista vacante create',
-                      style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
-                    ),
-                  ),
-                );
-              }
-
-              return SingleChildScrollView(
-                child: Column(
-                  children: [
-                    for (var i = 0; i < vacancies.length; i++)
-                      _buildVacancyCard(
-                        vacancies[i],
-                        i == 0,
-                        vacancies[i].id == _selectedDocId,
-                      ),
-                  ],
+          Widget listWidget;
+          if (snapshot.hasError) {
+            listWidget = const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'Nu exista vacante create',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
                 ),
-              );
-            },
-          ),
-        ],
+              ),
+            );
+          } else if (!snapshot.hasData) {
+            listWidget = const Center(
+              child: Padding(
+                padding: EdgeInsets.all(12),
+                child: CircularProgressIndicator(),
+              ),
+            );
+          } else if (vacancies.isEmpty) {
+            listWidget = const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'Nu exista vacante create',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
+                ),
+              ),
+            );
+          } else {
+            listWidget = Column(
+              children: [
+                for (var i = 0; i < vacancies.length; i++)
+                  _buildVacancyCard(
+                    vacancies[i],
+                    i == 0,
+                    vacancies[i].id == _selectedDocId,
+                  ),
+              ],
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Vacante Salvate',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF223624),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Total ${vacancies.length} perioade active',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF999999)),
+              ),
+              const SizedBox(height: 20),
+              listWidget,
+            ],
+          );
+        },
       ),
     );
   }
@@ -1175,7 +1222,18 @@ class _VacanciesContentState extends State<_VacanciesContent> {
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedDocId = _selectedDocId == doc.id ? null : doc.id;
+          if (_selectedDocId == doc.id) {
+            _selectedDocId = null;
+            _selectedVacancyName = null;
+            _startDate = null;
+            _endDate = null;
+          } else {
+            _selectedDocId = doc.id;
+            _selectedVacancyName = name;
+            _startDate = startDate;
+            _endDate = endDate;
+            _displayMonth = startDate;
+          }
         });
       },
       child: Container(
