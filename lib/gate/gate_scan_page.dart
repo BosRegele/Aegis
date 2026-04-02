@@ -41,17 +41,11 @@ class _GateScanPageState extends State<GateScanPage> {
   }
 
   Future<void> _playScanSound() async {
-    try {
-      await FlutterRingtonePlayer().playNotification();
-    } catch (_) {}
+    await SystemSound.play(SystemSoundType.alert);
   }
 
   Future<void> _playSuccessSound() async {
-    try {
-      await FlutterRingtonePlayer().playNotification();
-    } catch (_) {
-      await SystemSound.play(SystemSoundType.alert);
-    }
+    await SystemSound.play(SystemSoundType.alert);
   }
 
   Future<void> _logout() async {

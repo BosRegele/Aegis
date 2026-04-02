@@ -1391,6 +1391,37 @@ exports.redeemQrToken = onCall(async (request) => {
     let accessEventToLog = null;
     const scanTimestamp = admin.firestore.Timestamp.now();
 
+    // Pre-read the token outside the transaction to get userId for the leave-request query.
+    // (tx.get(query) is unreliable with multi-field filters in firebase-admin v13)
+    const preScanSnap = await tokenRef.get();
+    const preUserId = preScanSnap.exists ? String(preScanSnap.data().userId || "") : "";
+
+    let approvedLeaveExit = false;
+    if (preUserId) {
+        const roNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
+        const roDay = String(roNow.getDate()).padStart(2, "0");
+        const roMonth = String(roNow.getMonth() + 1).padStart(2, "0");
+        const roYear = roNow.getFullYear();
+        const todayText = `${roDay}/${roMonth}/${roYear}`;
+        const nowMinutes = roNow.getHours() * 60 + roNow.getMinutes();
+
+        // Query approved leave requests for today, then check timeText in code
+        const leaveSnap = await db.collection("leaveRequests")
+            .where("studentUid", "==", preUserId)
+            .where("status", "==", "approved")
+            .where("dateText", "==", todayText)
+            .get();
+
+        // approvedLeaveExit is true if at least one request's timeText (HH:mm) is <= now
+        approvedLeaveExit = leaveSnap.docs.some((doc) => {
+            const timeText = String(doc.data().timeText || "");
+            const parts = timeText.split(":").map((x) => parseInt(x, 10));
+            if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return false;
+            const requestMinutes = parts[0] * 60 + parts[1];
+            return nowMinutes >= requestMinutes;
+        });
+    }
+
     const result = await db.runTransaction(async (tx) => {
         let result = null;
 
