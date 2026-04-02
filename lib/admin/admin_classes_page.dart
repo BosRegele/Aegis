@@ -118,7 +118,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
         PageRouteBuilder<void>(
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
-          pageBuilder: (_, __, ___) => page,
+          pageBuilder: (_, _, _) => page,
         ),
       );
     } finally {
@@ -1173,7 +1173,7 @@ class _ClassSelectorCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            value: selectedClassId,
+            initialValue: selectedClassId,
             onChanged: onChanged,
             decoration: InputDecoration(
               filled: true,

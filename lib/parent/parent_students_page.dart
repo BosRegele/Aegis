@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../core/session.dart';
@@ -416,7 +416,7 @@ class ParentStudentsPage extends StatelessWidget {
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(top: 6, bottom: 24),
       itemCount: validStudents.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 14),
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
         final student = validStudents[index];
         return _StudentSummaryButton(
@@ -500,22 +500,6 @@ class _TopHeader extends StatelessWidget {
       ),
     );
   }
-}
-
-class _HeaderDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.14);
-    const spacing = 28.0;
-    for (double y = 16; y < size.height; y += spacing) {
-      for (double x = 14; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), 2, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _StudentSummaryButton extends StatelessWidget {
@@ -823,7 +807,7 @@ class _StudentProfileCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.10),
+                color: Colors.black.withValues(alpha: 0.10),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -915,12 +899,12 @@ class _StudentProfileCard extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
-              color: const Color(0xFF2E3B4E).withOpacity(0.22),
+              color: const Color(0xFF2E3B4E).withValues(alpha: 0.22),
               width: 2.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF2E3B4E).withOpacity(0.09),
+                color: const Color(0xFF2E3B4E).withValues(alpha: 0.09),
                 blurRadius: 18,
                 offset: const Offset(0, 6),
               ),
@@ -952,7 +936,7 @@ class _StudentProfileCard extends StatelessWidget {
                 ],
               ),
               Divider(
-                color: const Color(0xFF2E3B4E).withOpacity(0.18),
+                color: const Color(0xFF2E3B4E).withValues(alpha: 0.18),
                 thickness: 2,
                 height: 16,
               ),
@@ -974,7 +958,7 @@ class _StudentProfileCard extends StatelessWidget {
                       'Nu este disponibil pe această pagină.',
                       style: TextStyle(
                         fontSize: 15,
-                        color: const Color(0xFF2E3B4E).withOpacity(0.45),
+                        color: const Color(0xFF2E3B4E).withValues(alpha: 0.45),
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -982,7 +966,7 @@ class _StudentProfileCard extends StatelessWidget {
                 ],
               ),
               Divider(
-                color: const Color(0xFF2E3B4E).withOpacity(0.18),
+                color: const Color(0xFF2E3B4E).withValues(alpha: 0.18),
                 thickness: 2,
                 height: 16,
               ),
@@ -1004,7 +988,7 @@ class _StudentProfileCard extends StatelessWidget {
                       'Nu este disponibil pe această pagină.',
                       style: TextStyle(
                         fontSize: 15,
-                        color: const Color(0xFF2E3B4E).withOpacity(0.45),
+                        color: const Color(0xFF2E3B4E).withValues(alpha: 0.45),
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -1118,7 +1102,7 @@ class _DetailChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color, width: 1.2),
       ),

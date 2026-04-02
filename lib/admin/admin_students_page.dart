@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 import 'services/admin_store.dart';
@@ -308,7 +308,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                     0,
                                   ),
                                   itemCount: visibleDocs.length,
-                                  separatorBuilder: (_, __) =>
+                                  separatorBuilder: (_, _) =>
                                       const SizedBox(height: 12),
                                   itemBuilder: (_, i) {
                                     final d = visibleDocs[i];
@@ -695,14 +695,15 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       final letter = match.group(2)!.trim();
 
       String roman = numStr;
-      if (numStr == '9')
+      if (numStr == '9') {
         roman = 'IX';
-      else if (numStr == '10')
+      } else if (numStr == '10') {
         roman = 'X';
-      else if (numStr == '11')
+      } else if (numStr == '11') {
         roman = 'XI';
-      else if (numStr == '12')
+      } else if (numStr == '12') {
         roman = 'XII';
+      }
 
       if (letter.isNotEmpty) {
         return 'Clasa a $roman-a $letter';
@@ -1103,8 +1104,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                       : () async {
                                           final newName = renameC.text.trim();
                                           if (newName.isEmpty ||
-                                              newName == currentFullName)
+                                              newName == currentFullName) {
                                             return;
+                                          }
                                           setS(() {
                                             busy = true;
                                             msg = null;

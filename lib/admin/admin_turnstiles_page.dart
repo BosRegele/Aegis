@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -62,7 +62,7 @@ class _AdminTurnstilesPageState extends State<AdminTurnstilesPage> {
         PageRouteBuilder<void>(
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
-          pageBuilder: (_, __, ___) => page,
+          pageBuilder: (_, _, _) => page,
         ),
       );
     } finally {
@@ -429,7 +429,7 @@ class _ActiveHubsPanel extends StatelessWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   itemCount: gates.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 14),
+                  separatorBuilder: (_, _) => const SizedBox(height: 14),
                   itemBuilder: (_, i) => _GateCard(
                     key: ValueKey(gates[i].id),
                     doc: gates[i],

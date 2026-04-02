@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 
 class GateScanPage extends StatefulWidget {
   const GateScanPage({super.key});

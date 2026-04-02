@@ -272,8 +272,9 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
                                                 final fn = (u['fullName'] ?? '')
                                                     .toString()
                                                     .trim();
-                                                if (fn.isNotEmpty)
+                                                if (fn.isNotEmpty) {
                                                   displayName = fn;
+                                                }
                                               }
                                               return Text(
                                                 'Diriginte: $displayName',

@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 
@@ -290,7 +290,7 @@ class _TopHeader extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white.withOpacity(0.10),
+        color: Colors.white.withValues(alpha: 0.10),
       ),
     );
   }
@@ -299,7 +299,7 @@ class _TopHeader extends StatelessWidget {
 class _HeaderDotsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.15);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.15);
     const spacing = 18.0;
     const radius = 1.3;
     for (double y = 12; y < size.height; y += spacing) {
@@ -537,7 +537,7 @@ class _StudentDetailPage extends StatelessWidget {
                         (inSchool
                                 ? const Color(0xFF7AAF5B)
                                 : const Color(0xFFE57373))
-                            .withOpacity(0.30),
+                            .withValues(alpha: 0.30),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
@@ -547,7 +547,7 @@ class _StudentDetailPage extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 34,
-                    backgroundColor: Colors.white.withOpacity(0.22),
+                    backgroundColor: Colors.white.withValues(alpha: 0.22),
                     child: Text(
                       initials,
                       style: const TextStyle(
@@ -577,7 +577,7 @@ class _StudentDetailPage extends StatelessWidget {
                               inSchool
                                   ? Icons.school_rounded
                                   : Icons.logout_rounded,
-                              color: Colors.white.withOpacity(0.85),
+                              color: Colors.white.withValues(alpha: 0.85),
                               size: 16,
                             ),
                             const SizedBox(width: 5),
@@ -586,7 +586,7 @@ class _StudentDetailPage extends StatelessWidget {
                                   ? 'În incinta școlii'
                                   : 'În afara școlii',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.90),
+                                color: Colors.white.withValues(alpha: 0.90),
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -650,7 +650,7 @@ class _InfoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
