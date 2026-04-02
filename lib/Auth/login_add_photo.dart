@@ -251,38 +251,49 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
   Widget _buildRightPanel() {
     return Container(
       color: _cardCream,
-      padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 36),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildStepIndicator(),
-          const SizedBox(height: 22),
-          const Text(
-            'Imagine Profil',
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A1A),
-              height: 1.1,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 36),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildStepIndicator(),
+                    const SizedBox(height: 22),
+                    const Text(
+                      'Imagine Profil',
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Încarcă o fotografie de profil pentru identificare vizuală.',
+                      style: TextStyle(fontSize: 13, color: Color(0xFF777777), height: 1.4),
+                    ),
+                    const SizedBox(height: 28),
+                    Center(child: _buildAvatar()),
+                    const SizedBox(height: 24),
+                    _buildUploadButton(),
+                    const SizedBox(height: 12),
+                    _buildInfoBox(),
+                    const SizedBox(height: 28),
+                    _buildNavigationRow(),
+                    const SizedBox(height: 18),
+                    _buildHelpText(),
+                  ],
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Încarcă o fotografie de profil pentru identificare vizuală.',
-            style: TextStyle(fontSize: 13, color: Color(0xFF777777), height: 1.4),
-          ),
-          const SizedBox(height: 28),
-          Center(child: _buildAvatar()),
-          const SizedBox(height: 24),
-          _buildUploadButton(),
-          const SizedBox(height: 12),
-          _buildInfoBox(),
-          const SizedBox(height: 28),
-          _buildNavigationRow(),
-          const SizedBox(height: 18),
-          _buildHelpText(),
-        ],
+          );
+        },
       ),
     );
   }
