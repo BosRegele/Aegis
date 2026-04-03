@@ -21,8 +21,13 @@ const _tertiary = Color(0xFF8E3557);
 
 class MeniuScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigateTab;
+  final void Function(String docId)? onNavigateToActiveLeave;
 
-  const MeniuScreen({super.key, this.onNavigateTab});
+  const MeniuScreen({
+    super.key,
+    this.onNavigateTab,
+    this.onNavigateToActiveLeave,
+  });
 
   @override
   State<MeniuScreen> createState() => _MeniuScreenState();
@@ -271,7 +276,8 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                         classDocStream: classStream,
                                         leaveActiveStream: _leaveActiveStream,
                                         isWithinSchedule: _isWithinSchedule,
-                                        onTap: () => _openCereri(context),
+                                        onActiveTap:
+                                            widget.onNavigateToActiveLeave,
                                       ),
                                     ],
                                   ),
@@ -963,13 +969,13 @@ class _LeaveStatusCard extends StatelessWidget {
   final Stream<DocumentSnapshot<Map<String, dynamic>>>? classDocStream;
   final Stream<QuerySnapshot<Map<String, dynamic>>>? leaveActiveStream;
   final bool Function(Map<String, dynamic>) isWithinSchedule;
-  final VoidCallback onTap;
+  final void Function(String docId)? onActiveTap;
 
   const _LeaveStatusCard({
     required this.classDocStream,
     required this.leaveActiveStream,
     required this.isWithinSchedule,
-    required this.onTap,
+    this.onActiveTap,
   });
 
   @override
@@ -986,12 +992,32 @@ class _LeaveStatusCard extends StatelessWidget {
           builder: (context, snapshot) {
             final docs = snapshot.data?.docs ?? [];
 
-            final hasActive =
-                inSchedule &&
-                docs.any((doc) => doc.data()['status'] == 'approved');
-            final hasPending = docs.any(
-              (doc) => ['active', 'pending'].contains(doc.data()['status']),
-            );
+            // Client-side: filter out requests whose date has passed
+            final now = DateTime.now();
+            final todayMidnight = DateTime(now.year, now.month, now.day);
+            bool isExpiredLocally(Map<String, dynamic> data) {
+              final forDate = (data['requestedForDate'] as Timestamp?)
+                  ?.toDate();
+              if (forDate == null) return false;
+              return forDate.isBefore(todayMidnight);
+            }
+
+            final activeDoc = inSchedule
+                ? docs
+                      .cast<QueryDocumentSnapshot<Map<String, dynamic>>>()
+                      .where((doc) {
+                        final d = doc.data();
+                        return d['status'] == 'approved' &&
+                            !isExpiredLocally(d);
+                      })
+                      .firstOrNull
+                : null;
+            final hasActive = activeDoc != null;
+            final hasPending = docs.any((doc) {
+              final d = doc.data();
+              return ['active', 'pending'].contains(d['status']) &&
+                  !isExpiredLocally(d);
+            });
 
             final statusText = hasActive
                 ? 'Activă'
@@ -1000,90 +1026,92 @@ class _LeaveStatusCard extends StatelessWidget {
                 : 'Inactivă';
             final statusColor = (hasActive || hasPending) ? _primary : _outline;
 
-            return GestureDetector(
-              onTap: onTap,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 14,
+            final card = Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                color: _surfaceLowest,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: _outlineVariant.withValues(alpha: 0.18),
                 ),
-                decoration: BoxDecoration(
-                  color: _surfaceLowest,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: _outlineVariant.withValues(alpha: 0.18),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x09000000),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
                   ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x09000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: _surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: _surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.description_rounded,
-                        color: _primary,
-                        size: 26,
+                    child: const Icon(
+                      Icons.description_rounded,
+                      color: _primary,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Cerere Învoire',
+                      style: TextStyle(
+                        color: _onSurface,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Cerere Învoire',
-                        style: TextStyle(
-                          color: _onSurface,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _primary.withValues(alpha: 0.09),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 9,
+                          height: 9,
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _primary.withValues(alpha: 0.09),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 9,
-                            height: 9,
-                            decoration: BoxDecoration(
-                              color: statusColor,
-                              shape: BoxShape.circle,
-                            ),
+                        const SizedBox(width: 8),
+                        Text(
+                          statusText.toUpperCase(),
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            statusText.toUpperCase(),
-                            style: TextStyle(
-                              color: statusColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
+
+            if (hasActive && onActiveTap != null) {
+              return GestureDetector(
+                onTap: () => onActiveTap!(activeDoc.id),
+                child: card,
+              );
+            }
+            return card;
           },
         );
       },

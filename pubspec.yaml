@@ -52,6 +52,8 @@ dependencies:
   file_saver: ^0.2.14
   flutter_ringtone_player: ^4.0.0+4
   web: ^1.1.1
+  image_picker: ^1.1.2
+  firebase_storage: ^13.2.0
 
 dev_dependencies:
   flutter_test:

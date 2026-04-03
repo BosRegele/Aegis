@@ -29,16 +29,16 @@ class ProfilePicturePage extends StatefulWidget {
 
 class _ProfilePicturePageState extends State<ProfilePicturePage> {
   // ── colours matching the mockup ─────────────────────────────────────────────
-  static const _darkBg      = Color(0xFF0B2B17);
+  static const _darkBg = Color(0xFF0B2B17);
   static const _leftPanelGreen = Color(0xFF0C5A22);
   static const _primaryGreen = Color(0xFF1F6B38);
-  static const _cardCream   = Color(0xFFF5F1E8);
-  static const _infoBoxBg   = Color(0xFFE9F4EE);
+  static const _cardCream = Color(0xFFF5F1E8);
+  static const _infoBoxBg = Color(0xFFE9F4EE);
   static const _infoBoxBorder = Color(0xFFBFDECC);
 
   Uint8List? _imageBytes;
-  String?    _imageFilePath;
-  bool       _loading = false;
+  String? _imageFilePath;
+  bool _loading = false;
 
   // ── image picking ────────────────────────────────────────────────────────────
   Future<void> _pickImage() async {
@@ -52,7 +52,7 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
     final bytes = await picked.readAsBytes();
     if (!mounted) return;
     setState(() {
-      _imageBytes    = bytes;
+      _imageBytes = bytes;
       _imageFilePath = picked.path;
     });
   }
@@ -67,8 +67,9 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
       }
 
       if (_imageBytes != null) {
-        final ref = FirebaseStorage.instance
-            .ref('profile_pictures/${widget.user.uid}.jpg');
+        final ref = FirebaseStorage.instance.ref(
+          'profile_pictures/${widget.user.uid}.jpg',
+        );
         final meta = SettableMetadata(contentType: 'image/jpeg');
 
         String downloadUrl;
@@ -89,19 +90,23 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
     } on FirebaseException catch (e) {
       if (!mounted) return;
       final message = switch (e.code) {
-        'unauthorized' => 'Nu am putut salva fotografia acum. Incearca din nou in cateva secunde.',
+        'unauthorized' =>
+          'Nu am putut salva fotografia acum. Incearca din nou in cateva secunde.',
         'canceled' => 'Incarcarea fotografiei a fost anulata.',
-        'quota-exceeded' => 'Spatiul de stocare este momentan indisponibil. Incearca din nou mai tarziu.',
+        'quota-exceeded' =>
+          'Spatiul de stocare este momentan indisponibil. Incearca din nou mai tarziu.',
         _ => 'Nu am putut salva fotografia acum. Incearca din nou.',
       };
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Nu am putut salva fotografia acum. Incearca din nou.'),
+            content: Text(
+              'Nu am putut salva fotografia acum. Incearca din nou.',
+            ),
           ),
         );
       }
@@ -137,7 +142,7 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.24),
+                color: Colors.black.withValues(alpha: 0.24),
                 blurRadius: 28,
                 offset: const Offset(0, 12),
               ),
@@ -191,7 +196,7 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: _primaryGreen.withOpacity(0.35),
+                        color: _primaryGreen.withValues(alpha: 0.35),
                         blurRadius: 18,
                         offset: const Offset(0, 6),
                       ),
@@ -241,7 +246,7 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.07),
+        color: Colors.white.withValues(alpha: 0.07),
         shape: BoxShape.circle,
       ),
     );
@@ -257,7 +262,10 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 36),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 44,
+                  vertical: 36,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -276,7 +284,11 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
                     const SizedBox(height: 8),
                     const Text(
                       'Încarcă o fotografie de profil pentru identificare vizuală.',
-                      style: TextStyle(fontSize: 13, color: Color(0xFF777777), height: 1.4),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF777777),
+                        height: 1.4,
+                      ),
                     ),
                     const SizedBox(height: 28),
                     Center(child: _buildAvatar()),
@@ -343,8 +355,9 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
           CircleAvatar(
             radius: 65,
             backgroundColor: const Color(0xFFD0D0D0),
-            backgroundImage:
-                _imageBytes != null ? MemoryImage(_imageBytes!) : null,
+            backgroundImage: _imageBytes != null
+                ? MemoryImage(_imageBytes!)
+                : null,
             child: _imageBytes == null
                 ? Icon(Icons.person, size: 72, color: Colors.grey.shade500)
                 : null,
@@ -364,7 +377,11 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2.5),
                   ),
-                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                 ),
               ),
             ),
@@ -380,9 +397,15 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: (_loading || !widget.canUploadPhoto) ? null : _pickImage,
-        icon: const Icon(Icons.file_upload_outlined, color: Color(0xFF333333), size: 20),
+        icon: const Icon(
+          Icons.file_upload_outlined,
+          color: Color(0xFF333333),
+          size: 20,
+        ),
         label: Text(
-          widget.canUploadPhoto ? 'Încarcă Foto' : 'Upload indisponibil pentru acest rol',
+          widget.canUploadPhoto
+              ? 'Încarcă Foto'
+              : 'Upload indisponibil pentru acest rol',
           style: TextStyle(
             color: Color(0xFF333333),
             fontWeight: FontWeight.w500,
@@ -393,7 +416,9 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
           backgroundColor: Colors.white,
           side: const BorderSide(color: Color(0xFFDDDDDD)),
           padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       ),
     );
@@ -411,7 +436,11 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline_rounded, color: Color(0xFF2D7A4F), size: 19),
+          const Icon(
+            Icons.info_outline_rounded,
+            color: Color(0xFF2D7A4F),
+            size: 19,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -447,7 +476,10 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
               ),
               child: const Text(
                 'Skip',
-                style: TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Color(0xFF333333),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -463,7 +495,10 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
             ),
             label: const Text(
               'Pasul anterior',
-              style: TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: Color(0xFF333333),
+                fontWeight: FontWeight.w500,
+              ),
             ),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -480,7 +515,7 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
             onPressed: _loading ? null : _finalize,
             style: ElevatedButton.styleFrom(
               backgroundColor: _primaryGreen,
-              disabledBackgroundColor: Color(0xFF1F6B38).withOpacity(0.5),
+              disabledBackgroundColor: Color(0xFF1F6B38).withValues(alpha: 0.5),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -554,7 +589,7 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
 class _PhotoLeftDotsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.09);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.09);
     const spacing = 18.0;
     for (double y = 12; y < size.height; y += spacing) {
       for (double x = 12; x < size.width; x += spacing) {
@@ -566,4 +601,3 @@ class _PhotoLeftDotsPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-

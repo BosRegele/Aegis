@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 import 'services/admin_store.dart';
@@ -1878,17 +1878,22 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                 onPressed: busy
                                     ? null
                                     : () async {
+                                        final parentNavigator = Navigator.of(
+                                          context,
+                                        );
                                         final ok = await showDialog<bool>(
                                           context: ctx,
-                                          builder: (_) => AlertDialog(
+                                          builder: (dialogCtx) => AlertDialog(
                                             title: const Text('Ștergere elev'),
                                             content: Text(
                                               'Ești sigur că vrei să ștergi elevul $fullName?',
                                             ),
                                             actions: [
                                               TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(ctx, false),
+                                                onPressed: () => Navigator.pop(
+                                                  dialogCtx,
+                                                  false,
+                                                ),
                                                 child: const Text('Anulează'),
                                               ),
                                               ElevatedButton(
@@ -1896,21 +1901,24 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                   backgroundColor: Colors.red,
                                                   foregroundColor: Colors.white,
                                                 ),
-                                                onPressed: () =>
-                                                    Navigator.pop(ctx, true),
+                                                onPressed: () => Navigator.pop(
+                                                  dialogCtx,
+                                                  true,
+                                                ),
                                                 child: const Text('Șterge'),
                                               ),
                                             ],
                                           ),
                                         );
-                                        if (ok != true) return;
+                                        if (!ctx.mounted || ok != true) return;
                                         setS(() {
                                           busy = true;
                                           msg = null;
                                         });
                                         try {
                                           await store.deleteUser(username);
-                                          if (mounted) Navigator.pop(context);
+                                          if (!mounted) return;
+                                          parentNavigator.pop();
                                         } catch (e) {
                                           setS(() {
                                             busy = false;

@@ -256,43 +256,53 @@ class _CereriScreenState extends State<CereriScreen> {
       hourLabelText: 'Ora',
       minuteLabelText: 'Minute',
       builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(
-                primary: _primary,
-                onPrimary: Colors.white,
-                surface: _card,
-                onSurface: _textDark,
-              ),
-              textButtonTheme: TextButtonThemeData(
-                style: TextButton.styleFrom(foregroundColor: _primary),
-              ),
-              timePickerTheme: TimePickerThemeData(
-                backgroundColor: _card,
-                hourMinuteColor: _cardMuted,
-                hourMinuteTextColor: _textDark,
-                dayPeriodColor: _cardMuted,
-                dayPeriodTextColor: _textDark,
-                dialBackgroundColor: _cardMuted,
-                dialHandColor: _primary,
-                dialTextColor: _textDark,
-                entryModeIconColor: _primary,
-                hourMinuteShape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: const BorderSide(color: Color(0xFFCAD5C5), width: 1.2),
+        return Localizations.override(
+          context: context,
+          delegates: const [_RomanianTimePickerLocalizationsDelegate()],
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: const ColorScheme.light(
+                  primary: _primary,
+                  onPrimary: Colors.white,
+                  surface: _card,
+                  onSurface: _textDark,
                 ),
-                dayPeriodShape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: Color(0xFFCAD5C5), width: 1.2),
+                textButtonTheme: TextButtonThemeData(
+                  style: TextButton.styleFrom(foregroundColor: _primary),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
+                timePickerTheme: TimePickerThemeData(
+                  backgroundColor: _card,
+                  hourMinuteColor: _cardMuted,
+                  hourMinuteTextColor: _textDark,
+                  dayPeriodColor: _cardMuted,
+                  dayPeriodTextColor: _textDark,
+                  dialBackgroundColor: _cardMuted,
+                  dialHandColor: _primary,
+                  dialTextColor: _textDark,
+                  entryModeIconColor: _primary,
+                  hourMinuteShape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(
+                      color: Color(0xFFCAD5C5),
+                      width: 1.2,
+                    ),
+                  ),
+                  dayPeriodShape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(
+                      color: Color(0xFFCAD5C5),
+                      width: 1.2,
+                    ),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
                 ),
               ),
+              child: child ?? const SizedBox.shrink(),
             ),
-            child: child ?? const SizedBox.shrink(),
           ),
         );
       },
@@ -1133,21 +1143,28 @@ class _ReasonBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _cardMuted,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: TextField(
-        controller: controller,
-        minLines: 4,
-        maxLines: 4,
-        style: const TextStyle(fontSize: 18, color: _textDark, height: 1.2),
-        decoration: const InputDecoration(
-          hintText: 'Introduceti motivul cererii de invoire...',
-          hintStyle: TextStyle(fontSize: 18, color: Color(0xFFA2AAA0)),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.fromLTRB(14, 14, 14, 14),
+    return TextField(
+      controller: controller,
+      minLines: 4,
+      maxLines: 4,
+      style: const TextStyle(fontSize: 18, color: _textDark, height: 1.2),
+      decoration: InputDecoration(
+        hintText: 'Introduceti motivul cererii de invoire...',
+        hintStyle: const TextStyle(fontSize: 18, color: Color(0xFFA2AAA0)),
+        filled: true,
+        fillColor: _cardMuted,
+        contentPadding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFCED8C8), width: 1.2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFCED8C8), width: 1.2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: _primary, width: 1.6),
         ),
       ),
     );
@@ -1191,4 +1208,36 @@ class _HeaderCircle extends StatelessWidget {
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Delegate pentru traducerea tooltip-urilor din TimePicker în română
+// ---------------------------------------------------------------------------
+class _RomanianTimePickerLocalizationsDelegate
+    extends LocalizationsDelegate<MaterialLocalizations> {
+  const _RomanianTimePickerLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) => true;
+
+  @override
+  Future<MaterialLocalizations> load(Locale locale) async =>
+      const _RomanianMaterialLocalizations();
+
+  @override
+  bool shouldReload(_RomanianTimePickerLocalizationsDelegate old) => false;
+}
+
+class _RomanianMaterialLocalizations extends DefaultMaterialLocalizations {
+  const _RomanianMaterialLocalizations();
+
+  String get switchToInputModeLabel => 'Comută la mod text';
+
+  String get switchToCalendarModeLabel => 'Comută la calendar';
+
+  @override
+  String get dialModeButtonLabel => 'Comută la selectorul cu cadran';
+
+  @override
+  String get inputTimeModeButtonLabel => 'Comută la mod text';
 }

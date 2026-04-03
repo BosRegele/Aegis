@@ -1,4 +1,6 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+// ignore_for_file: use_build_context_synchronously
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 
@@ -63,11 +65,18 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
     }
   }
 
-  Future<void> _showRequestDialog(
-    BuildContext context,
-    String requestId,
-    Map<String, dynamic> d,
-  ) async {
+  Future<
+    ({
+      String dateText,
+      String message,
+      String? photoUrl,
+      String status,
+      String studentId,
+      String studentName,
+      String timeText,
+    })
+  >
+  _loadRequestDialogData(Map<String, dynamic> d) async {
     final studentUid = (d['studentUid'] ?? '').toString();
     final studentName = (d['studentName'] ?? '').toString();
     final status = (d['status'] ?? '').toString();
@@ -92,7 +101,27 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
       } catch (_) {}
     }
 
-    if (!mounted) return;
+    return (
+      dateText: dateText,
+      message: message,
+      photoUrl: photoUrl,
+      status: status,
+      studentId: studentId,
+      studentName: studentName,
+      timeText: timeText,
+    );
+  }
+
+  void _presentRequestDialog({
+    required String requestId,
+    required String studentName,
+    required String studentId,
+    required String status,
+    required String message,
+    required String dateText,
+    required String timeText,
+    required String? photoUrl,
+  }) {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -431,8 +460,25 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                                   dateText: dateText,
                                   timeText: timeText,
                                   message: message,
-                                  onTap: () =>
-                                      _showRequestDialog(context, requestId, d),
+                                  onTap: () async {
+                                    final dialogData =
+                                        await _loadRequestDialogData(d);
+                                    if (!mounted) return;
+                                    WidgetsBinding.instance
+                                        .addPostFrameCallback((_) {
+                                          if (!mounted) return;
+                                          _presentRequestDialog(
+                                            requestId: requestId,
+                                            studentName: dialogData.studentName,
+                                            studentId: dialogData.studentId,
+                                            status: dialogData.status,
+                                            message: dialogData.message,
+                                            dateText: dialogData.dateText,
+                                            timeText: dialogData.timeText,
+                                            photoUrl: dialogData.photoUrl,
+                                          );
+                                        });
+                                  },
                                   onAccept: () => _reviewRequest(
                                     requestId: requestId,
                                     status: 'approved',
