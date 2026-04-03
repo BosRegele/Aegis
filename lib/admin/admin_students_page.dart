@@ -530,6 +530,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                       email: email,
                                                       parentUsernames:
                                                           parentUsernames,
+                                                      photoUrl: photoUrl,
                                                     ),
                                               ),
                                             ),
@@ -762,6 +763,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     required bool passwordChanged,
     required String? email,
     required List<String> parentUsernames,
+    String photoUrl = '',
   }) async {
     final addParentC = TextEditingController();
     final renameC = TextEditingController();
@@ -943,14 +945,19 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                             backgroundColor: Colors.white.withValues(
                               alpha: 0.25,
                             ),
-                            child: Text(
-                              _initials(fullName),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16,
-                              ),
-                            ),
+                            backgroundImage: photoUrl.isNotEmpty
+                                ? NetworkImage(photoUrl) as ImageProvider
+                                : null,
+                            child: photoUrl.isEmpty
+                                ? Text(
+                                    _initials(fullName),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
+                                    ),
+                                  )
+                                : null,
                           ),
                           const SizedBox(width: 14),
                           Expanded(

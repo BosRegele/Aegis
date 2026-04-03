@@ -1,7 +1,8 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,6 +30,13 @@ class TwoFactorVerifyPage extends StatefulWidget {
 }
 
 class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
+  static const _darkBg = Color(0xFF0A2E11);
+  static const _leftPanelGreen = Color(0xFF0C5A22);
+  static const _primaryGreen = Color(0xFF1F6B38);
+  static const _cardBg = Color(0xFFF5F7F2);
+  static const _infoBoxBg = Color(0xFFE9F4EE);
+  static const _infoBoxBorder = Color(0xFFBFDECC);
+
   final _codeController = TextEditingController();
   bool _loading = false;
   bool _sending = true;
@@ -53,9 +61,6 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
         return;
       }
 
-      // On web, localStorage is shared across all tabs. If the user already
-      // verified 2FA in another tab within the same session, skip the challenge
-      // to avoid invalidating the other tab's active code.
       if (await _isAlreadyVerifiedInBrowser()) {
         AppSession.twoFactorVerified = true;
         return;
@@ -77,9 +82,6 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
   static Future<bool> _isAlreadyVerifiedInBrowser() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // We read the key from the current uid set by the outer StreamBuilder.
-      // Because we may not have AppSession.uid at this point yet, we rely on
-      // the stored key independently of uid for lookup.
       final keys = prefs.getKeys();
       final now = DateTime.now().millisecondsSinceEpoch;
       for (final key in keys) {
@@ -178,12 +180,7 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
       await FirebaseFunctions.instance
           .httpsCallable('authVerifySecondFactor')
           .call({'code': code});
-      // Persist so other open browser tabs skip 2FA automatically.
       await _persistVerified();
-      // Setting twoFactorVerified triggers the ValueListenableBuilder in
-      // main.dart to rebuild and route to the correct dashboard — no
-      // Navigator.push needed (which would remove main.dart's StreamBuilder
-      // from the tree and break logout).
       AppSession.twoFactorVerified = true;
     } on FirebaseFunctionsException catch (e) {
       setState(() {
@@ -236,417 +233,49 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
     }
   }
 
-  Widget _buildLogoBadge({
-    double size = 72,
-    double radius = 18,
-    Color background = const Color(0xFF3E8B3D),
-    double shadowOpacity = 0.34,
-  }) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(radius),
-        boxShadow: [
-          BoxShadow(
-            color: background.withValues(alpha: shadowOpacity),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+  // ── build ──────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    if (_sending && _maskedEmail.isEmpty && _error.isEmpty) {
+      return const Scaffold(
+        backgroundColor: _darkBg,
+        body: Center(child: CircularProgressIndicator(color: _primaryGreen)),
+      );
+    }
+
+    final isWide = MediaQuery.of(context).size.width > 750;
+
+    return Scaffold(
+      backgroundColor: _darkBg,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: CustomPaint(painter: _TfaDotsPainter(), size: Size.infinite),
           ),
+          SafeArea(child: isWide ? _buildWideLayout() : _buildNarrowLayout()),
         ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: Padding(
-          padding: EdgeInsets.all(size * 0.14),
-          child: Image.asset(
-            'assets/images/aegis_logo.png',
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-          ),
-        ),
       ),
     );
   }
 
   Widget _buildWideLayout() {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      child: Material(
+        color: Colors.transparent,
+        elevation: 24,
+        shadowColor: Colors.black,
+        borderRadius: BorderRadius.circular(24),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 770, maxHeight: 572),
-          child: AspectRatio(
-            aspectRatio: 770 / 572,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.22),
-                    blurRadius: 26,
-                    offset: const Offset(0, 16),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Color(0xFF1D6D2C),
-                              Color(0xFF0E4B1B),
-                              Color(0xFF0A3914),
-                            ],
-                            stops: [0.0, 0.56, 1.0],
-                          ),
-                        ),
-                        child: Stack(
-                          children: [
-                            Positioned.fill(
-                              child: CustomPaint(
-                                painter: _TwoFactorDotsPainter(
-                                  color: Color(0x14FFFFFF),
-                                  spacing: 18,
-                                  radius: 0.9,
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              top: 112,
-                              left: 0,
-                              right: 0,
-                              child: Center(
-                                child: _buildLogoBadge(
-                                  size: 66,
-                                  radius: 16,
-                                  background: const Color(0xFF4B973D),
-                                  shadowOpacity: 0.42,
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              left: 38,
-                              right: 38,
-                              bottom: 36,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'Poarta ta către\nsecuritate academică',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 30,
-                                      fontWeight: FontWeight.w800,
-                                      height: 1.2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  Text(
-                                    'Soluția completă, optimizată pentru mobil,\n'
-                                    'pentru gestionarea accesului și plecărilor din\n'
-                                    'școală. Crește siguranța prin identități QR\n'
-                                    'dinamice, integrare automată a orarului și\n'
-                                    'aprobări în timp real din partea părinților.',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.78),
-                                      fontSize: 13.4,
-                                      height: 1.6,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Container(
-                        color: const Color(0xFFF8FAEF),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(48, 46, 48, 32),
-                          child: Column(
-                            children: [
-                              const SizedBox(height: 2),
-                              Center(
-                                child: Image.asset(
-                                  'assets/images/aegis_logo.png',
-                                  width: 22,
-                                  height: 22,
-                                  fit: BoxFit.contain,
-                                  filterQuality: FilterQuality.high,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              const Text(
-                                'Verificare în doi pași',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF192016),
-                                  height: 1.15,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                width: 230,
-                                child: Text(
-                                  _sending
-                                      ? 'Pregătim trimiterea codului către\n${_maskedEmail.isNotEmpty ? _maskedEmail : "emailul tău"}.'
-                                      : 'Am trimis un cod de 6 cifre la\n${_maskedEmail.isNotEmpty ? _maskedEmail : "emailul tău"}.',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Color(0xFF697062),
-                                    fontSize: 13,
-                                    height: 1.45,
-                                  ),
-                                ),
-                              ),
-                              if (_sending) ...[
-                                const SizedBox(height: 12),
-                                const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.4,
-                                    color: Color(0xFF0B741D),
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 34),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 58,
-                                child: TextField(
-                                  controller: _codeController,
-                                  keyboardType: TextInputType.number,
-                                  maxLength: 6,
-                                  enabled: !_sending,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    letterSpacing: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF222820),
-                                  ),
-                                  decoration: InputDecoration(
-                                    counterText: '',
-                                    hintText: '-  -  -  -  -  -',
-                                    hintStyle: const TextStyle(
-                                      letterSpacing: 8,
-                                      color: Color(0xFFC9CEC3),
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 18,
-                                      vertical: 18,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: const BorderSide(
-                                        color: Color(0xFFE1E6DB),
-                                        width: 1.3,
-                                      ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: const BorderSide(
-                                        color: Color(0xFFE1E6DB),
-                                        width: 1.3,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: const BorderSide(
-                                        color: Color(0xFF0B741D),
-                                        width: 1.8,
-                                      ),
-                                    ),
-                                  ),
-                                  onChanged: (_) {
-                                    if (_error.isNotEmpty) {
-                                      setState(() => _error = '');
-                                    }
-                                  },
-                                  onSubmitted: (_) => _verify(),
-                                ),
-                              ),
-                              if (_error.isNotEmpty) ...[
-                                const SizedBox(height: 10),
-                                Text(
-                                  _error,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 24),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 48,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(0xFF0B741D)
-                                            .withValues(alpha: 0.20),
-                                        blurRadius: 14,
-                                        offset: const Offset(0, 5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ElevatedButton(
-                                    onPressed: (_loading || _sending)
-                                        ? null
-                                        : _verify,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF0B741D),
-                                      foregroundColor: Colors.white,
-                                      disabledBackgroundColor: const Color(
-                                        0xFF0B741D,
-                                      ).withValues(alpha: 0.55),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      elevation: 0,
-                                      textStyle: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    child: _loading
-                                        ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.2,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : const Text('Verifică'),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              TextButton(
-                                onPressed: (_resendCooldown > 0 || _sending)
-                                    ? null
-                                    : _resend,
-                                style: TextButton.styleFrom(
-                                  foregroundColor: const Color(0xFF0B741D),
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: const Size(0, 0),
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                child: Text(
-                                  _resendCooldown > 0
-                                      ? 'Retrimite în ${_resendCooldown}s'
-                                      : 'Nu ai primit codul? Retrimite',
-                                  style: TextStyle(
-                                    color: _resendCooldown > 0
-                                        ? const Color(0xFF99A090)
-                                        : const Color(0xFF0B741D),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              const Spacer(),
-                              const Divider(
-                                height: 1,
-                                thickness: 1,
-                                color: Color(0xFFE9EEDF),
-                              ),
-                              const SizedBox(height: 22),
-                              SizedBox(
-                                height: 64,
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    SizedBox(
-                                      height: 38,
-                                      child: OutlinedButton.icon(
-                                        onPressed:
-                                            () => Navigator.of(context).pop(),
-                                        icon: const Icon(
-                                          Icons.arrow_back,
-                                          size: 17,
-                                        ),
-                                        label: const Text('Înapoi'),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor:
-                                              const Color(0xFF0B741D),
-                                          side: const BorderSide(
-                                            color: Color(0xFFD9E2CF),
-                                          ),
-                                          backgroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                          ),
-                                          textStyle: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    const Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Ai nevoie de ajutor?',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Color(0xFF8D9388),
-                                          ),
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          'Contactează suportul IT',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Color(0xFF0B741D),
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const Spacer(flex: 2),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          constraints: const BoxConstraints(maxWidth: 960, maxHeight: 620),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 40, child: _buildLeftPanel()),
+                Expanded(flex: 60, child: _buildRightPanel()),
+              ],
             ),
           ),
         ),
@@ -655,393 +284,381 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
   }
 
   Widget _buildNarrowLayout() {
-    final viewInsets = MediaQuery.of(context).viewInsets;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + viewInsets.bottom),
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+        child: Material(
+          color: Colors.transparent,
+          elevation: 20,
+          shadowColor: Colors.black,
+          borderRadius: BorderRadius.circular(20),
+          clipBehavior: Clip.antiAlias,
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight - 32),
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF1D6D2C),
-                        Color(0xFF0E4B1B),
-                        Color(0xFF0A3914),
-                      ],
-                      stops: [0.0, 0.56, 1.0],
-                    ),
-                    borderRadius: BorderRadius.circular(26),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.18),
-                        blurRadius: 18,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: CustomPaint(
-                          painter: _TwoFactorDotsPainter(
-                            color: const Color(0x14FFFFFF),
-                            spacing: 18,
-                            radius: 0.9,
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLogoBadge(
-                              size: 58,
-                              radius: 14,
-                              background: const Color(0xFF4B973D),
-                              shadowOpacity: 0.40,
-                            ),
-                            const SizedBox(height: 24),
-                            const Text(
-                              'Poarta ta către\nsecuritate academică',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 26,
-                                fontWeight: FontWeight.w800,
-                                height: 1.18,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              'Soluția completă pentru acces, identități QR dinamice și aprobări în timp real din partea părinților.',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.82),
-                                fontSize: 13,
-                                height: 1.55,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAEF),
-                    borderRadius: BorderRadius.circular(26),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Center(
-                          child: Image.asset(
-                            'assets/images/aegis_logo.png',
-                            width: 20,
-                            height: 20,
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.high,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Verificare în doi pași',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF192016),
-                            height: 1.15,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          _sending
-                              ? 'Pregătim trimiterea codului către\n${_maskedEmail.isNotEmpty ? _maskedEmail : "emailul tău"}.'
-                              : 'Am trimis un cod de 6 cifre la\n${_maskedEmail.isNotEmpty ? _maskedEmail : "emailul tău"}.',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Color(0xFF697062),
-                            fontSize: 13,
-                            height: 1.45,
-                          ),
-                        ),
-                        if (_sending) ...[
-                          const SizedBox(height: 12),
-                          const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.4,
-                              color: Color(0xFF0B741D),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          height: 58,
-                          child: TextField(
-                            controller: _codeController,
-                            keyboardType: TextInputType.number,
-                            maxLength: 6,
-                            enabled: !_sending,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              letterSpacing: 10,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF222820),
-                            ),
-                            decoration: InputDecoration(
-                              counterText: '',
-                              hintText: '-  -  -  -  -  -',
-                              hintStyle: const TextStyle(
-                                letterSpacing: 6,
-                                color: Color(0xFFC9CEC3),
-                                fontSize: 18,
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 16,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFFE1E6DB),
-                                  width: 1.2,
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFFE1E6DB),
-                                  width: 1.2,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFF0B741D),
-                                  width: 1.8,
-                                ),
-                              ),
-                            ),
-                            onChanged: (_) {
-                              if (_error.isNotEmpty) {
-                                setState(() => _error = '');
-                              }
-                            },
-                            onSubmitted: (_) => _verify(),
-                          ),
-                        ),
-                        if (_error.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          Text(
-                            _error,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: (_loading || _sending) ? null : _verify,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0B741D),
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: const Color(
-                                0xFF0B741D,
-                              ).withValues(alpha: 0.55),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
-                              textStyle: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            child: _loading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Text('Verifică'),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextButton(
-                          onPressed: (_resendCooldown > 0 || _sending)
-                              ? null
-                              : _resend,
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF0B741D),
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 0),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Text(
-                            _resendCooldown > 0
-                                ? 'Retrimite în ${_resendCooldown}s'
-                                : 'Nu ai primit codul? Retrimite',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: _resendCooldown > 0
-                                  ? const Color(0xFF99A090)
-                                  : const Color(0xFF0B741D),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: Color(0xFFE9EEDF),
-                        ),
-                        const SizedBox(height: 18),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => Navigator.of(context).pop(),
-                                icon: const Icon(Icons.arrow_back, size: 17),
-                                label: const Text('Înapoi'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF0B741D),
-                                  side: const BorderSide(
-                                    color: Color(0xFFD9E2CF),
-                                  ),
-                                  backgroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        const Column(
-                          children: [
-                            Text(
-                              'Ai nevoie de ajutor?',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF8D9388),
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Contactează suportul IT',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF0B741D),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: _buildRightPanel(),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_sending && _maskedEmail.isEmpty && _error.isEmpty) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF0A2E11),
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _TwoFactorDotsPainter(
-                  color: const Color(0x14FFFFFF),
-                  spacing: 22,
-                  radius: 1.0,
+  Widget _buildLeftPanel() {
+    return Container(
+      color: _leftPanelGreen,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              CustomPaint(painter: _TfaLeftDotsPainter()),
+              Positioned(top: -34, right: -24, child: _panelCircle(130)),
+              Positioned(bottom: -42, left: -28, child: _panelCircle(150)),
+              SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 40,
+                      vertical: 54,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: _primaryGreen,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _primaryGreen.withValues(alpha: 0.35),
+                                blurRadius: 18,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              'assets/images/aegis_logo.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 56),
+                        const Text(
+                          'Poarta ta catre\nsecuritate academica',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 46,
+                            fontWeight: FontWeight.w700,
+                            height: 1.08,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Solutia completa, optimizata pentru mobil, '
+                          'pentru gestionarea accesului si plecarilor din '
+                          'scoala. Creste siguranta prin identitati QR '
+                          'dinamice, integrare automata a orarului si '
+                          'aprobari in timp real din partea parintilor.',
+                          style: TextStyle(
+                            color: Color(0xCCFFFFFF),
+                            fontSize: 15,
+                            height: 1.62,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _panelCircle(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.07),
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+
+  Widget _buildRightPanel() {
+    return Container(
+      color: _cardBg,
+      padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 36),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: _infoBoxBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _infoBoxBorder),
+              ),
+              child: const Icon(
+                Icons.shield_outlined,
+                color: _primaryGreen,
+                size: 28,
+              ),
             ),
+          ),
+          const SizedBox(height: 20),
+          const Center(
+            child: Text(
+              'Verificare în doi pași',
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A1A1A),
+                height: 1.1,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: Text(
+              _sending
+                  ? 'Pregătim trimiterea codului...'
+                  : 'Am trimis un cod de 6 cifre la\n${_maskedEmail.isNotEmpty ? _maskedEmail : "emailul tău"}.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF777777),
+                height: 1.4,
+              ),
+            ),
+          ),
+          if (_sending) ...[
+            const SizedBox(height: 20),
             const Center(
               child: SizedBox(
-                width: 28,
-                height: 28,
+                width: 24,
+                height: 24,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2.6,
-                  color: Color(0xFF7AAF5B),
+                  strokeWidth: 2.4,
+                  color: _primaryGreen,
                 ),
               ),
             ),
           ],
-        ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A2E11),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _TwoFactorDotsPainter(
-                color: const Color(0x10FFFFFF),
-                spacing: 22,
-                radius: 1.0,
+          const SizedBox(height: 28),
+          const Text(
+            'Cod de verificare (6 cifre)',
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF333333),
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _codeController,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            enabled: !_sending,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 24,
+              letterSpacing: 10,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: '- - - - - -',
+              hintStyle: const TextStyle(
+                letterSpacing: 4,
+                color: Color(0xFFAAAAAA),
+                fontSize: 16,
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: _primaryGreen, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 14,
+              ),
+            ),
+            onChanged: (_) {
+              if (_error.isNotEmpty) setState(() => _error = '');
+            },
+            onSubmitted: (_) => _verify(),
+          ),
+          if (_error.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white, size: 19),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _error,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.white,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 28),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: (_loading || _sending)
+                      ? null
+                      : () => FirebaseAuth.instance.signOut(),
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 14,
+                    color: Color(0xFF333333),
+                  ),
+                  label: const Text(
+                    'Înapoi',
+                    style: TextStyle(
+                      color: Color(0xFF333333),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(color: Color(0xFFCCCCCC)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: (_loading || _sending) ? null : _verify,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryGreen,
+                    disabledBackgroundColor: const Color(0xFF1F6B38),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: _loading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Text(
+                              'Verifică',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Center(
+            child: TextButton(
+              onPressed: (_resendCooldown > 0 || _sending) ? null : _resend,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                _resendCooldown > 0
+                    ? 'Retrimite în ${_resendCooldown}s'
+                    : 'Nu ai primit codul? Retrimite →',
+                style: TextStyle(
+                  color: _resendCooldown > 0
+                      ? const Color(0xFF999999)
+                      : _primaryGreen,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
-          SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth < 860) {
-                  return _buildNarrowLayout();
-                }
-                return _buildWideLayout();
-              },
+          const SizedBox(height: 18),
+          Center(
+            child: Column(
+              children: [
+                const Text(
+                  'Ai nevoie de ajutor?',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF888888)),
+                ),
+                GestureDetector(
+                  onTap: () {},
+                  child: const Text(
+                    'Contactează suportul IT',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: _primaryGreen,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                      decorationColor: _primaryGreen,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1050,31 +667,36 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
   }
 }
 
-class _TwoFactorDotsPainter extends CustomPainter {
-  final Color color;
-  final double spacing;
-  final double radius;
-
-  const _TwoFactorDotsPainter({
-    required this.color,
-    required this.spacing,
-    required this.radius,
-  });
-
+class _TfaDotsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    for (double y = spacing * 0.6; y < size.height; y += spacing) {
-      for (double x = spacing * 0.6; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), radius, paint);
+    final paint = Paint()
+      ..color = Colors.white.withAlpha(8)
+      ..style = PaintingStyle.fill;
+    const spacing = 20.0;
+    for (double y = 0; y < size.height; y += spacing) {
+      for (double x = 0; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), 1.0, paint);
       }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _TwoFactorDotsPainter oldDelegate) {
-    return oldDelegate.color != color ||
-        oldDelegate.spacing != spacing ||
-        oldDelegate.radius != radius;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _TfaLeftDotsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.09);
+    const spacing = 18.0;
+    for (double y = 12; y < size.height; y += spacing) {
+      for (double x = 12; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), 0.9, paint);
+      }
+    }
   }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -751,7 +751,10 @@ exports.adminResetPassword = onCall(async (request) => {
 
     await admin.auth().updateUser(uid, { password: newPass });
 
+    // Also reset onboarding flags so the user goes through onboarding again
     await admin.firestore().collection("users").doc(uid).set({
+        passwordChanged: false,
+        onboardingComplete: false,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
@@ -2007,6 +2010,42 @@ exports.sendVerificationEmail = onCall(async (request) => {
     return { success: true };
 });
 
+// Student self-service password change during onboarding (uses Admin SDK, no re-auth needed)
+exports.setNewPassword = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Login required");
+    }
+
+    const uid = request.auth.uid;
+    const newPassword = String(request.data?.password || "").trim();
+
+    if (!newPassword || newPassword.length < 8) {
+        throw new HttpsError("invalid-argument", "Parola trebuie sa aiba minim 8 caractere");
+    }
+
+    const userRef = admin.firestore().collection("users").doc(uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+        throw new HttpsError("not-found", "Profil inexistent");
+    }
+
+    // Change password via Admin SDK (no re-auth needed on client).
+    // NOTE: updateUser with password REVOKES the refresh token on the client.
+    await admin.auth().updateUser(uid, { password: newPassword });
+
+    // We intentionally do NOT write to Firestore here — the client writes
+    // passwordChanged (and optionally calls markPasswordChanged) only AFTER
+    // it has re-authenticated.  This eliminates the race condition where
+    // the Firestore listener fires while the old (revoked) auth session
+    // is still active.
+
+    // Return the user's authEmail so the client can re-sign-in with the
+    // new password (custom tokens require IAM signBlob permission which
+    // the default compute SA may not have).
+    const authEmail = (userSnap.data() || {}).authEmail || '';
+    return { ok: true, authEmail };
+});
+
 exports.markPasswordChanged = onCall(async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "Login required");
@@ -2030,9 +2069,12 @@ exports.markPasswordChanged = onCall(async (request) => {
     }
 
     const emailVerified = data.emailVerified === true;
+    const twoFactorVerifiedUntil = admin.firestore.Timestamp
+        .fromMillis(Date.now() + 5 * 60 * 1000);
     await userRef.set({
         passwordChanged: true,
         onboardingComplete: emailVerified,
+        twoFactorVerifiedUntil: twoFactorVerifiedUntil,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
