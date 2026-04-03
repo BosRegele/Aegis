@@ -314,22 +314,49 @@ class AdminStore {
     });
   }
 
-  Future<void> moveStudent(String username, String newClassId) async {
-    username = username.trim().toLowerCase();
+  Future<void> moveStudent(String userIdentifier, String newClassId) async {
+    userIdentifier = userIdentifier.trim();
     newClassId = newClassId.trim().toUpperCase();
 
-    if (username.isEmpty) throw Exception("username lipsa");
+    if (userIdentifier.isEmpty) throw Exception("identificator user lipsa");
     if (newClassId.isEmpty) throw Exception("classId lipsa");
 
-    final userRef = _db.collection('users').doc(username);
+    // Support both user document id (uid/username) and username field.
+    DocumentReference<Map<String, dynamic>>? userRef;
+    final directRef = _db.collection('users').doc(userIdentifier);
+    final directSnap = await directRef.get();
+    if (directSnap.exists) {
+      userRef = directRef;
+    } else {
+      final byUsername = await _db
+          .collection('users')
+          .where('username', isEqualTo: userIdentifier.toLowerCase())
+          .limit(1)
+          .get();
+      if (byUsername.docs.isNotEmpty) {
+        userRef = byUsername.docs.first.reference;
+      }
+    }
+
+    if (userRef == null) {
+      throw Exception(
+        "User inexistent (verifică uid/username): $userIdentifier",
+      );
+    }
+    final resolvedUserRef = userRef;
+
     final newClassRef = _db.collection('classes').doc(newClassId);
 
     await _db.runTransaction((tx) async {
-      final userSnap = await tx.get(userRef);
+      final userSnap = await tx.get(resolvedUserRef);
       if (!userSnap.exists) throw Exception("User inexistent");
 
       final userData = userSnap.data() as Map<String, dynamic>;
       final role = (userData["role"] ?? "").toString();
+      final username = (userData["username"] ?? "")
+          .toString()
+          .trim()
+          .toLowerCase();
       final oldClassId = (userData["classId"] ?? "")
           .toString()
           .trim()
@@ -351,7 +378,7 @@ class AdminStore {
 
       // STUDENT: doar update classId
       if (role == "student") {
-        tx.update(userRef, {
+        tx.update(resolvedUserRef, {
           "classId": newClassId,
           "updatedAt": FieldValue.serverTimestamp(),
         });
@@ -403,7 +430,7 @@ class AdminStore {
       }, SetOptions(merge: true));
 
       // update user.classId
-      tx.update(userRef, {
+      tx.update(resolvedUserRef, {
         "classId": newClassId,
         "updatedAt": FieldValue.serverTimestamp(),
       });
