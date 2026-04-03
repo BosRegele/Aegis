@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 
@@ -63,44 +63,6 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
     }
   }
 
-  // --- Funcție nouă pentru aprobare/respingere în masă ---
-  Future<void> _reviewAllRequests(
-    List<QueryDocumentSnapshot> docs,
-    String status,
-  ) async {
-    final teacherUid = AppSession.uid;
-    if (teacherUid == null || teacherUid.isEmpty) return;
-
-    final batch = FirebaseFirestore.instance.batch();
-    final now = Timestamp.now();
-    final reviewerName = (AppSession.username ?? '').toString();
-
-    for (var doc in docs) {
-      batch.update(doc.reference, {
-        'status': status,
-        'reviewedAt': now,
-        'reviewedByUid': teacherUid,
-        'reviewedByName': reviewerName,
-      });
-    }
-
-    await batch.commit();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            status == 'approved'
-                ? 'Toate cererile au fost aprobate'
-                : 'Toate cererile au fost respinse',
-          ),
-          backgroundColor: status == 'approved' ? Colors.green : Colors.red,
-        ),
-      );
-    }
-  }
-  // ---------------------------------------------------------
-
   Future<void> _showRequestDialog(
     BuildContext context,
     String requestId,
@@ -159,7 +121,7 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                   children: [
                     CircleAvatar(
                       radius: 26,
-                      backgroundColor: Colors.white.withOpacity(0.22),
+                      backgroundColor: Colors.white.withValues(alpha: 0.22),
                       backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
                           ? NetworkImage(photoUrl) as ImageProvider
                           : null,
@@ -197,7 +159,7 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                           Text(
                             'ID: $studentId',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.80),
+                              color: Colors.white.withValues(alpha: 0.80),
                               fontSize: 13,
                             ),
                           ),
@@ -232,7 +194,7 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -270,7 +232,7 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -437,7 +399,7 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                                 16,
                                 18,
                               ),
-                              separatorBuilder: (_, __) =>
+                              separatorBuilder: (_, _) =>
                                   const SizedBox(height: 14),
                               itemCount: docs.length,
                               itemBuilder: (context, index) {
@@ -555,7 +517,7 @@ class _TopHeader extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.10),
+        color: Colors.white.withValues(alpha: 0.10),
         shape: BoxShape.circle,
       ),
     );
@@ -565,7 +527,7 @@ class _TopHeader extends StatelessWidget {
 class _HeaderDotsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.14);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.14);
     const spacing = 18.0;
     for (double y = 14; y < size.height; y += spacing) {
       for (double x = 16; x < size.width; x += spacing) {

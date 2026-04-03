@@ -284,9 +284,10 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                                   'newPassword': newPass,
                                 });
 
-                            if (!mounted) return;
+                            if (!ctx.mounted) return;
                             Navigator.of(ctx).pop();
                             dialogClosed = true;
+                            if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
@@ -317,8 +318,9 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                               );
                             }
                           } finally {
-                            if (dialogClosed) return;
-                            setDialogState(() => submitting = false);
+                            if (!dialogClosed) {
+                              setDialogState(() => submitting = false);
+                            }
                           }
                         },
                   child: Text(submitting ? 'Se salveaza...' : 'Reseteaza'),
@@ -392,7 +394,7 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                               fallback: 0,
                             );
 
-                            if (!mounted) return;
+                            if (!ctx.mounted) return;
                             nextInput = input;
                             postMessage = cooldown > 0
                                 ? 'Un cod a fost deja trimis recent. Reincearca in ${cooldown}s.'
@@ -421,8 +423,9 @@ class _LoginPageFirestoreState extends State<LoginPageFirestore> {
                               );
                             }
                           } finally {
-                            if (dialogClosed) return;
-                            setDialogState(() => sending = false);
+                            if (!dialogClosed) {
+                              setDialogState(() => sending = false);
+                            }
                           }
                         },
                   icon: sending

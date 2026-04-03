@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../core/session.dart';
@@ -142,7 +142,7 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.only(top: 2, bottom: 24),
           itemCount: docs.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 14),
+          separatorBuilder: (_, _) => const SizedBox(height: 14),
           itemBuilder: (context, index) {
             final doc = docs[index];
             final data = doc.data() as Map<String, dynamic>? ?? {};
@@ -395,7 +395,7 @@ class _RequestCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF0D6F1C).withOpacity(0.25),
+                          color: const Color(0xFF0D6F1C).withValues(alpha: 0.25),
                           blurRadius: 14,
                           offset: const Offset(0, 5),
                         ),
@@ -498,38 +498,6 @@ class _InfoLine extends StatelessWidget {
       ],
     );
   }
-}
-
-class _HeaderDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.12);
-    const spacing = 28.0;
-    for (double y = 16; y < size.height; y += spacing) {
-      for (double x = 14; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), 2, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _BgDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFFD2DED0);
-    const spacing = 32.0;
-    for (double y = 16; y < 128; y += spacing) {
-      for (double x = 0; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), 2.1, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _BouncingButton extends StatefulWidget {

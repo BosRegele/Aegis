@@ -13,12 +13,12 @@ import 'services/admin_store.dart';
 import 'admin_classes_page.dart';
 import 'admin_students_page.dart';
 import 'admin_teachers_page.dart';
-import 'admin_admins_page.dart';
 import 'admin_parents_page.dart';
 import 'admin_turnstiles_page.dart';
 import 'admin_vacante.dart' as admin_vacante;
 // import 'secretariat_global_messages_page.dart'; // unused after menu cleanup
 import '../services/security_flags_service.dart';
+import '../core/session.dart';
 
 class SecretariatRawPage extends StatefulWidget {
   const SecretariatRawPage({super.key});
@@ -66,6 +66,15 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
   String log = "";
   final _rng = Random.secure();
   final Set<String> _busyActions = <String>{};
+
+  // global messaging
+  final _globalMsgController = TextEditingController();
+  bool _msgToStudents = true;
+  bool _msgToParents = true;
+  bool _msgToTeachers = true;
+  bool _sendingGlobalMsg = false;
+
+  int _classDistPage = 0;
 
   // Web-only in-memory CSV buffer (no file system on web).
   final StringBuffer _webCsvBuffer = StringBuffer();
@@ -392,9 +401,8 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
           TextButton(
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              if (mounted) {
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              }
+              if (!context.mounted) return;
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
             child: const Text(
               "Da",
@@ -478,6 +486,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
     targetUserC.dispose();
     targetUserFullNameC.dispose();
     targetUserNewPasswordC.dispose();
+    _globalMsgController.dispose();
     super.dispose();
   }
 
@@ -578,6 +587,13 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                       label: "Turnichete",
                                       onTap: () => setState(() {
                                         activeSidebarLabel = 'Turnichete';
+                                      }),
+                                    ),
+                                    _buildSidebarItem(
+                                      icon: Icons.code_rounded,
+                                      label: "Development",
+                                      onTap: () => setState(() {
+                                        activeSidebarLabel = 'Development';
                                       }),
                                     ),
                                   ],
@@ -684,20 +700,23 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 46,
                                     ),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          flex: 2,
-                                          child: _buildRecentAccessCard(),
-                                        ),
-                                        const SizedBox(width: 40),
-                                        Expanded(
-                                          flex: 1,
-                                          child: _buildClassDistributionCard(),
-                                        ),
-                                      ],
+                                    child: IntrinsicHeight(
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(
+                                            flex: 2,
+                                            child: _buildGlobalMessagingCard(),
+                                          ),
+                                          const SizedBox(width: 40),
+                                          Expanded(
+                                            flex: 1,
+                                            child:
+                                                _buildClassDistributionCard(),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 24),
@@ -868,7 +887,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                         return DropdownButtonFormField<
                                                           String
                                                         >(
-                                                          value:
+                                                          initialValue:
                                                               hasSelectedClass
                                                               ? selectedCreateUserClassId
                                                               : null,
@@ -1075,8 +1094,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                   'Utilizator creat: $uname',
                                                                 );
 
-                                                                if (!mounted)
+                                                                if (!mounted) {
                                                                   return;
+                                                                }
                                                                 _showInfoMessage(
                                                                   csvPath ==
                                                                           null
@@ -1158,12 +1178,11 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     12,
                                                                     (i) =>
                                                                         i + 1,
-                                                                  ).map((num) {
+                                                                  ).map((n) {
                                                                     return DropdownMenuItem(
-                                                                      value:
-                                                                          num,
+                                                                      value: n,
                                                                       child: Text(
-                                                                        num.toString(),
+                                                                        n.toString(),
                                                                       ),
                                                                     );
                                                                   }).toList(),
@@ -2107,8 +2126,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                 _logSuccess(
                                                                   'Parola a fost resetată cu succes.',
                                                                 );
-                                                                if (!mounted)
+                                                                if (!mounted) {
                                                                   return;
+                                                                }
                                                                 _showInfoMessage(
                                                                   'Parola a fost actualizată.',
                                                                 );
@@ -2311,8 +2331,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                           'Emailul personal al utilizatorului "${targetUserC.text.trim()}" va fi sters. '
                                                                           'La urmatorul login va trebui sa parcurga din nou onboarding-ul.',
                                                                     );
-                                                                if (!shouldProceed)
+                                                                if (!shouldProceed) {
                                                                   return;
+                                                                }
                                                                 try {
                                                                   await api.removePersonalEmail(
                                                                     username:
@@ -2603,8 +2624,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     message:
                                                                         'Esti sigur ca vrei sa stergi utilizatorul selectat?',
                                                                   );
-                                                              if (!shouldProceed)
+                                                              if (!shouldProceed) {
                                                                 return;
+                                                              }
 
                                                               final uname =
                                                                   targetUserC
@@ -2761,7 +2783,8 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                       return DropdownButtonFormField<
                                                         String
                                                       >(
-                                                        value: hasSelectedClass
+                                                        initialValue:
+                                                            hasSelectedClass
                                                             ? selectedScheduleClassId
                                                             : null,
                                                         isExpanded: true,
@@ -3437,8 +3460,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                       if (!hasSelected &&
                           selectedCreateUserClassId.isNotEmpty) {
                         WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted)
+                          if (mounted) {
                             setState(() => selectedCreateUserClassId = '');
+                          }
                         });
                       }
                       return Column(
@@ -3847,6 +3871,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
   }
 
   Widget _buildClassDistributionCard() {
+    const int perPage = 5;
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance.collection('users').snapshots(),
       builder: (context, usersSnap) {
@@ -3855,12 +3880,22 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
           builder: (context, classesSnap) {
             final users = usersSnap.data?.docs ?? <QueryDocumentSnapshot>[];
             final classes = classesSnap.data?.docs ?? <QueryDocumentSnapshot>[];
-            final items = _buildClassDistributionItems(users, classes);
+            final allItems = _buildClassDistributionItems(users, classes);
+
+            // Sort descending by count
+            allItems.sort((a, b) => b.count.compareTo(a.count));
 
             int maxCount = 1;
-            for (final item in items) {
+            for (final item in allItems) {
               if (item.count > maxCount) maxCount = item.count;
             }
+
+            final totalPages = (allItems.length / perPage).ceil();
+            if (_classDistPage >= totalPages && totalPages > 0) {
+              _classDistPage = totalPages - 1;
+            }
+            final start = _classDistPage * perPage;
+            final pageItems = allItems.skip(start).take(perPage).toList();
 
             return Container(
               padding: const EdgeInsets.fromLTRB(30, 12, 30, 10),
@@ -3892,7 +3927,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                         ),
                       ),
                     )
-                  else if (items.isEmpty)
+                  else if (allItems.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8),
                       child: Text(
@@ -3903,8 +3938,8 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                         ),
                       ),
                     )
-                  else
-                    ...items.map((item) {
+                  else ...[
+                    ...pageItems.map((item) {
                       final progress = maxCount == 0
                           ? 0.0
                           : item.count / maxCount;
@@ -3951,6 +3986,29 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                         ),
                       );
                     }),
+                    if (totalPages > 1)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            _classDistPageBtn(
+                              icon: Icons.chevron_left,
+                              onTap: _classDistPage > 0
+                                  ? () => setState(() => _classDistPage--)
+                                  : null,
+                            ),
+                            ..._buildClassDistPageButtons(totalPages),
+                            _classDistPageBtn(
+                              icon: Icons.chevron_right,
+                              onTap: _classDistPage < totalPages - 1
+                                  ? () => setState(() => _classDistPage++)
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ],
               ),
             );
@@ -3960,316 +4018,342 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
     );
   }
 
-  String _formatAccessTime(dynamic rawTimestamp) {
-    DateTime? time;
-    if (rawTimestamp is Timestamp) {
-      time = rawTimestamp.toDate();
-    } else if (rawTimestamp is DateTime) {
-      time = rawTimestamp;
-    }
-    if (time == null) return '--:--';
-    final local = time.toLocal();
-    final hh = local.hour.toString().padLeft(2, '0');
-    final mm = local.minute.toString().padLeft(2, '0');
-    return '$hh:$mm';
+  Widget _classDistPageBtn({required IconData icon, VoidCallback? onTap}) {
+    final enabled = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFD1D5DB)),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: enabled ? const Color(0xFF374151) : const Color(0xFFD1D5DB),
+        ),
+      ),
+    );
   }
 
-  Widget _buildRecentAccessCard() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('accessEvents')
-          .orderBy('timestamp', descending: true)
-          .limit(5)
-          .snapshots(),
-      builder: (context, eventsSnap) {
-        return StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .where('role', isEqualTo: 'gate')
-              .snapshots(),
-          builder: (context, gatesSnap) {
-            final gateDocs = gatesSnap.data?.docs ?? <QueryDocumentSnapshot>[];
-            final gateNames = <String, String>{
-              for (final d in gateDocs)
-                d.id:
-                    ((d.data() as Map<String, dynamic>)['fullName'] ??
-                            (d.data() as Map<String, dynamic>)['username'] ??
-                            d.id)
-                        .toString(),
-            };
+  List<Widget> _buildClassDistPageButtons(int totalPages) {
+    final List<Widget> buttons = [];
+    for (int i = 0; i < totalPages; i++) {
+      if (totalPages > 5 &&
+          i > 1 &&
+          i < totalPages - 1 &&
+          (i - _classDistPage).abs() > 1) {
+        if (buttons.isNotEmpty && buttons.last is! Text) {
+          buttons.add(
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 2),
+              child: Text(
+                '...',
+                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+              ),
+            ),
+          );
+        }
+        continue;
+      }
+      final selected = i == _classDistPage;
+      buttons.add(
+        GestureDetector(
+          onTap: () => setState(() => _classDistPage = i),
+          child: Container(
+            width: 32,
+            height: 32,
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            decoration: BoxDecoration(
+              color: selected ? const Color(0xFF2D2D2D) : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected
+                    ? const Color(0xFF2D2D2D)
+                    : const Color(0xFFD1D5DB),
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${i + 1}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : const Color(0xFF374151),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return buttons;
+  }
 
-            final eventDocs =
-                eventsSnap.data?.docs ?? <QueryDocumentSnapshot>[];
+  Future<void> _sendDashboardGlobalMessage() async {
+    final message = _globalMsgController.text.trim();
+    if (message.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Scrie un mesaj înainte de trimitere.')),
+      );
+      return;
+    }
+    if (!_msgToStudents && !_msgToParents && !_msgToTeachers) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selectează cel puțin un destinatar.')),
+      );
+      return;
+    }
+    if (_sendingGlobalMsg) return;
+    setState(() => _sendingGlobalMsg = true);
 
-            Widget statusChip(String type) {
-              final isEntry = type == 'entry';
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: isEntry
-                      ? const Color(0xFFDDEFE2)
-                      : const Color(0xFFF4DFDF),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  isEntry ? 'INTRAT' : 'IEȘIT',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: isEntry
-                        ? const Color(0xFF1F7A35)
-                        : const Color(0xFFB03030),
-                  ),
-                ),
-              );
-            }
+    try {
+      final now = Timestamp.now();
+      final senderUid = (AppSession.uid ?? '').trim();
+      final senderName = (AppSession.fullName ?? 'Secretariat').trim();
+      final broadcastId = '${now.millisecondsSinceEpoch}_$senderUid';
+      final batch = FirebaseFirestore.instance.batch();
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      const Text(
-                        'Acces Recent',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A2E1A),
+      for (final role in [
+        if (_msgToStudents) 'student',
+        if (_msgToParents) 'parent',
+        if (_msgToTeachers) 'teacher',
+      ]) {
+        final ref = FirebaseFirestore.instance
+            .collection('secretariatMessages')
+            .doc('${broadcastId}_$role');
+        batch.set(ref, {
+          'recipientRole': role,
+          'recipientUid': '',
+          'studentUid': '',
+          'studentUsername': '',
+          'studentName': '',
+          'classId': '',
+          'recipientName': '',
+          'recipientUsername': '',
+          'message': message,
+          'title': 'Mesaj Secretariat',
+          'createdAt': now,
+          'senderUid': senderUid,
+          'senderName': senderName,
+          'broadcastId': broadcastId,
+          'audienceLabel': role == 'student'
+              ? 'Toți elevii'
+              : role == 'parent'
+              ? 'Toți părinții'
+              : 'Toți diriginții',
+          'messageType': 'secretariatGlobal',
+          'source': 'secretariat',
+        });
+      }
+      await batch.commit();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mesaj global trimis cu succes.')),
+      );
+      _globalMsgController.clear();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Eroare la trimitere: $e')));
+    } finally {
+      if (mounted) setState(() => _sendingGlobalMsg = false);
+    }
+  }
+
+  Widget _buildGlobalMessagingCard() {
+    return _buildCard(
+      title: 'Mesagerie Globală',
+      primaryGreen: const Color(0xFF3A7A40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'MESAJ',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF4B5563),
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _globalMsgController,
+            minLines: 2,
+            maxLines: 6,
+            decoration: InputDecoration(
+              hintText: 'Scrie mesajul ce va apărea în inbox...',
+              hintStyle: const TextStyle(
+                color: Color(0xFF374151),
+                fontSize: 14,
+              ),
+              filled: true,
+              fillColor: const Color(0xFFF8FFF5),
+              contentPadding: const EdgeInsets.all(14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(
+                  color: Color(0xFF7AAF5B),
+                  width: 2,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'DESTINATARI',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF4B5563),
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _msgChip(
+                  'Elevi',
+                  Icons.school_outlined,
+                  _msgToStudents,
+                  (v) {
+                    setState(() => _msgToStudents = v ?? false);
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _msgChip(
+                  'Părinți',
+                  Icons.family_restroom_outlined,
+                  _msgToParents,
+                  (v) {
+                    setState(() => _msgToParents = v ?? false);
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _msgChip(
+                  'Diriginți',
+                  Icons.person_outline_rounded,
+                  _msgToTeachers,
+                  (v) {
+                    setState(() => _msgToTeachers = v ?? false);
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: _sendingGlobalMsg
+                    ? null
+                    : _sendDashboardGlobalMessage,
+                icon: _sendingGlobalMsg
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
                         ),
-                      ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: () =>
-                            setState(() => activeSidebarLabel = 'Turnichete'),
-                        child: const Row(
-                          children: [
-                            Text(
-                              'Vezi Tot',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1F7A35),
-                              ),
-                            ),
-                            SizedBox(width: 4),
-                            Icon(
-                              Icons.arrow_forward,
-                              size: 16,
-                              color: Color(0xFF1F7A35),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      )
+                    : const Icon(Icons.send_rounded),
+                label: const Text('Trimite Mesaj'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0A6B1C),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(0xFF0A6B1C),
+                  disabledForegroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 48,
+                    vertical: 18,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0x55E5E7EB)),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        color: const Color(0xFFF3F7F3),
-                        child: const Padding(
-                          padding: EdgeInsets.fromLTRB(18, 14, 18, 12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 4,
-                                child: Text(
-                                  'NUME ELEV',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.8,
-                                    color: Color(0xFF374151),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  'ORA',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.8,
-                                    color: Color(0xFF374151),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 3,
-                                child: Text(
-                                  'LOCAȚIE',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.8,
-                                    color: Color(0xFF374151),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  'STATUS',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.8,
-                                    color: Color(0xFF374151),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (!eventsSnap.hasData)
-                        const Padding(
-                          padding: EdgeInsets.fromLTRB(18, 20, 18, 24),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Se încarcă accesările...',
-                              style: TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        )
-                      else if (eventDocs.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.fromLTRB(18, 20, 18, 24),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Nu există accesări recente.',
-                              style: TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        )
-                      else
-                        ...eventDocs.asMap().entries.map((entry) {
-                          final idx = entry.key;
-                          final data =
-                              entry.value.data() as Map<String, dynamic>;
-                          final fullName = (data['fullName'] ?? 'Necunoscut')
-                              .toString();
-                          final type = (data['type'] ?? '').toString();
-                          final gateUid = (data['gateUid'] ?? '').toString();
-                          final location = gateNames[gateUid] ?? 'Poartă';
-                          final timeLabel = _formatAccessTime(
-                            data['timestamp'],
-                          );
-                          return Column(
-                            children: [
-                              if (idx > 0)
-                                const Divider(
-                                  height: 1,
-                                  thickness: 1,
-                                  color: Color(0x33E5E7EB),
-                                ),
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  18,
-                                  14,
-                                  18,
-                                  14,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 4,
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 30,
-                                            height: 30,
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xFFDCE6D9),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                              Icons.person_outline_rounded,
-                                              size: 18,
-                                              color: Color(0xFF1F7A35),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              fullName,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w600,
-                                                color: Color(0xFF0F172A),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        timeLabel,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          color: Color(0xFF374151),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 3,
-                                      child: Text(
-                                        location,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          color: Color(0xFF111827),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: statusChip(type),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          );
-                        }),
-                      const SizedBox(height: 10),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _msgChip(
+    String label,
+    IconData icon,
+    bool selected,
+    ValueChanged<bool?> onChanged,
+  ) {
+    final Color bg = selected
+        ? const Color(0xFFE8F5E9)
+        : const Color(0xFFF8FFF5);
+    final Color border = selected
+        ? const Color(0xFF7AAF5B)
+        : const Color(0xFFD1D5DB);
+    final Color textColor = selected
+        ? const Color(0xFF0A6B1C)
+        : const Color(0xFF6B7280);
+
+    return GestureDetector(
+      onTap: () => onChanged(!selected),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: border, width: selected ? 1.5 : 1),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: textColor),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: textColor,
+              ),
+            ),
+            if (selected) ...[
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.check_circle,
+                size: 16,
+                color: Color(0xFF0A6B1C),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -4444,7 +4528,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                     ),
                   ),
                   Switch.adaptive(
-                    activeColor: const Color(0xFF5A9641),
+                    activeTrackColor: const Color(0xFF5A9641),
                     value: flags.onboardingEnabled,
                     onChanged: _isActionBusy('toggle-onboarding-global')
                         ? null
@@ -4493,7 +4577,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                     ),
                   ),
                   Switch.adaptive(
-                    activeColor: const Color(0xFF5A9641),
+                    activeTrackColor: const Color(0xFF5A9641),
                     value: flags.twoFactorEnabled,
                     onChanged: _isActionBusy('toggle-2fa-global')
                         ? null

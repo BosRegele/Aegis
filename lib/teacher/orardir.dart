@@ -271,7 +271,7 @@ class _OrarTopHeader extends StatelessWidget {
     width: size,
     height: size,
     decoration: BoxDecoration(
-      color: Colors.white.withOpacity(0.10),
+      color: Colors.white.withValues(alpha: 0.10),
       shape: BoxShape.circle,
     ),
   );
@@ -280,7 +280,7 @@ class _OrarTopHeader extends StatelessWidget {
 class _OrarDotsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.14);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.14);
     const spacing = 18.0;
     for (double y = 14; y < size.height; y += spacing) {
       for (double x = 16; x < size.width; x += spacing) {

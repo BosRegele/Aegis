@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 
@@ -450,7 +450,7 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
                               final message = items[index];
                               return _MessageCard(data: message, onTap: () {});
                             },
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (_, _) =>
                                 const SizedBox(height: 14),
                             itemCount: items.length,
                           ),
@@ -529,7 +529,7 @@ class _TopHeader extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.10),
+        color: Colors.white.withValues(alpha: 0.10),
         shape: BoxShape.circle,
       ),
     );
@@ -539,7 +539,7 @@ class _TopHeader extends StatelessWidget {
 class _HeaderDotsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.14);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.14);
     const spacing = 18.0;
     for (double y = 14; y < size.height; y += spacing) {
       for (double x = 16; x < size.width; x += spacing) {

@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 import 'services/admin_store.dart';
@@ -14,6 +14,8 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
   final store = AdminStore();
   int _currentPage = 0;
   static const int _pageSize = 7;
+  String _searchQuery = '';
+  String _sortBy = 'name';
 
   @override
   Widget build(BuildContext context) {
@@ -61,15 +63,113 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(40, 16, 40, 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 420),
+                              child: TextField(
+                                onChanged: (v) => setState(() {
+                                  _searchQuery = v.trim().toLowerCase();
+                                  _currentPage = 0;
+                                }),
+                                decoration: InputDecoration(
+                                  hintText:
+                                      'Caută elev după nume, username sau clasă...',
+                                  hintStyle: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFFA0B090),
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.search_rounded,
+                                    size: 20,
+                                    color: Color(0xFF7A9070),
+                                  ),
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF4F9F3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFDDE8D5),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFDDE8D5),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF5C8B42),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF4F9F3),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFDDE8D5),
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _sortBy,
+                                icon: const Icon(
+                                  Icons.unfold_more_rounded,
+                                  size: 18,
+                                  color: Color(0xFF7A9070),
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF2E4A2E),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'name',
+                                    child: Text('Sortare: Nume'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'class',
+                                    child: Text('Sortare: Clasă'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'status',
+                                    child: Text('Sortare: Status'),
+                                  ),
+                                ],
+                                onChanged: (v) => setState(() {
+                                  _sortBy = v!;
+                                  _currentPage = 0;
+                                }),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     Container(
                       padding: const EdgeInsets.fromLTRB(40, 16, 40, 16),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF4F9F3),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
-                        ),
-                      ),
+                      decoration: const BoxDecoration(color: Color(0xFFF4F9F3)),
                       child: Row(
                         children: [
                           Expanded(flex: 5, child: _colHeader('NUME ELEV')),
@@ -113,24 +213,89 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
 
                           final docs = [...snap.data!.docs];
                           docs.sort((a, b) {
-                            final an = ((a.data() as Map)['fullName'] ?? '')
-                                .toString()
-                                .toLowerCase();
-                            final bn = ((b.data() as Map)['fullName'] ?? '')
-                                .toString()
-                                .toLowerCase();
-                            return an.compareTo(bn);
+                            final ad = a.data() as Map;
+                            final bd = b.data() as Map;
+                            switch (_sortBy) {
+                              case 'class':
+                                final ac = (ad['classId'] ?? '')
+                                    .toString()
+                                    .toLowerCase();
+                                final bc = (bd['classId'] ?? '')
+                                    .toString()
+                                    .toLowerCase();
+                                final cmp = ac.compareTo(bc);
+                                if (cmp != 0) return cmp;
+                                return (ad['fullName'] ?? '')
+                                    .toString()
+                                    .toLowerCase()
+                                    .compareTo(
+                                      (bd['fullName'] ?? '')
+                                          .toString()
+                                          .toLowerCase(),
+                                    );
+                              case 'status':
+                                final aIn = ad['inSchool'] == true ? 0 : 1;
+                                final bIn = bd['inSchool'] == true ? 0 : 1;
+                                final cmp = aIn.compareTo(bIn);
+                                if (cmp != 0) return cmp;
+                                return (ad['fullName'] ?? '')
+                                    .toString()
+                                    .toLowerCase()
+                                    .compareTo(
+                                      (bd['fullName'] ?? '')
+                                          .toString()
+                                          .toLowerCase(),
+                                    );
+                              default:
+                                return (ad['fullName'] ?? '')
+                                    .toString()
+                                    .toLowerCase()
+                                    .compareTo(
+                                      (bd['fullName'] ?? '')
+                                          .toString()
+                                          .toLowerCase(),
+                                    );
+                            }
                           });
 
-                          if (docs.isEmpty) {
-                            return const Center(child: Text("Nu există elevi"));
+                          final filtered = _searchQuery.isEmpty
+                              ? docs
+                              : docs.where((d) {
+                                  final data = d.data() as Map;
+                                  final name = (data['fullName'] ?? '')
+                                      .toString()
+                                      .toLowerCase();
+                                  final user = (data['username'] ?? '')
+                                      .toString()
+                                      .toLowerCase();
+                                  final cls = (data['classId'] ?? '')
+                                      .toString()
+                                      .toLowerCase();
+                                  return name.contains(_searchQuery) ||
+                                      user.contains(_searchQuery) ||
+                                      cls.contains(_searchQuery);
+                                }).toList();
+
+                          if (filtered.isEmpty) {
+                            return Center(
+                              child: Text(
+                                _searchQuery.isEmpty
+                                    ? 'Nu există elevi'
+                                    : 'Niciun rezultat pentru "$_searchQuery"',
+                                style: const TextStyle(
+                                  color: Color(0xFF7A9070),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            );
                           }
 
-                          final visibleDocs = docs
+                          final visibleDocs = filtered
                               .skip(_currentPage * _pageSize)
                               .take(_pageSize)
                               .toList();
-                          final totalPages = (docs.length / _pageSize).ceil();
+                          final totalPages = (filtered.length / _pageSize)
+                              .ceil();
 
                           return Column(
                             children: [
@@ -143,7 +308,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                     0,
                                   ),
                                   itemCount: visibleDocs.length,
-                                  separatorBuilder: (_, __) =>
+                                  separatorBuilder: (_, _) =>
                                       const SizedBox(height: 12),
                                   itemBuilder: (_, i) {
                                     final d = visibleDocs[i];
@@ -530,14 +695,15 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       final letter = match.group(2)!.trim();
 
       String roman = numStr;
-      if (numStr == '9')
+      if (numStr == '9') {
         roman = 'IX';
-      else if (numStr == '10')
+      } else if (numStr == '10') {
         roman = 'X';
-      else if (numStr == '11')
+      } else if (numStr == '11') {
         roman = 'XI';
-      else if (numStr == '12')
+      } else if (numStr == '12') {
         roman = 'XII';
+      }
 
       if (letter.isNotEmpty) {
         return 'Clasa a $roman-a $letter';
@@ -938,8 +1104,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                       : () async {
                                           final newName = renameC.text.trim();
                                           if (newName.isEmpty ||
-                                              newName == currentFullName)
+                                              newName == currentFullName) {
                                             return;
+                                          }
                                           setS(() {
                                             busy = true;
                                             msg = null;

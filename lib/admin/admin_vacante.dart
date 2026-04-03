@@ -50,7 +50,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
           TextButton(
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              if (!mounted) return;
+              if (!context.mounted) return;
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
             child: const Text('Da'),
@@ -473,12 +473,14 @@ class _VacanciesContentState extends State<_VacanciesContent> {
           'createdAt': FieldValue.serverTimestamp(),
         })
         .then((_) {
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Vacanta adaugata cu succes')),
           );
           _resetForm();
         })
         .catchError((e) {
+          if (!mounted) return;
           final message =
               e is FirebaseException && e.code == 'permission-denied'
               ? 'Nu ai permisiuni sa creezi vacante'
@@ -502,7 +504,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
         return;
       }
       final data = snap.data() as Map<String, dynamic>;
-      final result = await showDateRangePickerDialog(
+      final result = await _showDateRangePickerDialog(
         context,
         initialStartDate: (data['startDate'] as Timestamp).toDate(),
         initialEndDate: (data['endDate'] as Timestamp).toDate(),
@@ -513,6 +515,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
             .collection('vacancies')
             .doc(_selectedDocId)
             .update({'startDate': result['start'], 'endDate': result['end']});
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Vacanta modificata cu succes')),
         );
@@ -557,7 +560,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
     if (selected == null || !mounted) return;
 
     final data = selected.data() as Map<String, dynamic>;
-    final result = await showDateRangePickerDialog(
+    final result = await _showDateRangePickerDialog(
       context,
       initialStartDate: (data['startDate'] as Timestamp).toDate(),
       initialEndDate: (data['endDate'] as Timestamp).toDate(),
@@ -569,6 +572,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
           .collection('vacancies')
           .doc(selected.id)
           .update({'startDate': result['start'], 'endDate': result['end']});
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vacanta modificata cu succes')),
       );
@@ -662,257 +666,313 @@ class _VacanciesContentState extends State<_VacanciesContent> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'NUME EVENIMENT / VACANȚĂ',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF7FA593),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _nameController,
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        hintText: 'Ex: Vacanța de Primăvară',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: Color(0xFFDDE7D7)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: Color(0xFFDDE7D7)),
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFFF3F7EE),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'NUME EVENIMENT / VACANȚĂ',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF7FA593),
+                          letterSpacing: 0.5,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'DATA INCEPUT',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF7FA593),
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              GestureDetector(
-                                onTap: () async {
-                                  final picked = await showDatePicker(
-                                    context: context,
-                                    initialDate: _startDate ?? DateTime.now(),
-                                    firstDate: DateTime(2020),
-                                    lastDate: DateTime(2030),
-                                  );
-                                  if (picked != null) {
-                                    setState(() {
-                                      _startDate = picked;
-                                      _displayMonth = picked;
-                                      _selectedDocId = null;
-                                      _selectedVacancyName = null;
-                                      if (_endDate != null && _endDate!.isBefore(picked)) {
-                                        _endDate = null;
-                                      }
-                                    });
-                                  }
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF3F7EE),
-                                    border: Border.all(color: const Color(0xFFDDE7D7), width: 1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          _startDate == null ? 'dd/mm/yyyy' : _formatDate(_startDate!),
-                                          style: TextStyle(
-                                            color: _startDate == null ? const Color(0xFF999999) : Colors.black,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ),
-                                      const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF999999)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'DATA SFARSIT',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF7FA593),
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              GestureDetector(
-                                onTap: () async {
-                                  final picked = await showDatePicker(
-                                    context: context,
-                                    initialDate: _endDate ?? _startDate ?? DateTime.now(),
-                                    firstDate: _startDate ?? DateTime(2020),
-                                    lastDate: DateTime(2030),
-                                  );
-                                  if (picked != null) {
-                                    setState(() {
-                                      _endDate = picked;
-                                      _selectedDocId = null;
-                                      _selectedVacancyName = null;
-                                    });
-                                  }
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF3F7EE),
-                                    border: Border.all(color: const Color(0xFFDDE7D7), width: 1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          _endDate == null ? 'dd/mm/yyyy' : _formatDate(_endDate!),
-                                          style: TextStyle(
-                                            color: _endDate == null ? const Color(0xFF999999) : Colors.black,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ),
-                                      const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF999999)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton.icon(
-                            onPressed: _addVacancy,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF2E7D32),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text(
-                              'Adaugă Vacanță',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _resetForm,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFFD32F2F),
-                              side: const BorderSide(color: Color(0xFFDDE7D7), width: 1),
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            icon: const Icon(Icons.close, size: 18),
-                            label: const Text(
-                              'Anulează',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _showModifyDialog,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF2E7D32),
-                          side: const BorderSide(color: Color(0xFF2E7D32), width: 1),
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _nameController,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Ex: Vacanța de Primăvară',
+                          border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFDDE7D7),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFDDE7D7),
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: const Color(0xFFF3F7EE),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
                           ),
                         ),
-                        icon: const Icon(Icons.calendar_month, size: 18),
-                        label: const Text(
-                          'Modifică Vacanța',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(child: _buildCalendar()),
-                    if (_selectedVacancyName != null || _nameController.text.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          '* Previzualizare: ${_selectedVacancyName ?? _nameController.text}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF2E7D32),
-                            fontStyle: FontStyle.italic,
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'DATA INCEPUT',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF7FA593),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: _startDate ?? DateTime.now(),
+                                      firstDate: DateTime(2020),
+                                      lastDate: DateTime(2030),
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        _startDate = picked;
+                                        _displayMonth = picked;
+                                        _selectedDocId = null;
+                                        _selectedVacancyName = null;
+                                        if (_endDate != null &&
+                                            _endDate!.isBefore(picked)) {
+                                          _endDate = null;
+                                        }
+                                      });
+                                    }
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF3F7EE),
+                                      border: Border.all(
+                                        color: const Color(0xFFDDE7D7),
+                                        width: 1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 16,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            _startDate == null
+                                                ? 'dd/mm/yyyy'
+                                                : _formatDate(_startDate!),
+                                            style: TextStyle(
+                                              color: _startDate == null
+                                                  ? const Color(0xFF999999)
+                                                  : Colors.black,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                        const Icon(
+                                          Icons.calendar_today_outlined,
+                                          size: 16,
+                                          color: Color(0xFF999999),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          textAlign: TextAlign.center,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'DATA SFARSIT',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF7FA593),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate:
+                                          _endDate ??
+                                          _startDate ??
+                                          DateTime.now(),
+                                      firstDate: _startDate ?? DateTime(2020),
+                                      lastDate: DateTime(2030),
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        _endDate = picked;
+                                        _selectedDocId = null;
+                                        _selectedVacancyName = null;
+                                      });
+                                    }
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF3F7EE),
+                                      border: Border.all(
+                                        color: const Color(0xFFDDE7D7),
+                                        width: 1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 16,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            _endDate == null
+                                                ? 'dd/mm/yyyy'
+                                                : _formatDate(_endDate!),
+                                            style: TextStyle(
+                                              color: _endDate == null
+                                                  ? const Color(0xFF999999)
+                                                  : Colors.black,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ),
+                                        const Icon(
+                                          Icons.calendar_today_outlined,
+                                          size: 16,
+                                          color: Color(0xFF999999),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _addVacancy,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF2E7D32),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text(
+                                'Adaugă Vacanță',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _resetForm,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFD32F2F),
+                                side: const BorderSide(
+                                  color: Color(0xFFDDE7D7),
+                                  width: 1,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              icon: const Icon(Icons.close, size: 18),
+                              label: const Text(
+                                'Anulează',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _showModifyDialog,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF2E7D32),
+                            side: const BorderSide(
+                              color: Color(0xFF2E7D32),
+                              width: 1,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          icon: const Icon(Icons.calendar_month, size: 18),
+                          label: const Text(
+                            'Modifică Vacanța',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(child: _buildCalendar()),
+                      if (_selectedVacancyName != null ||
+                          _nameController.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            '* Previzualizare: ${_selectedVacancyName ?? _nameController.text}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF2E7D32),
+                              fontStyle: FontStyle.italic,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1021,58 +1081,61 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                   mainAxisSpacing: 0,
                   crossAxisSpacing: 4,
                   children: [
-              ...List.generate(firstWeekday - 1, (_) => const SizedBox()),
-              ...List.generate(daysInMonth, (index) {
-                final day = index + 1;
-                final date = DateTime(year, month, day);
-                final isStart =
-                    _startDate != null && _isSameDay(date, _startDate!);
-                final isEnd = _endDate != null && _isSameDay(date, _endDate!);
-                final isBetween =
-                    _startDate != null &&
-                    _endDate != null &&
-                    date.isAfter(_startDate!) &&
-                    date.isBefore(_endDate!);
+                    ...List.generate(firstWeekday - 1, (_) => const SizedBox()),
+                    ...List.generate(daysInMonth, (index) {
+                      final day = index + 1;
+                      final date = DateTime(year, month, day);
+                      final isStart =
+                          _startDate != null && _isSameDay(date, _startDate!);
+                      final isEnd =
+                          _endDate != null && _isSameDay(date, _endDate!);
+                      final isBetween =
+                          _startDate != null &&
+                          _endDate != null &&
+                          date.isAfter(_startDate!) &&
+                          date.isBefore(_endDate!);
 
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      if (_startDate == null) {
-                        _startDate = date;
-                      } else if (_endDate == null) {
-                        if (date.isBefore(_startDate!)) {
-                          _endDate = _startDate;
-                          _startDate = date;
-                        } else {
-                          _endDate = date;
-                        }
-                      } else {
-                        _startDate = date;
-                        _endDate = null;
-                      }
-                    });
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isStart || isEnd
-                          ? const Color(0xFF2E7D32)
-                          : isBetween
-                          ? const Color(0xFFC8E6C9)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      day.toString(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: isStart || isEnd ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ),
-                );
-              }),
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (_startDate == null) {
+                              _startDate = date;
+                            } else if (_endDate == null) {
+                              if (date.isBefore(_startDate!)) {
+                                _endDate = _startDate;
+                                _startDate = date;
+                              } else {
+                                _endDate = date;
+                              }
+                            } else {
+                              _startDate = date;
+                              _endDate = null;
+                            }
+                          });
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: isStart || isEnd
+                                ? const Color(0xFF2E7D32)
+                                : isBetween
+                                ? const Color(0xFFC8E6C9)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            day.toString(),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: isStart || isEnd
+                                  ? Colors.white
+                                  : Colors.black,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
                   ],
                 );
               },
@@ -1335,6 +1398,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                         .collection('vacancies')
                         .doc(doc.id)
                         .delete();
+                    if (!mounted) return;
                     if (_selectedDocId == doc.id) {
                       setState(() {
                         _selectedDocId = null;
@@ -1410,7 +1474,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
   }
 }
 
-Future<Map<String, DateTime>?> showDateRangePickerDialog(
+Future<Map<String, DateTime>?> _showDateRangePickerDialog(
   BuildContext context, {
   required DateTime initialStartDate,
   required DateTime initialEndDate,
