@@ -50,8 +50,9 @@ dependencies:
   google_fonts: ^6.3.1
   excel: ^4.0.6
   file_saver: ^0.2.14
-  flutter_ringtone_player: ^4.0.0+4
-  web: ^1.1.1
+  audioplayers: ^6.5.1
+  image_picker: ^1.1.2
+  firebase_storage: ^13.2.0
 
 dev_dependencies:
   flutter_test:
@@ -77,6 +78,7 @@ flutter:
 
   assets:
     - assets/images/aegis_logo.png
+    - assets/sounds/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

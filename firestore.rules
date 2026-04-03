@@ -52,6 +52,7 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly([
         'unreadCount',
         'inboxLastOpenedAt',
+        'profilePictureUrl',
       ]);
     }
 
@@ -206,6 +207,12 @@ service cloud.firestore {
     match /classes/{classId} {
       // Secretariat UI reads class lists directly from Firestore.
       // Keep writes admin-only, but allow reads for authenticated users.
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /vacancies/{vacancyId} {
+      // Vacancies are managed from the secretariat/admin area.
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
