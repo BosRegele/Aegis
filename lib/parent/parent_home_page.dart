@@ -30,6 +30,42 @@ class ParentHomePage extends StatefulWidget {
 class _ParentHomePageState extends State<ParentHomePage> {
   DateTime? _localInboxLastOpened;
 
+  Future<List<String>> _loadLinkedChildren(
+    String parentUid,
+    List<String> directChildren,
+  ) async {
+    final ids = <String>{
+      ...directChildren.map((value) => value.trim()).where((value) => value.isNotEmpty),
+    };
+
+    final users = FirebaseFirestore.instance.collection('users');
+
+    try {
+      final byParents = await users
+          .where('parents', arrayContains: parentUid)
+          .get();
+      ids.addAll(byParents.docs.map((doc) => doc.id));
+    } catch (_) {}
+
+    try {
+      final byParentUid = await users
+          .where('parentUid', isEqualTo: parentUid)
+          .get();
+      ids.addAll(byParentUid.docs.map((doc) => doc.id));
+    } catch (_) {}
+
+    try {
+      final byParentId = await users
+          .where('parentId', isEqualTo: parentUid)
+          .get();
+      ids.addAll(byParentId.docs.map((doc) => doc.id));
+    } catch (_) {}
+
+    ids.remove(parentUid);
+    final sorted = ids.toList()..sort();
+    return sorted;
+  }
+
   @override
   Widget build(BuildContext context) {
     final uid = AppSession.uid;
@@ -51,7 +87,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
                 ? fullName
                 : (AppSession.username ?? 'Parinte');
             final rawChildren = data['children'];
-            final childrenUids = rawChildren is List
+            final directChildrenUids = rawChildren is List
                 ? List<String>.from(
                     rawChildren,
                   ).where((s) => s.trim().isNotEmpty).toList()
@@ -63,7 +99,11 @@ class _ParentHomePageState extends State<ParentHomePage> {
               _localInboxLastOpened,
             );
 
-            return LayoutBuilder(
+            return FutureBuilder<List<String>>(
+              future: _loadLinkedChildren(uid, directChildrenUids),
+              builder: (context, childrenSnapshot) {
+                final childrenUids = childrenSnapshot.data ?? directChildrenUids;
+                return LayoutBuilder(
               builder: (context, constraints) {
                 final compact = constraints.maxHeight < 760;
                 final topSectionH = compact ? 444.0 : 484.0;
@@ -170,6 +210,8 @@ class _ParentHomePageState extends State<ParentHomePage> {
                       ),
                     ),
                   ],
+                );
+              },
                 );
               },
             );

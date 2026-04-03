@@ -266,8 +266,102 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  Widget _buildNarrowLayout() =>
-      SingleChildScrollView(child: _buildRightPanel());
+  Widget _buildNarrowLayout() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildMobileBrandingCard(),
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: _buildRightPanel(compact: true),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileBrandingCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: _leftPanelGreen,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(child: CustomPaint(painter: _OnboardingLeftDotsPainter())),
+          Positioned(top: -26, right: -18, child: _panelCircle(112)),
+          Positioned(bottom: -34, left: -20, child: _panelCircle(120)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: _primaryGreen,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _primaryGreen.withOpacity(0.32),
+                        blurRadius: 14,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.asset(
+                      'assets/images/aegis_logo.png',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Poarta ta către\nsecuritate academică',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Soluția completă, optimizată pentru mobil, pentru gestionarea accesului și plecărilor din școală.',
+                  style: TextStyle(
+                    color: Color(0xCCFFFFFF),
+                    fontSize: 13,
+                    height: 1.55,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildLeftPanel() {
     return Container(
@@ -342,10 +436,33 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+                const SizedBox(height: 48),
+                const Text(
+                  'Poarta ta către\nsecuritate academică',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Soluția completă, optimizată pentru mobil, '
+                  'pentru gestionarea accesului și plecărilor din '
+                  'școală. Crește siguranța prin identități QR '
+                  'dinamice, integrare automată a orarului și '
+                  'aprobări în timp real din partea părinților.',
+                  style: TextStyle(
+                    color: Color(0xCCFFFFFF),
+                    fontSize: 13.5,
+                    height: 1.65,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -361,19 +478,22 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  Widget _buildRightPanel() {
+  Widget _buildRightPanel({bool compact = false}) {
     return Container(
       color: _cardCream,
-      padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 36),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 20 : 44,
+        vertical: compact ? 22 : 36,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildStepIndicator(),
-          const SizedBox(height: 22),
-          ..._buildStepContent(),
-          const SizedBox(height: 18),
-          _buildHelpText(),
+          _buildStepIndicator(compact: compact),
+          SizedBox(height: compact ? 18 : 22),
+          ..._buildStepContent(compact: compact),
+          SizedBox(height: compact ? 16 : 18),
+          _buildHelpText(compact: compact),
         ],
       ),
     );
@@ -389,14 +509,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
       children: [
         Text(
           'PASUL $n DIN 3',
-          style: const TextStyle(
-            fontSize: 11,
-            letterSpacing: 1.6,
+          style: TextStyle(
+            fontSize: compact ? 10 : 11,
+            letterSpacing: compact ? 1.2 : 1.6,
             fontWeight: FontWeight.w600,
             color: _primaryGreen,
           ),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: compact ? 10 : 14),
         Expanded(
           child: Row(
             children: List.generate(
@@ -418,7 +538,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  List<Widget> _buildStepContent() {
+  List<Widget> _buildStepContent({bool compact = false}) {
     switch (_step) {
       case _stepEmail:
         return _emailStepWidgets();
@@ -429,8 +549,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
     }
   }
 
-  List<Widget> _emailStepWidgets() => [
-    const Text(
+  List<Widget> _emailStepWidgets({bool compact = false}) => [
+    Text(
       'Configurare Email',
       style: TextStyle(
         fontSize: 30,
@@ -439,14 +559,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
         height: 1.1,
       ),
     ),
-    const SizedBox(height: 8),
-    const Text(
+    SizedBox(height: compact ? 6 : 8),
+    Text(
       'Introdu adresa de email personal si codul de verificare.',
-      style: TextStyle(fontSize: 13, color: Color(0xFF777777), height: 1.4),
+      style: TextStyle(
+        fontSize: compact ? 12.5 : 13,
+        color: const Color(0xFF777777),
+        height: 1.4,
+      ),
     ),
-    const SizedBox(height: 28),
+    SizedBox(height: compact ? 22 : 28),
 
-    _label('Email Personal'),
+    _label('Email Personal', compact: compact),
     const SizedBox(height: 6),
     _field(
       controller: _emailC,
@@ -470,9 +594,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
         ),
         child: Text(
           _codeSent ? 'Retrimite codul →' : 'Trimite cod pe email →',
-          style: const TextStyle(
+          style: TextStyle(
             color: _primaryGreen,
-            fontSize: 12.5,
+            fontSize: compact ? 12 : 12.5,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -480,7 +604,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     ),
     const SizedBox(height: 16),
 
-    _label('Cod Verificare (6 cifre)'),
+    _label('Cod Verificare (6 cifre)', compact: compact),
     const SizedBox(height: 6),
     _field(
       controller: _verificationCodeC,
@@ -494,7 +618,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     ),
     const SizedBox(height: 12),
 
-    _infoBox('Verifica folderul Spam daca nu ai primit codul.'),
+    _infoBox('Verifica folderul Spam daca nu ai primit codul.', compact: compact),
 
     if (_errorMsg != null) ...[
       const SizedBox(height: 12),
@@ -506,11 +630,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
       onBack: _loading ? null : _signOut,
       onContinue: _loading ? null : _verifyEmail,
       continueLabel: 'Continua',
+      compact: compact,
     ),
   ];
 
-  List<Widget> _passwordStepWidgets() => [
-    const Text(
+  List<Widget> _passwordStepWidgets({bool compact = false}) => [
+    Text(
       'Setare Parola',
       style: TextStyle(
         fontSize: 30,
@@ -519,14 +644,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
         height: 1.1,
       ),
     ),
-    const SizedBox(height: 8),
-    const Text(
+    SizedBox(height: compact ? 6 : 8),
+    Text(
       'Alege o parola securizata pentru contul tau.',
-      style: TextStyle(fontSize: 13, color: Color(0xFF777777), height: 1.4),
+      style: TextStyle(
+        fontSize: compact ? 12.5 : 13,
+        color: const Color(0xFF777777),
+        height: 1.4,
+      ),
     ),
-    const SizedBox(height: 28),
+    SizedBox(height: compact ? 22 : 28),
 
-    _label('Parola noua (min. 8 caractere)'),
+    _label('Parola noua (min. 8 caractere)', compact: compact),
     const SizedBox(height: 6),
     _field(
       controller: _newPasswordC,
@@ -542,10 +671,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
         ),
         onPressed: () => setState(() => _showPassword = !_showPassword),
       ),
+      compact: compact,
     ),
     const SizedBox(height: 16),
 
-    _label('Confirma parola'),
+    _label('Confirma parola', compact: compact),
     const SizedBox(height: 6),
     _field(
       controller: _confirmPasswordC,
@@ -562,6 +692,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
         onPressed: () =>
             setState(() => _showConfirmPassword = !_showConfirmPassword),
       ),
+      compact: compact,
     ),
 
     if (_errorMsg != null) ...[
@@ -574,10 +705,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
       onBack: _loading ? null : _goBackToEmailStep,
       onContinue: _loading ? null : _submitPassword,
       continueLabel: 'Continua',
+      compact: compact,
     ),
   ];
 
-  Widget _label(String text) => Text(
+  Widget _label(String text, {bool compact = false}) => Text(
     text,
     style: const TextStyle(
       fontSize: 13.5,
@@ -592,15 +724,16 @@ class _OnboardingPageState extends State<OnboardingPage> {
     TextInputType keyboard = TextInputType.text,
     bool obscure = false,
     Widget? suffix,
+    bool compact = false,
   }) {
     return TextField(
       controller: controller,
       keyboardType: keyboard,
       obscureText: obscure,
-      style: const TextStyle(fontSize: 14, color: Color(0xFF1A1A1A)),
+      style: TextStyle(fontSize: compact ? 13.5 : 14, color: const Color(0xFF1A1A1A)),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14),
+        hintStyle: TextStyle(color: const Color(0xFFAAAAAA), fontSize: compact ? 13.5 : 14),
         suffixIcon: suffix,
         filled: true,
         fillColor: Colors.white,
@@ -624,8 +757,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  Widget _infoBox(String msg) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+  Widget _infoBox(String msg, {bool compact = false}) => Container(
+    padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 14, vertical: compact ? 11 : 12),
     decoration: BoxDecoration(
       color: _infoBoxBg,
       borderRadius: BorderRadius.circular(8),
@@ -684,7 +817,70 @@ class _OnboardingPageState extends State<OnboardingPage> {
     required VoidCallback? onBack,
     required VoidCallback? onContinue,
     required String continueLabel,
+    bool compact = false,
   }) {
+    final backButton = OutlinedButton.icon(
+      onPressed: onBack,
+      icon: const Icon(
+        Icons.arrow_back_ios_new_rounded,
+        size: 14, color: Color(0xFF333333),
+      ),
+      label: const Text(
+        'Inapoi',
+        style: TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.w500),
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: EdgeInsets.symmetric(vertical: compact ? 13 : 14),
+        side: const BorderSide(color: Color(0xFFCCCCCC)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+
+    final continueButton = ElevatedButton(
+      onPressed: onContinue,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _primaryGreen,
+        disabledBackgroundColor: const Color(0xFF1F6B38),
+        padding: EdgeInsets.symmetric(vertical: compact ? 13 : 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        elevation: 0,
+      ),
+      child: _loading
+          ? const SizedBox(
+              height: 20, width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  continueLabel,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: compact ? 14 : 15,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+              ],
+            ),
+    );
+
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          backButton,
+          const SizedBox(height: 10),
+          continueButton,
+        ],
+      );
+    }
+
     return Row(
       children: [
         Expanded(
@@ -758,19 +954,19 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  Widget _buildHelpText() => Center(
+  Widget _buildHelpText({bool compact = false}) => Center(
     child: Column(
       children: [
-        const Text(
+        Text(
           'Ai nevoie de ajutor?',
-          style: TextStyle(fontSize: 13, color: Color(0xFF888888)),
+          style: TextStyle(fontSize: compact ? 12 : 13, color: const Color(0xFF888888)),
         ),
         GestureDetector(
           onTap: () {},
-          child: const Text(
+          child: Text(
             'Contacteaza suportul IT',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: compact ? 12.5 : 13,
               color: _primaryGreen,
               fontWeight: FontWeight.w600,
               decoration: TextDecoration.underline,

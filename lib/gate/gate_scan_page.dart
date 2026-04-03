@@ -5,6 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+<<<<<<< HEAD
+import 'package:audioplayers/audioplayers.dart';
+=======
+>>>>>>> origin/main
 
 class GateScanPage extends StatefulWidget {
   const GateScanPage({super.key});
@@ -14,37 +18,26 @@ class GateScanPage extends StatefulWidget {
 }
 
 class _GateScanPageState extends State<GateScanPage> {
+  static const String _scanSoundAsset = 'sounds/gate_scan.mp3';
+
   String _status = "Scanează un QR...";
   bool _isAllowed = false;
   bool _lock = false;
-  Timer? _soundTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _startLoopingSound();
-  }
+  final AudioPlayer _scanPlayer = AudioPlayer();
 
   @override
   void dispose() {
-    _soundTimer?.cancel();
+    _scanPlayer.dispose();
     super.dispose();
   }
 
-  void _startLoopingSound() {
-    // Play immediately, then repeat every 3 seconds
-    _playScanSound();
-    _soundTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      _playScanSound();
-    });
-  }
-
   Future<void> _playScanSound() async {
-    await SystemSound.play(SystemSoundType.alert);
-  }
-
-  Future<void> _playSuccessSound() async {
-    await SystemSound.play(SystemSoundType.alert);
+    try {
+      await _scanPlayer.stop();
+      await _scanPlayer.play(AssetSource(_scanSoundAsset));
+    } catch (_) {
+      await SystemSound.play(SystemSoundType.alert);
+    }
   }
 
   Future<void> _logout() async {
@@ -82,6 +75,7 @@ class _GateScanPageState extends State<GateScanPage> {
 
       String statusMessage;
       if (ok) {
+        await _playScanSound();
         if (scanType == "exit") {
           statusMessage = "✅ EXIT\n$fullName\n$classId\n(userId=$userId)";
         } else {
@@ -105,10 +99,6 @@ class _GateScanPageState extends State<GateScanPage> {
         _isAllowed = ok;
         _status = statusMessage;
       });
-
-      if (true) {
-        await _playSuccessSound();
-      }
     } catch (e) {
       setState(() {
         _isAllowed = false;

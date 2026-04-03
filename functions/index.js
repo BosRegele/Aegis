@@ -1422,6 +1422,37 @@ exports.redeemQrToken = onCall(async (request) => {
         });
     }
 
+    let activeHolidayExit = false;
+    if (preUserId) {
+        const roNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
+        const nowKey =
+            roNow.getFullYear() * 10000 +
+            (roNow.getMonth() + 1) * 100 +
+            roNow.getDate();
+
+        const vacancySnap = await db.collection("vacancies").get();
+        activeHolidayExit = vacancySnap.docs.some((doc) => {
+            const data = doc.data() || {};
+            const startTs = data.startDate;
+            const endTs = data.endDate;
+            if (!startTs || typeof startTs.toDate !== "function") return false;
+            if (!endTs || typeof endTs.toDate !== "function") return false;
+
+            const roStart = new Date(startTs.toDate().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
+            const roEnd = new Date(endTs.toDate().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
+            const startKey =
+                roStart.getFullYear() * 10000 +
+                (roStart.getMonth() + 1) * 100 +
+                roStart.getDate();
+            const endKey =
+                roEnd.getFullYear() * 10000 +
+                (roEnd.getMonth() + 1) * 100 +
+                roEnd.getDate();
+
+            return nowKey >= startKey && nowKey <= endKey;
+        });
+    }
+
     const result = await db.runTransaction(async (tx) => {
         let result = null;
 
@@ -1513,6 +1544,7 @@ exports.redeemQrToken = onCall(async (request) => {
         const status = String(userData.status || "active");
         const fullName = String(userData.fullName || userData.username || userId);
         const classId = String(userData.classId || "");
+        const canExitForHoliday = inSchool && activeHolidayExit;
 
         if (status === "disabled") {
             result = {ok: false, reason: "USER_DISABLED", userId, fullName, classId, type: "deny"};
@@ -1642,7 +1674,7 @@ exports.redeemQrToken = onCall(async (request) => {
                 lastInAt: nowTs,
                 // keep lastOutAt as is, do not clear it
             });
-        } else if (isWeekend || isAfterSchedule || isBeforeSchedule) {
+        } else if (canExitForHoliday || isWeekend || isAfterSchedule || isBeforeSchedule) {
             // on weekends or outside class hours: allow free exit
             eventType = "exit";
             tx.update(userRef, {
