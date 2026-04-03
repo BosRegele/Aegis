@@ -223,6 +223,14 @@ class AdminApi {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
+  Future<Map<String, dynamic>> setNewPassword({
+    required String password,
+  }) async {
+    final callable = _functions.httpsCallable('setNewPassword');
+    final res = await callable.call(<String, dynamic>{'password': password});
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
   Future<Map<String, dynamic>> removePersonalEmail({
     required String username,
   }) async {

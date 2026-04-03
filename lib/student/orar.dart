@@ -690,6 +690,7 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
 
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'profilePictureUrl': url,
+        'photoUrl': url,
       });
 
       if (mounted) setState(() => _profilePictureUrl = url);

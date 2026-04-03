@@ -771,7 +771,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     required bool passwordChanged,
     required String? email,
     required List<String> parentUsernames,
-    required String photoUrl,
+    String photoUrl = '',
   }) async {
     final addParentC = TextEditingController();
     final renameC = TextEditingController(text: fullName);
@@ -909,13 +909,19 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                 vertical: 14,
                               ),
                             ),
-                            child: const Text(
-                              'Anulează',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                            backgroundImage: photoUrl.isNotEmpty
+                                ? NetworkImage(photoUrl) as ImageProvider
+                                : null,
+                            child: photoUrl.isEmpty
+                                ? Text(
+                                    _initials(fullName),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
+                                    ),
+                                  )
+                                : null,
                           ),
                           const SizedBox(width: 20),
                           ElevatedButton(

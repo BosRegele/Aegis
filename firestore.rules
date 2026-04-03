@@ -53,6 +53,12 @@ service cloud.firestore {
         'unreadCount',
         'inboxLastOpenedAt',
         'profilePictureUrl',
+        'photoUrl',
+        'authEmail',
+        'updatedAt',
+        'fcmToken',
+        'twoFactorVerifiedUntil',
+        'passwordChanged',
       ]);
     }
 
