@@ -163,7 +163,100 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
 
   // ── narrow (mobile) layout ───────────────────────────────────────────────────
   Widget _buildNarrowLayout() {
-    return SingleChildScrollView(child: _buildRightPanel());
+    final viewInsets = MediaQuery.of(context).viewInsets;
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 24 + viewInsets.bottom),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildMobileBrandingCard(),
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: _buildRightPanel(compact: true, innerScroll: false),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileBrandingCard() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: _leftPanelGreen,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(child: CustomPaint(painter: _PhotoLeftDotsPainter())),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: _primaryGreen,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _primaryGreen.withOpacity(0.32),
+                        blurRadius: 14,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.asset(
+                      'assets/images/aegis_logo.png',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Poarta ta către\nsecuritate academică',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Soluția completă, optimizată pentru mobil, pentru gestionarea accesului și plecărilor din școală.',
+                  style: TextStyle(
+                    color: Color(0xCCFFFFFF),
+                    fontSize: 13,
+                    height: 1.55,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ── left green panel ─────────────────────────────────────────────────────────
@@ -248,7 +341,57 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
   }
 
   // ── right cream panel ────────────────────────────────────────────────────────
-  Widget _buildRightPanel() {
+  Widget _buildRightPanel({bool compact = false, bool innerScroll = true}) {
+    final panelContent = Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 20 : 44,
+        vertical: compact ? 22 : 36,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildStepIndicator(compact: compact),
+          SizedBox(height: compact ? 18 : 22),
+          Text(
+            'Imagine Profil',
+            style: TextStyle(
+              fontSize: compact ? 26 : 30,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A1A1A),
+              height: 1.1,
+            ),
+          ),
+          SizedBox(height: compact ? 6 : 8),
+          Text(
+            'Încarcă o fotografie de profil pentru identificare vizuală.',
+            style: TextStyle(
+              fontSize: compact ? 12.5 : 13,
+              color: const Color(0xFF777777),
+              height: 1.4,
+            ),
+          ),
+          SizedBox(height: compact ? 22 : 28),
+          Center(child: _buildAvatar(compact: compact)),
+          SizedBox(height: compact ? 20 : 24),
+          _buildUploadButton(compact: compact),
+          const SizedBox(height: 12),
+          _buildInfoBox(compact: compact),
+          SizedBox(height: compact ? 22 : 28),
+          _buildNavigationRow(compact: compact),
+          SizedBox(height: compact ? 16 : 18),
+          _buildHelpText(compact: compact),
+        ],
+      ),
+    );
+
+    if (compact || !innerScroll) {
+      return Container(
+        color: _cardCream,
+        child: panelContent,
+      );
+    }
+
     return Container(
       color: _cardCream,
       child: LayoutBuilder(
@@ -256,41 +399,7 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
           return SingleChildScrollView(
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 36),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildStepIndicator(),
-                    const SizedBox(height: 22),
-                    const Text(
-                      'Imagine Profil',
-                      style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
-                        height: 1.1,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Încarcă o fotografie de profil pentru identificare vizuală.',
-                      style: TextStyle(fontSize: 13, color: Color(0xFF777777), height: 1.4),
-                    ),
-                    const SizedBox(height: 28),
-                    Center(child: _buildAvatar()),
-                    const SizedBox(height: 24),
-                    _buildUploadButton(),
-                    const SizedBox(height: 12),
-                    _buildInfoBox(),
-                    const SizedBox(height: 28),
-                    _buildNavigationRow(),
-                    const SizedBox(height: 18),
-                    _buildHelpText(),
-                  ],
-                ),
-              ),
+              child: panelContent,
             ),
           );
         },
@@ -299,19 +408,19 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
   }
 
   // ── step indicator row ───────────────────────────────────────────────────────
-  Widget _buildStepIndicator() {
+  Widget _buildStepIndicator({bool compact = false}) {
     return Row(
       children: [
-        const Text(
+        Text(
           'PASUL 3 DIN 3',
           style: TextStyle(
-            fontSize: 11,
-            letterSpacing: 1.6,
+            fontSize: compact ? 10 : 11,
+            letterSpacing: compact ? 1.2 : 1.6,
             fontWeight: FontWeight.w600,
             color: _primaryGreen,
           ),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: compact ? 10 : 14),
         Expanded(
           child: Row(
             children: List.generate(3, (i) {
@@ -333,20 +442,24 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
   }
 
   // ── avatar circle with camera overlay ───────────────────────────────────────
-  Widget _buildAvatar() {
+  Widget _buildAvatar({bool compact = false}) {
+    final avatarSize = compact ? 116.0 : 130.0;
+    final cameraSize = compact ? 34.0 : 38.0;
+    final iconSize = compact ? 64.0 : 72.0;
+
     return SizedBox(
-      width: 130,
-      height: 130,
+      width: avatarSize,
+      height: avatarSize,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           CircleAvatar(
-            radius: 65,
+            radius: avatarSize / 2,
             backgroundColor: const Color(0xFFD0D0D0),
             backgroundImage:
                 _imageBytes != null ? MemoryImage(_imageBytes!) : null,
             child: _imageBytes == null
-                ? Icon(Icons.person, size: 72, color: Colors.grey.shade500)
+                ? Icon(Icons.person, size: iconSize, color: Colors.grey.shade500)
                 : null,
           ),
           Positioned(
@@ -357,14 +470,18 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
               child: GestureDetector(
                 onTap: (_loading || !widget.canUploadPhoto) ? null : _pickImage,
                 child: Container(
-                  width: 38,
-                  height: 38,
+                  width: cameraSize,
+                  height: cameraSize,
                   decoration: BoxDecoration(
                     color: _primaryGreen,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2.5),
                   ),
-                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                  child: Icon(
+                    Icons.camera_alt,
+                    color: Colors.white,
+                    size: compact ? 16 : 18,
+                  ),
                 ),
               ),
             ),
@@ -375,7 +492,7 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
   }
 
   // ── "Încarcă Foto" outlined button ──────────────────────────────────────────
-  Widget _buildUploadButton() {
+  Widget _buildUploadButton({bool compact = false}) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
@@ -384,15 +501,15 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
         label: Text(
           widget.canUploadPhoto ? 'Încarcă Foto' : 'Upload indisponibil pentru acest rol',
           style: TextStyle(
-            color: Color(0xFF333333),
+            color: const Color(0xFF333333),
             fontWeight: FontWeight.w500,
-            fontSize: 15,
+            fontSize: compact ? 14 : 15,
           ),
         ),
         style: OutlinedButton.styleFrom(
           backgroundColor: Colors.white,
           side: const BorderSide(color: Color(0xFFDDDDDD)),
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: EdgeInsets.symmetric(vertical: compact ? 13 : 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       ),
@@ -400,9 +517,9 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
   }
 
   // ── criteria info box ────────────────────────────────────────────────────────
-  Widget _buildInfoBox() {
+  Widget _buildInfoBox({bool compact = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 14, vertical: compact ? 11 : 12),
       decoration: BoxDecoration(
         color: _infoBoxBg,
         borderRadius: BorderRadius.circular(8),
@@ -418,8 +535,8 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
               widget.canUploadPhoto
                   ? 'Criterii: Față trebuie să fie vizibilă clar, fundal neutru, fără accesorii care ascund trăsăturile.'
                   : 'Pentru conturile de secretariat, încărcarea pozei de profil este dezactivată. Apasă Skip pentru a continua.',
-              style: const TextStyle(
-                fontSize: 13,
+              style: TextStyle(
+                fontSize: compact ? 12.5 : 13,
                 color: Color(0xFF3D3D3D),
                 height: 1.5,
               ),
@@ -431,7 +548,96 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
   }
 
   // ── navigation buttons ───────────────────────────────────────────────────────
-  Widget _buildNavigationRow() {
+  Widget _buildNavigationRow({bool compact = false}) {
+    final previousButton = OutlinedButton.icon(
+      onPressed: _loading ? null : widget.onBack,
+      icon: const Icon(
+        Icons.arrow_back_ios_new_rounded,
+        size: 14,
+        color: Color(0xFF333333),
+      ),
+      label: const Text(
+        'Pasul anterior',
+        style: TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.w500),
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: EdgeInsets.symmetric(vertical: compact ? 13 : 14),
+        side: const BorderSide(color: Color(0xFFCCCCCC)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+
+    final primaryButton = ElevatedButton(
+      onPressed: _loading ? null : _finalize,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: _primaryGreen,
+        disabledBackgroundColor: const Color(0xFF1F6B38).withOpacity(0.5),
+        padding: EdgeInsets.symmetric(vertical: compact ? 13 : 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        elevation: 0,
+      ),
+      child: _loading
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  widget.canUploadPhoto ? 'Finalizare' : 'Continuă',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: compact ? 14 : 15,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.check_circle_outline_rounded,
+                  color: Colors.white,
+                  size: 19,
+                ),
+              ],
+            ),
+    );
+
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.showSkipButton) ...[
+            OutlinedButton(
+              onPressed: _loading ? null : _finalize,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                side: const BorderSide(color: Color(0xFFCCCCCC)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Skip',
+                style: TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          previousButton,
+          const SizedBox(height: 10),
+          primaryButton,
+        ],
+      );
+    }
+
     return Row(
       children: [
         if (widget.showSkipButton) ...[
@@ -453,91 +659,30 @@ class _ProfilePicturePageState extends State<ProfilePicturePage> {
           ),
           const SizedBox(width: 12),
         ],
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: _loading ? null : widget.onBack,
-            icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              size: 14,
-              color: Color(0xFF333333),
-            ),
-            label: const Text(
-              'Pasul anterior',
-              style: TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.w500),
-            ),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              side: const BorderSide(color: Color(0xFFCCCCCC)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-        ),
+        Expanded(child: previousButton),
         const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: _loading ? null : _finalize,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _primaryGreen,
-              disabledBackgroundColor: Color(0xFF1F6B38).withOpacity(0.5),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              elevation: 0,
-            ),
-            child: _loading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        widget.canUploadPhoto ? 'Finalizare' : 'Continuă',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(
-                        Icons.check_circle_outline_rounded,
-                        color: Colors.white,
-                        size: 19,
-                      ),
-                    ],
-                  ),
-          ),
-        ),
+        Expanded(child: primaryButton),
       ],
     );
   }
 
   // ── help text ────────────────────────────────────────────────────────────────
-  Widget _buildHelpText() {
+  Widget _buildHelpText({bool compact = false}) {
     return Center(
       child: Column(
         children: [
-          const Text(
+          Text(
             'Ai nevoie de ajutor?',
-            style: TextStyle(fontSize: 13, color: Color(0xFF888888)),
+            style: TextStyle(fontSize: compact ? 12 : 13, color: const Color(0xFF888888)),
           ),
           GestureDetector(
             onTap: () {
               // TODO: open IT support link / dialog
             },
-            child: const Text(
+            child: Text(
               'Contactează suportul IT',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: compact ? 12.5 : 13,
                 color: _primaryGreen,
                 fontWeight: FontWeight.w600,
                 decoration: TextDecoration.underline,
