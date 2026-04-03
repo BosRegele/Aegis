@@ -292,10 +292,8 @@ class _MyAppState extends State<MyApp> {
                 return const LoginPageFirestore();
               }
 
-              final personalEmail = (data['personalEmail'] ?? '').toString();
-              final hasPersonalEmail = personalEmail.trim().isNotEmpty;
-              final passwordChanged = data['passwordChanged'] == true;
-              final emailVerified = data['emailVerified'] == true;
+              // personalEmail, passwordChanged, emailVerified read but
+              // not currently consumed — kept as data[] access only.
               final onboardingComplete = data['onboardingComplete'] == true;
               final role = (data['role'] ?? '').toString();
               final twoFactorVerifiedUntil =
