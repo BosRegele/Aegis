@@ -452,8 +452,8 @@ class _AccessHubCardState extends State<_AccessHubCard> {
     try {
       final random = Random();
       final tokenId = List.generate(16, (_) => random.nextInt(10)).join();
-      final expiresAt = DateTime.now().add(
-        const Duration(seconds: _renewIntervalSeconds + 1),
+      final expiresAt = Timestamp.fromDate(
+        DateTime.now().add(const Duration(seconds: _renewIntervalSeconds + 1)),
       );
 
       await FirebaseFirestore.instance.collection('qrTokens').doc(tokenId).set({
