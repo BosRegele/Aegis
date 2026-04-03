@@ -1,6 +1,12 @@
+import 'dart:typed_data';
+import 'dart:ui';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:excel/excel.dart' as xls;
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
+import 'admin_api.dart';
 import 'services/admin_store.dart';
 
 class AdminTeachersPage extends StatefulWidget {
@@ -294,9 +300,19 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                             .toString();
                                     final classId = (data['classId'] ?? '')
                                         .toString();
-                                    final email = data['email']?.toString();
+                                    final email =
+                                        (data['personalEmail'] ?? data['email'])
+                                            ?.toString();
                                     final status = (data['status'] ?? 'active')
                                         .toString();
+                                    final onboardingComplete =
+                                        data['onboardingComplete'] as bool? ??
+                                        false;
+                                    final photoUrl =
+                                        (data['photoUrl'] ??
+                                                data['avatarUrl'] ??
+                                                '')
+                                            .toString();
                                     return Padding(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 12,
@@ -420,10 +436,15 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                                 onPressed: () =>
                                                     _openTeacherDialog(
                                                       context,
+                                                      uid: uid,
                                                       username: username,
                                                       fullName: fullName,
                                                       classId: classId,
                                                       status: status,
+                                                      onboardingComplete:
+                                                          onboardingComplete,
+                                                      email: email,
+                                                      photoUrl: photoUrl,
                                                     ),
                                               ),
                                             ),
@@ -554,34 +575,6 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF5F6771),
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF2E3B4E),
-              fontSize: 15,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   List<Widget> _buildPageButtons(int totalPages) {
     final pages = <Widget>[];
     const maxVisible = 5;
@@ -661,125 +654,709 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
 
   Future<void> _openTeacherDialog(
     BuildContext context, {
+    required String uid,
     required String username,
     required String fullName,
     required String classId,
     required String status,
+    required bool onboardingComplete,
+    required String? email,
+    required String photoUrl,
   }) async {
-    await showDialog(
+    final renameC = TextEditingController(text: fullName);
+
+    await showGeneralDialog(
       context: context,
-      builder: (_) {
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 220),
+      transitionBuilder: (_, animation, __, child) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 10 * animation.value,
+            sigmaY: 10 * animation.value,
+          ),
+          child: Container(
+            color: Colors.black.withValues(alpha: 0.55 * animation.value),
+            child: FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOut,
+              ),
+              child: child,
+            ),
+          ),
+        );
+      },
+      pageBuilder: (_, __, ___) {
         bool busy = false;
+        String? msg;
+        bool msgIsError = false;
+        String currentFullName = fullName;
+        String currentClassId = classId;
+        List<Map<String, String>> allClassesList = [];
+        bool allClassesLoaded = false;
+
         return StatefulBuilder(
-          builder: (ctx, setDialogState) => Dialog(
+          builder: (ctx, setS) => Dialog(
             backgroundColor: Colors.transparent,
             insetPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 24,
+              horizontal: 55,
+              vertical: 16,
             ),
             child: Container(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: const BoxConstraints(maxWidth: 860, minHeight: 760),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(28),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF7AAF5B), Color(0xFF5A9641)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                    padding: const EdgeInsets.fromLTRB(32, 22, 36, 22),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(28),
                       ),
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(24),
-                      ),
-                    ),
-                    child: Text(
-                      fullName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDetailRow("Username utilizator", username),
-                        _buildDetailRow(
-                          "Clasa reprezentată",
-                          classId.isEmpty ? "Nespecificată" : classId,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.grey.shade200,
+                          width: 1,
                         ),
-                        _buildDetailRow(
-                          "Status cont",
-                          status == 'disabled'
-                              ? 'Dezactivat'
-                              : 'Activ (Enabled)',
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Setări Utilizator',
+                          style: TextStyle(
+                            fontSize: 27,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF1A2E1A),
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF5F6771),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 14,
+                            ),
+                          ),
+                          child: const Text(
+                            'Anulează',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        ElevatedButton(
+                          onPressed: () async {
+                            final newName = renameC.text.trim();
+                            if (newName.isNotEmpty &&
+                                newName != currentFullName) {
+                              setS(() {
+                                busy = true;
+                                msg = null;
+                              });
+                              try {
+                                await FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(uid)
+                                    .update({
+                                      'fullName': newName,
+                                      'updatedAt': FieldValue.serverTimestamp(),
+                                    });
+                                setS(() {
+                                  busy = false;
+                                  currentFullName = newName;
+                                  renameC.clear();
+                                  msg = 'Numele a fost schimbat în "$newName".';
+                                  msgIsError = false;
+                                });
+                                return; // stay open to show success message
+                              } catch (e) {
+                                setS(() {
+                                  busy = false;
+                                  msg = e.toString().replaceFirst(
+                                    'Exception: ',
+                                    '',
+                                  );
+                                  msgIsError = true;
+                                });
+                                return;
+                              }
+                            }
+                            if (ctx.mounted) Navigator.pop(ctx);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2E6B2E),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            'Salvează modificările',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: status == 'disabled'
-                                      ? const Color(0xFF4CAF50)
-                                      : Colors.orangeAccent,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(32, 36, 36, 32),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (msg != null) ...[
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 560,
                                 ),
-                                onPressed: busy
-                                    ? null
-                                    : () async {
-                                        final disable = status != 'disabled';
-                                        final nav = Navigator.of(context);
-                                        setDialogState(() => busy = true);
-                                        await store.setDisabled(
-                                          username,
-                                          disable,
-                                        );
-                                        if (!mounted) return;
-                                        nav.pop();
-                                      },
-                                child: Text(
-                                  status == 'disabled'
-                                      ? "Activează"
-                                      : "Dezactivează",
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: msgIsError
+                                        ? const Color(0xFFFFEBEB)
+                                        : const Color(0xFFE8F5E0),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: msgIsError
+                                          ? const Color(0xFFE57373)
+                                          : const Color(0xFF81C784),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        msgIsError
+                                            ? Icons.error_outline
+                                            : Icons.check_circle_outline,
+                                        size: 16,
+                                        color: msgIsError
+                                            ? const Color(0xFFE53935)
+                                            : const Color(0xFF388E3C),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: SelectableText(
+                                          msg!,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: msgIsError
+                                                ? const Color(0xFFB71C1C)
+                                                : const Color(0xFF1B5E20),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: ElevatedButton(
+                            const SizedBox(height: 16),
+                          ],
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 5,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Text(
+                                          'Detalii Diriginte',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF1A2E1A),
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: onboardingComplete
+                                                ? const Color(0xFFE6EFE8)
+                                                : const Color(0xFFFFEBEB),
+                                            border: Border.all(
+                                              color: onboardingComplete
+                                                  ? const Color(0xFFC6DAC9)
+                                                  : const Color(0xFFE8AAAA),
+                                              width: 1.5,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                onboardingComplete
+                                                    ? 'CONT CONFIGURAT'
+                                                    : 'CONT NECONFIGURAT',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: onboardingComplete
+                                                      ? const Color(0xFF2E793A)
+                                                      : const Color(0xFFC0392B),
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              if (onboardingComplete)
+                                                _PulsingDot(
+                                                  colorA: const Color(
+                                                    0xFFC6DAC9,
+                                                  ),
+                                                  colorB: const Color(
+                                                    0xFF2E793A,
+                                                  ),
+                                                )
+                                              else
+                                                _PulsingDot(
+                                                  colorA: const Color(
+                                                    0xFFE8AAAA,
+                                                  ),
+                                                  colorB: const Color(
+                                                    0xFFC0392B,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 20),
+                                    const Text(
+                                      'NUME COMPLET',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1,
+                                        color: Color(0xFF2A5C30),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      width: double.infinity,
+                                      height: 48,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEBEFE5),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: TextField(
+                                        controller: renameC,
+                                        textCapitalization:
+                                            TextCapitalization.words,
+                                        textAlignVertical:
+                                            TextAlignVertical.center,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF000000),
+                                        ),
+                                        decoration: InputDecoration(
+                                          hintText: currentFullName,
+                                          hintStyle: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF000000),
+                                          ),
+                                          border: InputBorder.none,
+                                          isDense: true,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                vertical: 14,
+                                              ),
+                                        ),
+                                        onSubmitted: (val) async {
+                                          final newName = val.trim();
+                                          if (newName.isEmpty ||
+                                              newName == currentFullName) {
+                                            return;
+                                          }
+                                          setS(() {
+                                            busy = true;
+                                            msg = null;
+                                          });
+                                          try {
+                                            await FirebaseFirestore.instance
+                                                .collection('users')
+                                                .doc(uid)
+                                                .update({
+                                                  'fullName': newName,
+                                                  'updatedAt':
+                                                      FieldValue.serverTimestamp(),
+                                                });
+                                            setS(() {
+                                              busy = false;
+                                              currentFullName = newName;
+                                              renameC.clear();
+                                              msg =
+                                                  'Numele a fost schimbat în "$newName".';
+                                              msgIsError = false;
+                                            });
+                                          } catch (e) {
+                                            setS(() {
+                                              busy = false;
+                                              msg = e.toString().replaceFirst(
+                                                'Exception: ',
+                                                '',
+                                              );
+                                              msgIsError = true;
+                                            });
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'USERNAME',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  letterSpacing: 1,
+                                                  color: Color(0xFF2A5C30),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Container(
+                                                width: double.infinity,
+                                                height: 48,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 12,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFFF7F9F3,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: Text(
+                                                  username,
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    color: Color(0xFF555555),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'EMAIL',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  letterSpacing: 1,
+                                                  color: Color(0xFF2A5C30),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Container(
+                                                width: double.infinity,
+                                                height: 48,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 12,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFFF7F9F3,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: Text(
+                                                  email ?? '-',
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    color: Color(0xFF555555),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'CLASĂ',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1,
+                                        color: Color(0xFF2A5C30),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    FutureBuilder<QuerySnapshot>(
+                                      future: allClassesLoaded
+                                          ? null
+                                          : FirebaseFirestore.instance
+                                                .collection('classes')
+                                                .get(),
+                                      builder: (_, snap) {
+                                        if (!allClassesLoaded &&
+                                            snap.connectionState ==
+                                                ConnectionState.done &&
+                                            snap.hasData) {
+                                          allClassesLoaded = true;
+                                          allClassesList =
+                                              snap.data!.docs.map((d) {
+                                                final data =
+                                                    d.data()
+                                                        as Map<String, dynamic>;
+                                                return {
+                                                  'id': d.id,
+                                                  'teacherUsername':
+                                                      (data['teacherUsername'] ??
+                                                              '')
+                                                          .toString()
+                                                          .trim()
+                                                          .toLowerCase(),
+                                                };
+                                              }).toList()..sort(
+                                                (a, b) => a['id']!.compareTo(
+                                                  b['id']!,
+                                                ),
+                                              );
+                                        }
+
+                                        final availableClassIds = allClassesList
+                                            .where((c) {
+                                              final classTeacher =
+                                                  (c['teacherUsername'] ?? '')
+                                                      .trim()
+                                                      .toLowerCase();
+                                              final classDocId = c['id'] ?? '';
+                                              return classTeacher.isEmpty ||
+                                                  classDocId ==
+                                                      currentClassId ||
+                                                  classTeacher ==
+                                                      username
+                                                          .trim()
+                                                          .toLowerCase();
+                                            })
+                                            .map((c) => c['id']!)
+                                            .toList();
+
+                                        return Container(
+                                          width: double.infinity,
+                                          height: 48,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEBEFE5),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                          child: DropdownButtonHideUnderline(
+                                            child: DropdownButton<String>(
+                                              value:
+                                                  availableClassIds.contains(
+                                                    currentClassId,
+                                                  )
+                                                  ? currentClassId
+                                                  : null,
+                                              isExpanded: true,
+                                              hint: Text(
+                                                currentClassId.isNotEmpty
+                                                    ? _formatClassName(
+                                                        currentClassId,
+                                                      )
+                                                    : 'Selectează clasă...',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF000000),
+                                                ),
+                                              ),
+                                              icon: const Icon(
+                                                Icons
+                                                    .keyboard_arrow_down_rounded,
+                                                size: 20,
+                                                color: Color(0xFF9AB88A),
+                                              ),
+                                              items: availableClassIds
+                                                  .map(
+                                                    (c) => DropdownMenuItem(
+                                                      value: c,
+                                                      child: Text(
+                                                        _formatClassName(c),
+                                                        style: const TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: Color(
+                                                            0xFF000000,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                              onChanged: busy
+                                                  ? null
+                                                  : (val) async {
+                                                      if (val == null ||
+                                                          val ==
+                                                              currentClassId) {
+                                                        return;
+                                                      }
+                                                      setS(() {
+                                                        busy = true;
+                                                        msg = null;
+                                                      });
+                                                      try {
+                                                        await store.moveStudent(
+                                                          username,
+                                                          val,
+                                                        );
+                                                        setS(() {
+                                                          busy = false;
+                                                          currentClassId = val;
+                                                          msg =
+                                                              'Dirigintele a fost mutat în clasa $val.';
+                                                          msgIsError = false;
+                                                        });
+                                                      } catch (e) {
+                                                        setS(() {
+                                                          busy = false;
+                                                          msg = e
+                                                              .toString()
+                                                              .replaceFirst(
+                                                                'Exception: ',
+                                                                '',
+                                                              );
+                                                          msgIsError = true;
+                                                        });
+                                                      }
+                                                    },
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 24),
+                              Column(
+                                children: [
+                                  const SizedBox(height: 8),
+                                  CircleAvatar(
+                                    radius: 63,
+                                    backgroundColor: _avatarColor(
+                                      currentFullName,
+                                    ),
+                                    backgroundImage: photoUrl.isNotEmpty
+                                        ? NetworkImage(photoUrl)
+                                        : null,
+                                    child: photoUrl.isEmpty
+                                        ? Text(
+                                            _initials(currentFullName),
+                                            style: const TextStyle(
+                                              color: Color(0xFF1A1A1A),
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 32,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 72),
+                          SizedBox(
+                            width: double.infinity,
+                            child: Center(
+                              child: ElevatedButton.icon(
+                                icon: busy
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.download_outlined,
+                                        size: 18,
+                                      ),
+                                label: const Text(
+                                  'Extrage Date / Reseteaza Parola',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 17,
+                                  ),
+                                ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFE53935),
+                                  backgroundColor: const Color(0xFF7B2D5E),
                                   foregroundColor: Colors.white,
                                   elevation: 0,
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
+                                    vertical: 18,
+                                    horizontal: 30,
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
@@ -788,21 +1365,226 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                 onPressed: busy
                                     ? null
                                     : () async {
-                                        final nav = Navigator.of(context);
-                                        final ok = await showDialog<bool>(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            title: const Text("Ștergere"),
-                                            content: Text(
-                                              "Sigur dorești să ștergi profesorul: $username?",
+                                        final newPassC =
+                                            TextEditingController();
+                                        final confirmed = await showDialog<bool>(
+                                          context: ctx,
+                                          builder: (dialogCtx) => AlertDialog(
+                                            title: const Text(
+                                              'Export & Resetare Parola',
+                                            ),
+                                            content: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'Datele dirigintelui vor fi exportate în Excel, iar parola va fi resetată.',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 12),
+                                                TextField(
+                                                  controller: newPassC,
+                                                  decoration:
+                                                      const InputDecoration(
+                                                        labelText:
+                                                            'Parolă nouă',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                      ),
+                                                  obscureText: true,
+                                                ),
+                                              ],
                                             ),
                                             actions: [
                                               TextButton(
                                                 onPressed: () => Navigator.pop(
-                                                  context,
+                                                  dialogCtx,
                                                   false,
                                                 ),
-                                                child: const Text("Anulează"),
+                                                child: const Text('Anuleaza'),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed: () => Navigator.pop(
+                                                  dialogCtx,
+                                                  true,
+                                                ),
+                                                child: const Text('Confirma'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirmed != true) return;
+                                        final newPass = newPassC.text.trim();
+                                        if (newPass.isEmpty) {
+                                          setS(() {
+                                            msg =
+                                                'Parola nouă nu poate fi goală.';
+                                            msgIsError = true;
+                                          });
+                                          return;
+                                        }
+
+                                        setS(() {
+                                          busy = true;
+                                          msg = null;
+                                        });
+                                        try {
+                                          final excel = xls.Excel.createExcel();
+                                          final sheet = excel['Diriginte'];
+                                          sheet.appendRow([
+                                            xls.TextCellValue('Nume Complet'),
+                                            xls.TextCellValue('Username'),
+                                            xls.TextCellValue('Email'),
+                                            xls.TextCellValue('Clasă'),
+                                            xls.TextCellValue('Parolă Nouă'),
+                                          ]);
+                                          sheet.appendRow([
+                                            xls.TextCellValue(currentFullName),
+                                            xls.TextCellValue(username),
+                                            xls.TextCellValue(email ?? '-'),
+                                            xls.TextCellValue(
+                                              currentClassId.isNotEmpty
+                                                  ? _formatClassName(
+                                                      currentClassId,
+                                                    )
+                                                  : '-',
+                                            ),
+                                            xls.TextCellValue(newPass),
+                                          ]);
+                                          final bytes = excel.encode();
+                                          if (bytes != null) {
+                                            await FileSaver.instance.saveFile(
+                                              name: 'diriginte_$username',
+                                              bytes: Uint8List.fromList(bytes),
+                                              ext: 'xlsx',
+                                              mimeType: MimeType.microsoftExcel,
+                                            );
+                                          }
+
+                                          await AdminApi().resetPassword(
+                                            username: username,
+                                            newPassword: newPass,
+                                          );
+
+                                          setS(() {
+                                            busy = false;
+                                            msg =
+                                                'Date exportate si parola resetata cu succes.';
+                                            msgIsError = false;
+                                          });
+                                        } catch (e) {
+                                          setS(() {
+                                            busy = false;
+                                            msg = e.toString().replaceFirst(
+                                              'Exception: ',
+                                              '',
+                                            );
+                                            msgIsError = true;
+                                          });
+                                        }
+                                      },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 44),
+                          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                          const SizedBox(height: 18),
+                          SizedBox(
+                            width: double.infinity,
+                            child: Center(
+                              child: TextButton.icon(
+                                icon: busy
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Color(0xFFD92D20),
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.delete_outline,
+                                        size: 22,
+                                      ),
+                                label: const Text('Sterge Utilizator'),
+                                style: ButtonStyle(
+                                  foregroundColor:
+                                      WidgetStateProperty.resolveWith((states) {
+                                        if (states.contains(
+                                          WidgetState.disabled,
+                                        )) {
+                                          return const Color(0xFFED8F88);
+                                        }
+                                        return const Color(0xFFD92D20);
+                                      }),
+                                  backgroundColor:
+                                      WidgetStateProperty.resolveWith((states) {
+                                        if (states.contains(
+                                          WidgetState.hovered,
+                                        )) {
+                                          return const Color(0xFFF8E4E2);
+                                        }
+                                        if (states.contains(
+                                          WidgetState.pressed,
+                                        )) {
+                                          return const Color(0xFFF3D6D3);
+                                        }
+                                        return Colors.transparent;
+                                      }),
+                                  overlayColor: WidgetStateProperty.resolveWith(
+                                    (states) {
+                                      if (states.contains(
+                                            WidgetState.hovered,
+                                          ) ||
+                                          states.contains(
+                                            WidgetState.pressed,
+                                          )) {
+                                        return Colors.transparent;
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  elevation: const WidgetStatePropertyAll(0),
+                                  padding: const WidgetStatePropertyAll(
+                                    EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 18,
+                                    ),
+                                  ),
+                                  shape: WidgetStatePropertyAll(
+                                    RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  textStyle: const WidgetStatePropertyAll(
+                                    TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                onPressed: busy
+                                    ? null
+                                    : () async {
+                                        final ok = await showDialog<bool>(
+                                          context: ctx,
+                                          builder: (dialogCtx) => AlertDialog(
+                                            title: const Text(
+                                              'Stergere diriginte',
+                                            ),
+                                            content: Text(
+                                              'Esti sigur ca vrei sa stergi dirigintele $currentFullName?',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  dialogCtx,
+                                                  false,
+                                                ),
+                                                child: const Text('Anuleaza'),
                                               ),
                                               ElevatedButton(
                                                 style: ElevatedButton.styleFrom(
@@ -810,65 +1592,40 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                                   foregroundColor: Colors.white,
                                                 ),
                                                 onPressed: () => Navigator.pop(
-                                                  context,
+                                                  dialogCtx,
                                                   true,
                                                 ),
-                                                child: const Text("Șterge"),
+                                                child: const Text('Sterge'),
                                               ),
                                             ],
                                           ),
                                         );
                                         if (ok != true) return;
-                                        setDialogState(() => busy = true);
+                                        setS(() {
+                                          busy = true;
+                                          msg = null;
+                                        });
                                         try {
                                           await store.deleteUser(username);
-                                          if (!mounted) return;
-                                          nav.pop();
-                                        } catch (_) {
-                                          setDialogState(() => busy = false);
+                                          if (ctx.mounted) {
+                                            Navigator.pop(ctx);
+                                          }
+                                        } catch (e) {
+                                          setS(() {
+                                            busy = false;
+                                            msg = e.toString().replaceFirst(
+                                              'Exception: ',
+                                              '',
+                                            );
+                                            msgIsError = true;
+                                          });
                                         }
                                       },
-                                child: busy
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Text(
-                                        "Șterge",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: TextButton(
-                            style: TextButton.styleFrom(
-                              backgroundColor: Colors.grey.withValues(
-                                alpha: 0.1,
-                              ),
-                              foregroundColor: const Color(0xFF2E3B4E),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text(
-                              "Închide",
-                              style: TextStyle(fontWeight: FontWeight.w700),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -878,6 +1635,8 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
         );
       },
     );
+
+    renameC.dispose();
   }
 }
 
@@ -912,6 +1671,52 @@ class _PaginationButton extends StatelessWidget {
           size: 20,
           color: enabled ? const Color(0xFF333333) : const Color(0xFFCCCCCC),
         ),
+      ),
+    );
+  }
+}
+
+class _PulsingDot extends StatefulWidget {
+  final Color colorA;
+  final Color colorB;
+  const _PulsingDot({required this.colorA, required this.colorB});
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Color?> _color;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _color = ColorTween(
+      begin: widget.colorA,
+      end: widget.colorB,
+    ).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _color,
+      builder: (_, __) => Container(
+        width: 7,
+        height: 7,
+        decoration: BoxDecoration(color: _color.value, shape: BoxShape.circle),
       ),
     );
   }
