@@ -1,17 +1,13 @@
-import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '../admin/services/admin_api.dart';
 import '../core/session.dart';
 import '../student/logout_dialog.dart';
 
-const _primary = Color(0xFF1D5C2B);
+const _primary = Color(0xFF0D631B);
 const _surfaceLowest = Color(0xFFFFFFFF);
 const _surfaceContainerLow = Color(0xFFF0F4E9);
-const _surfaceContainerHigh = Color(0xFFE7EDE1);
 const _outline = Color(0xFF5A6B5C);
 const _outlineVariant = Color(0xFFC8D1C2);
 const _onSurface = Color(0xFF111811);
@@ -124,14 +120,11 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
   bool _editingEmail = false;
   bool _editingPassword = false;
   bool _saving = false;
-  bool _uploading = false;
   bool _sendingCode = false;
   bool _codeSent = false;
   bool _emailVerified = false;
-  String? _profilePictureUrl;
   bool _obscurePassword = true;
-  String? _passwordError;
-  String? _emailError;
+
 
   @override
   void initState() {
@@ -144,7 +137,6 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
       FirebaseFirestore.instance.collection('users').doc(uid).get().then((doc) {
         if (mounted) {
           setState(() {
-            _profilePictureUrl = (doc.data()?['profilePictureUrl'] ?? '').toString();
             final email = (doc.data()?['personalEmail'] ?? '').toString();
             if (email.isNotEmpty) _emailC.text = email;
           });
@@ -160,41 +152,6 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
     _confirmPasswordC.dispose();
     _verificationCodeC.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickAndUploadImage() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 512,
-      maxHeight: 512,
-      imageQuality: 85,
-    );
-    if (picked == null || !mounted) return;
-
-    setState(() => _uploading = true);
-    try {
-      final bytes = await picked.readAsBytes();
-      final ref = FirebaseStorage.instance.ref().child('profilePictures/$uid.jpg');
-      await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
-      final url = await ref.getDownloadURL();
-
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'profilePictureUrl': url,
-      });
-
-      if (mounted) setState(() => _profilePictureUrl = url);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Eroare la încărcare: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _uploading = false);
-    }
   }
 
   Future<bool> _reauthenticate() async {
@@ -237,10 +194,7 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
 
       if (_editingEmail && _emailC.text.trim().isNotEmpty) {
         if (!_emailVerified) {
-          setState(() {
-            _emailError = 'Verifică mai întâi email-ul nou.';
-            _saving = false;
-          });
+          setState(() => _saving = false);
           return;
         }
         updates['personalEmail'] = _emailC.text.trim();
@@ -250,20 +204,13 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
           _passwordC.text.trim().isNotEmpty &&
           _passwordC.text.trim() != '••••••••••••') {
         if (_passwordC.text.trim() != _confirmPasswordC.text.trim()) {
-          setState(() {
-            _passwordError = 'Parolele nu se potrivesc.';
-            _saving = false;
-          });
+          setState(() => _saving = false);
           return;
         }
         if (_passwordC.text.trim().length < 8) {
-          setState(() {
-            _passwordError = 'Parola trebuie să aibă cel puțin 8 caractere.';
-            _saving = false;
-          });
+          setState(() => _saving = false);
           return;
         }
-        setState(() => _passwordError = null);
         final ok = await _reauthenticate();
         if (!ok) return;
         await FirebaseAuth.instance.currentUser?.updatePassword(_passwordC.text.trim());
@@ -458,31 +405,6 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
                 ),
               ],
               
-              const SizedBox(height: 24),
-              // IMAGINE PROFIL
-              const Text('IMAGINE PROFIL', style: TextStyle(color: _primary, fontSize: 12, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: _uploading ? null : _pickAndUploadImage,
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(color: _surfaceContainerLow, borderRadius: BorderRadius.circular(16)),
-                  child: Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: _profilePictureUrl != null && _profilePictureUrl!.isNotEmpty
-                          ? Image.network(_profilePictureUrl!, width: 50, height: 50, fit: BoxFit.cover)
-                          : Container(width: 50, height: 50, color: _surfaceContainerHigh, child: const Icon(Icons.person)),
-                      ),
-                      const SizedBox(width: 14),
-                      const Expanded(child: Text('Schimbă poza de profil', style: TextStyle(fontWeight: FontWeight.w600))),
-                      if (_uploading) const CircularProgressIndicator(strokeWidth: 2)
-                      else const Icon(Icons.camera_alt_outlined, color: _primary),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -493,7 +415,6 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
   Future<void> _sendVerificationCode() async {
     final email = _emailC.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      setState(() => _emailError = 'Email invalid');
       return;
     }
     setState(() => _sendingCode = true);
@@ -501,7 +422,7 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
       await _api.sendVerificationEmail(uid: FirebaseAuth.instance.currentUser!.uid, email: email);
       setState(() { _codeSent = true; _sendingCode = false; });
     } catch (e) {
-      setState(() { _emailError = 'Eroare la trimitere'; _sendingCode = false; });
+      setState(() { _sendingCode = false; });
     }
   }
 

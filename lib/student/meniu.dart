@@ -192,103 +192,74 @@ class _MeniuScreenState extends State<MeniuScreen> {
                           : (classId.isNotEmpty ? classId : 'Clasa nealocata'));
                 final resolvedClassName = _formatClassLabel(rawClassName);
 
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final compactHeight = constraints.maxHeight < 760;
-                    final topSectionHeight = compactHeight ? 544.0 : 580.0;
-                    final accessTop = compactHeight ? 180.0 : 190.0;
-
-                    return CustomScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      slivers: [
-                        SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              SizedBox(
-                                height: topSectionHeight,
-                                child: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    _TopHeroHeader(
-                                      displayName: resolvedName,
-                                      className: resolvedClassName,
-                                    ),
-                                    Positioned(
-                                      top: accessTop,
-                                      left: 20,
-                                      right: 20,
-                                      child: _AccessHubCard(
-                                        inSchool:
-                                            (data['inSchool'] as bool?) ??
-                                            false,
-                                        lastInAt: data['lastInAt'],
-                                        lastScanStream: _lastScanStream,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    20,
-                                    0,
-                                    20,
-                                    12,
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    children: [
-                                      SizedBox(height: compactHeight ? 0 : 2),
-                                      IntrinsicHeight(
-                                        child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            Expanded(
-                                              child: _CereriCard(
-                                                onTap: () =>
-                                                    _openCereri(context),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 14),
-                                            Expanded(
-                                              child: _MesajeCard(
-                                                studentUid:
-                                                    FirebaseAuth
-                                                        .instance
-                                                        .currentUser
-                                                        ?.uid ??
-                                                    '',
-                                                inboxLastOpenedAt:
-                                                    inboxLastOpenedAt,
-                                                onTap: () =>
-                                                    _openMesaje(context),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 14),
-                                      _LeaveStatusCard(
-                                        classDocStream: classStream,
-                                        leaveActiveStream: _leaveActiveStream,
-                                        isWithinSchedule: _isWithinSchedule,
-                                        onActiveTap:
-                                            widget.onNavigateToActiveLeave,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(color: _surface),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: _TopHeroHeader(
+                        displayName: resolvedName,
+                        className: resolvedClassName,
+                      ),
+                    ),
+                    Positioned(
+                      top: 190.0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
                         ),
-                      ],
-                    );
-                  },
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                        child: Column(
+                          children: [
+                            _AccessHubCard(
+                              inSchool: (data['inSchool'] as bool?) ?? false,
+                              lastInAt: data['lastInAt'],
+                              lastScanStream: _lastScanStream,
+                            ),
+                            const SizedBox(height: 14),
+                            IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    child: _CereriCard(
+                                      onTap: () => _openCereri(context),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: _MesajeCard(
+                                      studentUid:
+                                          FirebaseAuth
+                                              .instance
+                                              .currentUser
+                                              ?.uid ??
+                                          '',
+                                      inboxLastOpenedAt: inboxLastOpenedAt,
+                                      onTap: () => _openMesaje(context),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _LeaveStatusCard(
+                              classDocStream: classStream,
+                              leaveActiveStream: _leaveActiveStream,
+                              isWithinSchedule: _isWithinSchedule,
+                              onActiveTap: widget.onNavigateToActiveLeave,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               },
             );

@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../core/session.dart';
 import 'account_bottom_sheet.dart';
 
-const _kHeaderGreen = Color(0xFF1D5C2B);
-const _kPageBg = Color(0xFFF4F6F4);
+const _kHeaderGreen = Color(0xFF0D631B);
+const _kPageBg = Color(0xFFF7F9F0);
 const _kCardBg = Color(0xFFFFFFFF);
 
 class CereriAsteptarePage extends StatefulWidget {
@@ -64,280 +64,6 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
     }
   }
 
-  // ---------------------------------------------------------
-
-  Future<void> _showRequestDialog(
-    BuildContext context,
-    String requestId,
-    Map<String, dynamic> d,
-  ) async {
-    final studentUid = (d['studentUid'] ?? '').toString();
-    final studentName = (d['studentName'] ?? '').toString();
-    final status = (d['status'] ?? '').toString();
-    final message = (d['message'] ?? '').toString();
-    final dateText = (d['dateText'] ?? '').toString();
-    final timeText = (d['timeText'] ?? '').toString();
-
-    String? photoUrl;
-    String studentId = studentUid;
-    if (studentUid.isNotEmpty) {
-      try {
-        final us = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(studentUid)
-            .get();
-        if (us.exists) {
-          final ud = us.data()!;
-          photoUrl = (ud['photoUrl'] ?? ud['avatarUrl'] ?? '').toString();
-          studentId = (ud['studentId'] ?? ud['username'] ?? studentUid)
-              .toString();
-        }
-      } catch (_) {}
-    }
-
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFFE6EBEE),
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header verde
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 20,
-                ),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF7AAF5B),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 26,
-                      backgroundColor: Colors.white.withOpacity(0.22),
-                      backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
-                          ? NetworkImage(photoUrl) as ImageProvider
-                          : null,
-                      child: (photoUrl == null || photoUrl.isEmpty)
-                          ? Text(
-                              studentName
-                                  .trim()
-                                  .split(' ')
-                                  .where((w) => w.isNotEmpty)
-                                  .take(2)
-                                  .map((w) => w[0].toUpperCase())
-                                  .join(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 18,
-                              ),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            studentName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'ID: $studentId',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.80),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      icon: const Icon(
-                        Icons.close_rounded,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Body
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Data
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.calendar_today_rounded,
-                            color: Color(0xFF4B78D2),
-                            size: 18,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            '$dateText${timeText.isNotEmpty ? '  ·  $timeText' : ''}',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF2E3B4E),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (message.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Motivul cererii',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF8A9BB0),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              message,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Color(0xFF2E3B4E),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    if (status == 'pending') ...[
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.of(ctx).pop();
-                                _reviewRequest(
-                                  requestId: requestId,
-                                  status: 'rejected',
-                                );
-                              },
-                              icon: const Icon(Icons.close_rounded, size: 18),
-                              label: const Text('Respinge'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFE53935),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                textStyle: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.of(ctx).pop();
-                                _reviewRequest(
-                                  requestId: requestId,
-                                  status: 'approved',
-                                );
-                              },
-                              icon: const Icon(Icons.check_rounded, size: 18),
-                              label: const Text('Aprobă'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4CAF50),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                textStyle: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final uid = AppSession.uid;
@@ -355,7 +81,6 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
             _TopHeader(
               title: 'Cereri de învoire',
               onBack: () => Navigator.of(context).maybePop(),
-              onProfile: () => showAccountBottomSheet(context),
             ),
             Expanded(
               child: Stack(
@@ -433,12 +158,6 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                                   dateText: dateText,
                                   timeText: timeText,
                                   message: message,
-<<<<<<< Updated upstream
-                                  onTap: () =>
-                                      _showRequestDialog(context, requestId, d),
-                                  isPending: true,
-=======
->>>>>>> Stashed changes
                                   onAccept: () => _reviewRequest(
                                     requestId: requestId,
                                     status: 'approved',
@@ -472,78 +191,90 @@ class _TopHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final compact = MediaQuery.sizeOf(context).width < 390;
+    final headerHeight = compact ? 138.0 : 146.0;
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(52)),
-      child: SizedBox(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(54),
+        bottomRight: Radius.circular(54),
+      ),
+      child: Container(
+        height: headerHeight,
         width: double.infinity,
-        height: 120 + topPadding,
+        color: _kHeaderGreen,
         child: Stack(
-          fit: StackFit.expand,
-          clipBehavior: Clip.none,
           children: [
-            Container(color: _kHeaderGreen),
-            Positioned(right: -60, top: -80, child: _decorCircle(200)),
-            Positioned(
-              right: 120,
-              top: topPadding + 28,
-              child: _decorCircle(72),
-            ),
-            Positioned(left: -40, bottom: -40, child: _decorCircle(150)),
-            if (onProfile != null)
-              Positioned(
-                top: topPadding,
-                right: 14,
-                child: Hero(
-                  tag: 'teacher-profile-btn',
-                  child: GestureDetector(
-                    onTap: onProfile,
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: const Color(0x337DE38D),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0x6DC7F4CE),
-                          width: 1,
+            Positioned(top: -72, right: -52, child: _decorCircle(220)),
+            Positioned(top: 44, right: 34, child: _decorCircle(72)),
+            Positioned(left: 156, bottom: -28, child: _decorCircle(82)),
+            Padding(
+              padding: EdgeInsets.zero,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: onBack,
+                        behavior: HitTestBehavior.opaque,
+                        child: const SizedBox(
+                          width: 34,
+                          height: 34,
+                          child: Center(
+                            child: Icon(
+                              Icons.arrow_back_rounded,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
                         ),
                       ),
-                      child: const Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 21,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 29,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.6,
+                          ),
+                        ),
                       ),
+                      if (onProfile != null) const SizedBox(width: 64),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (onProfile != null)
+              Positioned(
+                top: 5,
+                right: 14,
+                child: GestureDetector(
+                  onTap: onProfile,
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: const Color(0x337DE38D),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0x6DC7F4CE),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 21,
                     ),
                   ),
                 ),
               ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(8, topPadding - 2, 18, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: onBack,
-                    splashRadius: 22,
-                    icon: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: Colors.white,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -555,8 +286,8 @@ class _TopHeader extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.10),
         shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.08),
       ),
     );
   }
@@ -571,7 +302,6 @@ class _RequestCard extends StatelessWidget {
   final String message;
   final VoidCallback onAccept;
   final VoidCallback onReject;
-  final bool isPending;
 
   const _RequestCard({
     required this.initials,
@@ -582,7 +312,6 @@ class _RequestCard extends StatelessWidget {
     required this.message,
     required this.onAccept,
     required this.onReject,
-    this.isPending = false,
   });
 
   @override
@@ -737,18 +466,13 @@ class _RequestCard extends StatelessWidget {
                       height: 48,
                       child: ElevatedButton.icon(
                         onPressed: onAccept,
-                        icon: const Icon(
-                          Icons.check_rounded,
-                          size: 18,
-                        ),
+                        icon: const Icon(Icons.check_rounded, size: 18),
                         label: const Text('Acceptă'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1D5C2B),
+                          backgroundColor: const Color(0xFF0D631B),
                           foregroundColor: Colors.white,
                           elevation: 2,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
@@ -772,9 +496,7 @@ class _RequestCard extends StatelessWidget {
                           backgroundColor: const Color(0xFFF7E7EE),
                           foregroundColor: const Color(0xFF9C2D62),
                           elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
