@@ -30,6 +30,7 @@ class ParentStudentsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final parentUid = (AppSession.uid ?? '').trim();
+    final users = FirebaseFirestore.instance.collection('users');
 
     return Scaffold(
       backgroundColor: _kPageBg,
@@ -60,43 +61,41 @@ class ParentStudentsPage extends StatelessWidget {
                             return const Center(child: Text('Nu exista date.'));
                           }
 
-                          final childIds = _extractChildUids(parentData);
-
+                          final childIds = _extractChildUids(
+                            parentData,
+                            parentUid,
+                          );
                           if (childIds.isEmpty) {
                             return const Center(
                               child: Text('Nu exista copii asignati.'),
                             );
                           }
 
-                          return FutureBuilder<List<ParentStudentViewData>>(
-                            future: _loadStudentsByChildUids(childIds),
-                            builder: (context, studentSnapshot) {
-                              if (!studentSnapshot.hasData) {
-                                return const Center(
-                                  child: CircularProgressIndicator(),
-                                );
-                              }
+                          return ListView.separated(
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.only(top: 2, bottom: 24),
+                            itemCount: childIds.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 14),
+                            itemBuilder: (context, index) {
+                              final uid = childIds[index];
 
-                              final students = studentSnapshot.data!;
+                              return StreamBuilder<
+                                DocumentSnapshot<Map<String, dynamic>>
+                              >(
+                                stream: users.doc(uid).snapshots(),
+                                builder: (context, studentSnap) {
+                                  if (!studentSnap.hasData ||
+                                      !studentSnap.data!.exists) {
+                                    return const SizedBox();
+                                  }
 
-                              if (students.isEmpty) {
-                                return const Center(
-                                  child: Text('Nu exista copii asignati.'),
-                                );
-                              }
-
-                              return ListView.separated(
-                                physics: const BouncingScrollPhysics(),
-                                padding: const EdgeInsets.only(
-                                  top: 2,
-                                  bottom: 24,
-                                ),
-                                itemCount: students.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 14),
-                                itemBuilder: (context, index) {
+                                  final data = studentSnap.data!.data()!;
                                   return _StudentCard(
-                                    data: students[index],
+                                    data: _toStudentViewData(
+                                      studentSnap.data!.id,
+                                      data,
+                                    ),
                                     index: index,
                                   );
                                 },
@@ -113,84 +112,48 @@ class ParentStudentsPage extends StatelessWidget {
     );
   }
 
-  List<String> _extractChildUids(Map<String, dynamic> parentData) {
-    final raw = (parentData['children'] as List?) ??
-        (parentData['childrens'] as List?) ??
-        const [];
+  List<String> _extractChildUids(
+    Map<String, dynamic> parentData,
+    String parentUid,
+  ) {
+    final raw = (parentData['children'] as List?) ?? const [];
+    final idsSet = <String>{};
 
-    final ids = raw
-        .map((value) => value.toString().trim())
-        .where((value) => value.isNotEmpty)
-        .toList();
-
-    return ids.toSet().toList();
-  }
-
-  Future<List<ParentStudentViewData>> _loadStudentsByChildUids(
-    List<String> childUids,
-  ) async {
-    final usersRef = FirebaseFirestore.instance.collection('users');
-    final result = <ParentStudentViewData>[];
-
-    for (final uid in childUids) {
-      try {
-        DocumentSnapshot<Map<String, dynamic>>? foundDoc;
-
-        final byDocId = await usersRef.doc(uid).get();
-        if (byDocId.exists) {
-          foundDoc = byDocId;
+    for (final value in raw) {
+      if (value is String) {
+        final id = value.trim();
+        if (id.isNotEmpty) {
+          idsSet.add(id);
         }
+        continue;
+      }
 
-        if (foundDoc == null) {
-          final byUid = await usersRef
-              .where('uid', isEqualTo: uid)
-              .limit(1)
-              .get();
-          if (byUid.docs.isNotEmpty) {
-            foundDoc = byUid.docs.first;
-          }
+      if (value is Map<String, dynamic>) {
+        final id = ((value['uid'] ?? value['studentUid'] ?? value['id']) ?? '')
+            .toString()
+            .trim();
+        if (id.isNotEmpty) {
+          idsSet.add(id);
         }
-
-        if (foundDoc == null) {
-          result.add(
-            ParentStudentViewData(
-              uid: uid,
-              fullName: 'Elev lipsa',
-              username: uid,
-              role: 'student',
-              classId: '',
-              inSchool: false,
-            ),
-          );
-          continue;
-        }
-
-        final data = foundDoc.data() ?? const <String, dynamic>{};
-        result.add(
-          ParentStudentViewData(
-            uid: foundDoc.id,
-            fullName: (data['fullName'] ?? data['name'] ?? '').toString(),
-            username: (data['username'] ?? data['uid'] ?? '').toString(),
-            role: (data['role'] ?? 'student').toString(),
-            classId: (data['classId'] ?? '').toString(),
-            inSchool: data['inSchool'] == true,
-          ),
-        );
-      } catch (_) {
-        result.add(
-          ParentStudentViewData(
-            uid: uid,
-            fullName: 'Elev lipsa',
-            username: uid,
-            role: 'student',
-            classId: '',
-            inSchool: false,
-          ),
-        );
       }
     }
 
-    return result;
+    final ids = idsSet.toList()..sort();
+    return ids;
+  }
+
+  ParentStudentViewData _toStudentViewData(
+    String uid,
+    Map<String, dynamic> data,
+  ) {
+    return ParentStudentViewData(
+      uid: uid,
+      fullName: (data['fullName'] ?? data['name'] ?? '').toString(),
+      username: (data['username'] ?? data['uid'] ?? '').toString(),
+      role: (data['role'] ?? 'student').toString(),
+      classId: (data['classId'] ?? '').toString(),
+      inSchool: data['inSchool'] == true,
+    );
   }
 }
 
@@ -263,10 +226,7 @@ class _TopHeader extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }
@@ -282,25 +242,29 @@ class _StudentCard extends StatelessWidget {
     final name = data.fullName.trim().isNotEmpty
         ? data.fullName.trim()
         : data.username.trim().isNotEmpty
-            ? data.username.trim()
-            : 'Elev necunoscut';
+        ? data.username.trim()
+        : 'Elev necunoscut';
+
     final initials = _initials(name);
     final classLabel = _classLabel(data.classId);
 
     final useGreenAvatar = index.isEven;
     final avatarColor = useGreenAvatar
-      ? const Color(0xFF2D8A37)
-      : const Color(0xFFB64A78);
+        ? const Color(0xFF2D8A37)
+        : const Color(0xFFB64A78);
     final initialsColor = useGreenAvatar
-      ? const Color(0xFFBFE8B8)
-      : const Color(0xFFF3D5E2);
+        ? const Color(0xFFBFE8B8)
+        : const Color(0xFFF3D5E2);
+
     final statusBg = data.inSchool
         ? const Color(0xFFDCEBDC)
         : const Color(0xFFEDE3E8);
     final statusBorder = data.inSchool
         ? const Color(0xFFA8CDB0)
         : const Color(0xFFD7BEC9);
+
     final statusText = data.inSchool ? 'IN INCINTA' : 'IN AFARA INCINTEI';
+
     final statusTextColor = data.inSchool
         ? const Color(0xFF0C6C1D)
         : const Color(0xFF9A2D5D);
@@ -314,7 +278,6 @@ class _StudentCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E9E0)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             width: 76,
@@ -328,10 +291,8 @@ class _StudentCard extends StatelessWidget {
                 initials,
                 style: TextStyle(
                   fontSize: 35,
-                  height: 1,
                   fontWeight: FontWeight.w700,
                   color: initialsColor,
-                  letterSpacing: -0.4,
                 ),
               ),
             ),
@@ -343,25 +304,13 @@ class _StudentCard extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF101510),
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  classLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF2A322A),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                Text(classLabel, style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -376,16 +325,10 @@ class _StudentCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.circle,
-                        size: 9,
-                        color: statusTextColor,
-                      ),
+                      Icon(Icons.circle, size: 9, color: statusTextColor),
                       const SizedBox(width: 8),
                       Text(
                         statusText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: statusTextColor,
                           fontSize: 12.5,
@@ -398,36 +341,20 @@ class _StudentCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: Color(0xFF101510),
-            size: 34,
-          ),
+          const Icon(Icons.chevron_right_rounded, size: 34),
         ],
       ),
     );
   }
 
   String _initials(String value) {
-    final parts = value
-        .split(' ')
-        .map((p) => p.trim())
-        .where((p) => p.isNotEmpty)
-        .toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) {
-      final txt = parts.first;
-      return txt.substring(0, txt.length >= 2 ? 2 : 1).toUpperCase();
-    }
-    return (parts.first[0] + parts[1][0]).toUpperCase();
+    final parts = value.split(' ');
+    if (parts.length == 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
   String _classLabel(String classId) {
-    final value = classId.trim();
-    if (value.isEmpty) return 'Clasa necunoscuta';
-    final lower = value.toLowerCase();
-    if (lower.startsWith('clasa')) return value;
-    return 'Clasa $value';
+    if (classId.trim().isEmpty) return 'Clasa necunoscuta';
+    return 'Clasa $classId';
   }
 }
