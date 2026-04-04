@@ -65,6 +65,7 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
     return Scaffold(
       backgroundColor: _kPageBg,
       body: SafeArea(
+        top: false,
         bottom: false,
         child: Column(
           children: [
@@ -256,48 +257,60 @@ class _TopHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
+    final compact = MediaQuery.sizeOf(context).width < 390;
+    final headerHeight = compact ? 138.0 : 146.0;
 
     return ClipRRect(
       borderRadius: const BorderRadius.only(
-        bottomLeft: Radius.circular(46),
-        bottomRight: Radius.circular(46),
+        bottomLeft: Radius.circular(54),
+        bottomRight: Radius.circular(54),
       ),
-      child: SizedBox(
+      child: Container(
+        height: headerHeight,
         width: double.infinity,
-        height: topPadding + 148,
+        color: _kHeaderGreen,
         child: Stack(
           children: [
-            Positioned.fill(child: Container(color: _kHeaderGreen)),
-            Positioned(right: -46, top: -34, child: _circle(122, 0.12)),
-            Positioned(left: 182, top: 104, child: _circle(78, 0.11)),
-            Positioned(
-              right: 24,
-              top: 40 + topPadding,
-              child: _circle(66, 0.14),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(22, topPadding + 38, 22, 24),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: onBack,
-                    icon: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: Colors.white,
-                      size: 32,
+            Positioned(top: -72, right: -52, child: _circle(220)),
+            Positioned(top: 44, right: 34, child: _circle(72)),
+            Positioned(left: 156, bottom: -28, child: _circle(82)),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: onBack,
+                      behavior: HitTestBehavior.opaque,
+                      child: const SizedBox(
+                        width: 34,
+                        height: 34,
+                        child: Center(
+                          child: Icon(
+                            Icons.arrow_back_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Cereri de invoire',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Text(
+                        'Cereri de invoire',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 29,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.6,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -306,16 +319,14 @@ class _TopHeader extends StatelessWidget {
     );
   }
 
-  Widget _circle(double size, double opacity) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: opacity),
-        shape: BoxShape.circle,
-      ),
-    );
-  }
+  Widget _circle(double size) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white.withValues(alpha: 0.08),
+    ),
+  );
 }
 
 class _RequestCard extends StatelessWidget {

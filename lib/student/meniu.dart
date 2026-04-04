@@ -9,6 +9,16 @@ import 'package:firster/core/session.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+class _DampedScrollPhysics extends ScrollPhysics {
+  const _DampedScrollPhysics({super.parent});
+  @override
+  _DampedScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      _DampedScrollPhysics(parent: buildParent(ancestor));
+  @override
+  double applyPhysicsToUserOffset(ScrollMetrics position, double offset) =>
+      super.applyPhysicsToUserOffset(position, offset) * 0.55;
+}
+
 const _primary = Color(0xFF0D631B);
 const _surface = Color(0xFFF7F9F0);
 const _surfaceContainerLow = Color(0xFFF0F4E9);
@@ -211,9 +221,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
                       right: 0,
                       bottom: 0,
                       child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
+                        physics: const _DampedScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                         child: Column(
                           children: [

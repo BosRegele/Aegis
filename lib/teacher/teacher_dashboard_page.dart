@@ -8,6 +8,16 @@ import 'cereriasteptare.dart';
 import 'statuselevi.dart';
 import 'mesajedir.dart';
 
+class _DampedScrollPhysics extends ScrollPhysics {
+  const _DampedScrollPhysics({super.parent});
+  @override
+  _DampedScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      _DampedScrollPhysics(parent: buildParent(ancestor));
+  @override
+  double applyPhysicsToUserOffset(ScrollMetrics position, double offset) =>
+      super.applyPhysicsToUserOffset(position, offset) * 0.55;
+}
+
 const _kGreen = Color(0xFF0D631B);
 const _kBg = Color(0xFFF7F9F0);
 
@@ -126,7 +136,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                       right: 0,
                       bottom: 0,
                       child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
+                        physics: const _DampedScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                         child: Column(
                           children: [

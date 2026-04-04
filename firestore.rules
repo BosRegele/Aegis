@@ -52,6 +52,7 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly([
         'unreadCount',
         'inboxLastOpenedAt',
+        'requestsLastOpenedAt',
         'profilePictureUrl',
         'photoUrl',
         'authEmail',
@@ -123,7 +124,8 @@ service cloud.firestore {
       return isAdmin() ||
           (isStudent() && resource.data.studentUid == request.auth.uid) ||
           isParentOfStudent(resource.data.studentUid) ||
-          isTeacherForClass(resource.data.classId);
+          isTeacherForClass(resource.data.classId) ||
+          (isParent() && resource.data.targetUid == request.auth.uid);
     }
 
     function canReviewLeaveRequest() {
