@@ -7,11 +7,9 @@ import 'orardir.dart';
 import 'cereriasteptare.dart';
 import 'statuselevi.dart';
 import 'mesajedir.dart';
-import 'account_bottom_sheet.dart';
 
-const _kGreen = Color(0xFF1D5C2B);
-const _kBg = Color(0xFFFFFFFF);
-const double _activityCardMinHeight = 340.0;
+const _kGreen = Color(0xFF0D631B);
+const _kBg = Color(0xFFF7F9F0);
 
 class TeacherDashboardPage extends StatefulWidget {
   const TeacherDashboardPage({super.key});
@@ -23,7 +21,9 @@ class TeacherDashboardPage extends StatefulWidget {
 class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
   Stream<DocumentSnapshot<Map<String, dynamic>>>? _teacherStream;
   Stream<QuerySnapshot<Map<String, dynamic>>>? _pendingStream;
+  Stream<QuerySnapshot<Map<String, dynamic>>>? _studentsStream;
   String _classId = '';
+  bool _profilePressed = false;
 
   @override
   void initState() {
@@ -48,6 +48,11 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 .where('classId', isEqualTo: classId)
                 .where('status', isEqualTo: 'pending')
                 .snapshots();
+            _studentsStream = FirebaseFirestore.instance
+                .collection('users')
+                .where('classId', isEqualTo: classId)
+                .where('role', isEqualTo: 'student')
+                .snapshots();
           });
         }
       });
@@ -61,7 +66,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
       accentColor: _kGreen,
       surfaceColor: Colors.white,
       softSurfaceColor: const Color(0xFFEAF2EC),
-      titleColor: const Color(0xFF1D5C2B),
+      titleColor: const Color(0xFF0D631B),
       messageColor: const Color(0xFF3A4A3F),
     );
 
@@ -86,58 +91,100 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
       return const Scaffold(body: Center(child: Text('No session')));
     }
 
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return Scaffold(
       backgroundColor: _kBg,
-      body: SafeArea(
-        top: false,
-        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: _teacherStream,
-          builder: (context, snap) {
-            final data = snap.data?.data() ?? const <String, dynamic>{};
-            final fullName = (data['fullName'] ?? '').toString().trim();
-            final displayName = fullName.isNotEmpty
-                ? fullName
-                : (AppSession.username ?? 'Diriginte');
+      body: Stack(
+        children: [
+          SafeArea(
+            top: false,
+            child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: _teacherStream,
+              builder: (context, snap) {
+                final data = snap.data?.data() ?? const <String, dynamic>{};
+                final fullName = (data['fullName'] ?? '').toString().trim();
+                final displayName = fullName.isNotEmpty
+                    ? fullName
+                    : (AppSession.username ?? 'Diriginte');
 
-            final topPadding = MediaQuery.of(context).padding.top;
-            final activityTop = topPadding + 120.0;
-            final topSectionH = activityTop + _activityCardMinHeight + 6.0;
+                final scrollStart = 190.0;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  height: topSectionH,
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        child: _buildHeader(displayName),
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(color: _kBg),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: _buildHeader(displayName),
+                    ),
+                    Positioned(
+                      top: scrollStart,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        child: Column(
+                          children: [
+                            _buildActivityCard(),
+                            const SizedBox(height: 16),
+                            _buildGrid(context),
+                          ],
+                        ),
                       ),
-                      Positioned(
-                        top: activityTop,
-                        left: 16,
-                        right: 16,
-                        child: _buildActivityCard(),
-                      ),
-                    ],
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          Positioned(
+            top: topPadding + 5,
+            right: 14,
+            child: GestureDetector(
+              onTapDown: (_) => setState(() => _profilePressed = true),
+              onTapUp: (_) {
+                setState(() => _profilePressed = false);
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (_, __, ___) => const OrarDirPage(),
+                    transitionDuration: Duration.zero,
+                    reverseTransitionDuration: Duration.zero,
                   ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: _buildGrid(context),
+                );
+              },
+              onTapCancel: () => setState(() => _profilePressed = false),
+              child: AnimatedScale(
+                scale: _profilePressed ? 0.78 : 1.0,
+                duration: const Duration(milliseconds: 100),
+                curve: Curves.easeOut,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 100),
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: const Color(0x337DE38D),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0x6DC7F4CE),
+                      width: 1,
                     ),
                   ),
+                  child: const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 21,
+                  ),
                 ),
-              ],
-            );
-          },
-        ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -151,6 +198,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         bottomRight: Radius.circular(52),
       ),
       child: Container(
+        height: 220 + topPadding,
         color: _kGreen,
         child: Stack(
           clipBehavior: Clip.none,
@@ -163,7 +211,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
             ),
             Positioned(left: -60, bottom: -44, child: _headerCircle(186, 0.08)),
             Padding(
-              padding: EdgeInsets.fromLTRB(28, 8 + topPadding, 18, 110),
+              padding: EdgeInsets.fromLTRB(28, 8 + topPadding, 18, 0),
               child: Text(
                 'Bine ai venit,\n$name',
                 style: const TextStyle(
@@ -171,33 +219,6 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                   fontSize: 36,
                   height: 1.08,
                   fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            Positioned(
-              top: topPadding + 5,
-              right: 14,
-              child: Hero(
-                tag: 'teacher-profile-btn',
-                child: GestureDetector(
-                  onTap: () => showAccountBottomSheet(context),
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: const Color(0x337DE38D),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0x6DC7F4CE),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 21,
-                    ),
-                  ),
                 ),
               ),
             ),
@@ -267,10 +288,10 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
 
         return Container(
           width: double.infinity,
-          constraints: const BoxConstraints(minHeight: _activityCardMinHeight),
+          height: 390,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(34),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.08),
@@ -287,8 +308,9 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 const Text(
                   'Activitate Recentă',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 31,
                     fontWeight: FontWeight.w800,
+                    letterSpacing: -0.7,
                     color: Color(0xFF1A2E1D),
                   ),
                 ),
@@ -302,7 +324,55 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                ...items.map((item) => _ActivityItemWidget(data: item)),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      children: items
+                          .map((item) => _ActivityItemWidget(data: item))
+                          .toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                StreamBuilder<QuerySnapshot>(
+                  stream: _studentsStream,
+                  builder: (context, stuSnap) {
+                    final students = stuSnap.data?.docs ?? [];
+                    final inSchool = students
+                        .where(
+                          (d) =>
+                              (d.data() as Map<String, dynamic>)['inSchool'] ==
+                              true,
+                        )
+                        .length;
+                    final absent = students.length - inSchool;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _StatBox(
+                              label: 'PREZENȚI',
+                              value: students.isEmpty ? '--' : '$inSchool',
+                              valueColor: _kGreen,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _StatBox(
+                              label: 'ABSENȚI',
+                              value: students.isEmpty ? '--' : '$absent',
+                              valueColor: absent > 0
+                                  ? const Color(0xFF8E3557)
+                                  : const Color(0xFF717B6E),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 6),
               ],
             ),
@@ -322,28 +392,29 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
             ? '$count ${count == 1 ? 'cerere nouă' : 'cereri noi'}'
             : 'Nicio cerere nouă';
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        return Column(
           children: [
-            Expanded(
-              child: Column(
-                children: [
-                  _GridCard(
-                    icon: Icons.group_rounded,
-                    title: 'Clasa Mea',
-                    subtitle: 'Gestionare elevi',
-                    isDark: true,
-                    onTap: () => Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (_, __, ___) => const StatusEleviPage(),
-                        transitionDuration: Duration.zero,
-                        reverseTransitionDuration: Duration.zero,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _GridCard(
+            _GridCard(
+              icon: Icons.group_rounded,
+              title: 'Clasa Mea',
+              subtitle: 'Gestionare elevi',
+              isDark: false,
+              wide: true,
+              onTap: () => Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => const StatusEleviPage(),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _GridCard(
                     icon: Icons.article_rounded,
                     title: 'Cereri',
                     subtitle: cereriSub,
@@ -358,29 +429,10 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                children: [
-                  _GridCard(
-                    icon: Icons.calendar_month_rounded,
-                    title: 'Orar',
-                    subtitle: 'Vezi programul',
-                    isDark: false,
-                    onTap: () => Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (_, __, ___) => const OrarDirPage(),
-                        transitionDuration: Duration.zero,
-                        reverseTransitionDuration: Duration.zero,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _GridCard(
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _GridCard(
                     icon: Icons.chat_bubble_rounded,
                     title: 'Mesaje',
                     subtitle: 'Istoric cereri',
@@ -394,8 +446,8 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         );
@@ -421,6 +473,52 @@ class _ActivityData {
 }
 
 // ─── Widget rând activitate ───────────────────────────────────────────────────
+
+class _StatBox extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color valueColor;
+
+  const _StatBox({
+    required this.label,
+    required this.value,
+    required this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F4E9),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF717B6E),
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: valueColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _ActivityItemWidget extends StatelessWidget {
   final _ActivityData data;
@@ -490,6 +588,7 @@ class _GridCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool isDark;
+  final bool wide;
   final VoidCallback? onTap;
 
   const _GridCard({
@@ -497,73 +596,145 @@ class _GridCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.isDark,
+    this.wide = false,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bg = isDark ? _kGreen : const Color(0xFFF1F3EE);
     final iconBg = isDark
-        ? Colors.white.withOpacity(0.14)
-        : _kGreen.withOpacity(0.12);
+        ? Colors.white.withValues(alpha: 0.18)
+        : _kGreen.withValues(alpha: 0.10);
     final iconColor = isDark ? Colors.white : _kGreen;
     final titleColor = isDark ? Colors.white : const Color(0xFF1A2E1D);
     final subtitleColor = isDark
-        ? Colors.white.withOpacity(0.72)
+        ? Colors.white.withValues(alpha: 0.74)
         : const Color(0xFF6B7A6D);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(14),
+        height: wide ? null : 184,
+        padding: wide
+            ? const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
+            : const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            if (isDark)
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
+          gradient: isDark && !wide
+              ? const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF0D631B), Color(0xFF19802E)],
+                )
+              : null,
+          color: wide
+              ? const Color(0xFFFFFFFF)
+              : isDark
+              ? null
+              : const Color(0xFFE7EDE1),
+          borderRadius: BorderRadius.circular(22),
+          border: (!isDark && !wide)
+              ? Border.all(
+                  color: const Color(0xFFC8D1C2).withValues(alpha: 0.36),
+                  width: 1.1,
+                )
+              : null,
+          boxShadow: isDark && !wide
+              ? const [
+                  BoxShadow(
+                    color: Color(0x350D631B),
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
+                  ),
+                ]
+              : wide
+              ? const [
+                  BoxShadow(
+                    color: Color(0x14000000),
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: wide
+            ? Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F4E9),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(icon, color: _kGreen, size: 28),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: _kGreen,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            color: Color(0xFF717B6E),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF717B6E),
+                    size: 24,
+                  ),
+                ],
               )
-            else
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: iconBg,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 24),
+                  ),
+                  const Spacer(),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: titleColor,
+                      fontSize: 22,
+                      height: 1.18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: subtitleColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: iconColor, size: 28),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              title,
-              style: TextStyle(
-                color: titleColor,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(color: subtitleColor, fontSize: 13),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../core/session.dart';
 import 'account_bottom_sheet.dart';
 
-const _kHeaderGreen = Color(0xFF1D5C2B);
-const _kPageBg = Color(0xFFFFFFFF);
+const _kHeaderGreen = Color(0xFF0D631B);
+const _kPageBg = Color(0xFFF7F9F0);
 const _kCardBg = Color(0xFFF8F8F8);
 
 class MesajeDirPage extends StatefulWidget {
@@ -54,7 +54,7 @@ _MessageCardData _fromLeaveRequest(Map<String, dynamic> d) {
       break;
     default:
       title =
-        'Cerere în așteptare - ${studentName.isEmpty ? 'Elev' : studentName}';
+          'Cerere în așteptare - ${studentName.isEmpty ? 'Elev' : studentName}';
       statusLabel = 'ÎN AȘTEPTARE';
       // pending requests: detailed layout but neutral/gray styling and no footer
       type = _MessageItemType.pending;
@@ -345,7 +345,11 @@ class _MessageInfoLine extends StatelessWidget {
   final String text;
   final Color iconColor;
 
-  const _MessageInfoLine({required this.icon, required this.text, required this.iconColor});
+  const _MessageInfoLine({
+    required this.icon,
+    required this.text,
+    required this.iconColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -389,7 +393,6 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
             _TopHeader(
               title: 'Mesaje',
               onBack: () => Navigator.of(context).maybePop(),
-              onProfile: () => showAccountBottomSheet(context),
             ),
             Expanded(
               child: FutureBuilder<DocumentSnapshot>(
@@ -495,78 +498,90 @@ class _TopHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final compact = MediaQuery.sizeOf(context).width < 390;
+    final headerHeight = compact ? 138.0 : 146.0;
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
-      child: SizedBox(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(54),
+        bottomRight: Radius.circular(54),
+      ),
+      child: Container(
+        height: headerHeight,
         width: double.infinity,
-        height: 90 + topPadding,
+        color: _kHeaderGreen,
         child: Stack(
-          fit: StackFit.expand,
-          clipBehavior: Clip.none,
           children: [
-            Container(color: _kHeaderGreen),
-            Positioned(right: -60, top: -60, child: _decorCircle(180)),
-            Positioned(
-              right: 120,
-              top: topPadding + 15,
-              child: _decorCircle(55),
-            ),
-            Positioned(left: -40, bottom: -30, child: _decorCircle(130)),
-            if (onProfile != null)
-              Positioned(
-                top: topPadding + 5,
-                right: 14,
-                child: Hero(
-                  tag: 'teacher-profile-btn',
-                  child: GestureDetector(
-                    onTap: onProfile,
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: const Color(0x337DE38D),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0x6DC7F4CE),
-                          width: 1,
+            Positioned(top: -72, right: -52, child: _decorCircle(220)),
+            Positioned(top: 44, right: 34, child: _decorCircle(72)),
+            Positioned(left: 156, bottom: -28, child: _decorCircle(82)),
+            Padding(
+              padding: EdgeInsets.zero,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: onBack,
+                        behavior: HitTestBehavior.opaque,
+                        child: const SizedBox(
+                          width: 34,
+                          height: 34,
+                          child: Center(
+                            child: Icon(
+                              Icons.arrow_back_rounded,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
                         ),
                       ),
-                      child: const Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 21,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 29,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.6,
+                          ),
+                        ),
                       ),
+                      if (onProfile != null) const SizedBox(width: 64),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (onProfile != null)
+              Positioned(
+                top: 5,
+                right: 14,
+                child: GestureDetector(
+                  onTap: onProfile,
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: const Color(0x337DE38D),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0x6DC7F4CE),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 21,
                     ),
                   ),
                 ),
               ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(4, topPadding - 6, 18, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: onBack,
-                    splashRadius: 22,
-                    icon: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: Colors.white,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      height: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -578,8 +593,8 @@ class _TopHeader extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.10),
         shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.08),
       ),
     );
   }

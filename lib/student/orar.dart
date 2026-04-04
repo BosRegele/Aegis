@@ -82,6 +82,9 @@ class _OrarScreenState extends State<OrarScreen> {
             final classId = (userData['classId'] ?? '').toString().trim();
             final className = (userData['className'] ?? '').toString().trim();
             final displayName = fullName.isNotEmpty ? fullName : fallbackName;
+            final studentUsername = (userData['username'] ?? '')
+                .toString()
+                .trim();
             final profilePictureUrl = (userData['profilePictureUrl'] ?? '')
                 .toString()
                 .trim();
@@ -127,6 +130,7 @@ class _OrarScreenState extends State<OrarScreen> {
                                 displayName: displayName,
                                 className: resolvedClassName,
                                 profilePictureUrl: profilePictureUrl,
+                                username: studentUsername,
                                 teacherUid: teacherUid,
                                 teacherUsername: teacherUsername,
                                 onLogout: _logout,
@@ -154,9 +158,9 @@ class _OrarScreenState extends State<OrarScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'Orar Săptămanal',
-                                      style: TextStyle(
+                                    Text(
+                                      'Orar Clasa ${_classToRoman(resolvedClassName)}',
+                                      style: const TextStyle(
                                         color: _onSurface,
                                         fontSize: 22,
                                         fontWeight: FontWeight.w800,
@@ -324,6 +328,7 @@ class _ProfileIdentityCard extends StatelessWidget {
   final String displayName;
   final String className;
   final String profilePictureUrl;
+  final String username;
   final String teacherUid;
   final String teacherUsername;
   final VoidCallback onLogout;
@@ -332,6 +337,7 @@ class _ProfileIdentityCard extends StatelessWidget {
     required this.displayName,
     required this.className,
     required this.profilePictureUrl,
+    required this.username,
     required this.teacherUid,
     required this.teacherUsername,
     required this.onLogout,
@@ -359,43 +365,50 @@ class _ProfileIdentityCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Profile picture
-                  GestureDetector(
-                    onTap: profilePictureUrl.isNotEmpty
-                        ? () => _openFullScreenImage(context, profilePictureUrl)
-                        : null,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: profilePictureUrl.isNotEmpty
-                          ? Image.network(
-                              profilePictureUrl,
-                              width: 64,
-                              height: 64,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 64,
-                                height: 64,
-                                color: _surfaceContainerHigh,
-                                child: const Icon(
-                                  Icons.person,
-                                  color: _outline,
-                                  size: 34,
+                  // Profile picture + class badge below
+                  Column(
+                    children: [
+                      GestureDetector(
+                        onTap: profilePictureUrl.isNotEmpty
+                            ? () => _openFullScreenImage(
+                                context,
+                                profilePictureUrl,
+                              )
+                            : null,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: profilePictureUrl.isNotEmpty
+                              ? Image.network(
+                                  profilePictureUrl,
+                                  width: 64,
+                                  height: 64,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 64,
+                                    height: 64,
+                                    color: _surfaceContainerHigh,
+                                    child: const Icon(
+                                      Icons.person,
+                                      color: _outline,
+                                      size: 34,
+                                    ),
+                                  ),
+                                )
+                              : Container(
+                                  width: 64,
+                                  height: 64,
+                                  color: _surfaceContainerHigh,
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: _outline,
+                                    size: 34,
+                                  ),
                                 ),
-                              ),
-                            )
-                          : Container(
-                              width: 64,
-                              height: 64,
-                              color: _surfaceContainerHigh,
-                              child: const Icon(
-                                Icons.person,
-                                color: _outline,
-                                size: 34,
-                              ),
-                            ),
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -406,20 +419,22 @@ class _ProfileIdentityCard extends StatelessWidget {
                           displayName,
                           style: const TextStyle(
                             color: _onSurface,
-                            fontSize: 19,
+                            fontSize: 26,
                             fontWeight: FontWeight.w800,
                             height: 1.1,
                           ),
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'Clasa $className',
-                          style: const TextStyle(
-                            color: _outline,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                        const SizedBox(height: 6),
+                        if (username.isNotEmpty) ...[
+                          Text(
+                            '@$username',
+                            style: const TextStyle(
+                              color: _primary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -1834,6 +1849,30 @@ class _ParentInfoBox extends StatelessWidget {
       },
     );
   }
+}
+
+String _toRoman(int n) {
+  if (n <= 0) return n.toString();
+  const vals = [10, 9, 5, 4, 1];
+  const syms = ['X', 'IX', 'V', 'IV', 'I'];
+  var result = '';
+  var num = n;
+  for (var i = 0; i < vals.length; i++) {
+    while (num >= vals[i]) {
+      result += syms[i];
+      num -= vals[i];
+    }
+  }
+  return result;
+}
+
+String _classToRoman(String classId) {
+  final match = RegExp(r'^(\d+)\s*([A-Za-z]*)$').firstMatch(classId.trim());
+  if (match == null) return classId;
+  final num = int.tryParse(match.group(1) ?? '') ?? 0;
+  final letter = (match.group(2) ?? '').toUpperCase();
+  final roman = _toRoman(num);
+  return letter.isNotEmpty ? 'a $roman-a $letter' : 'a $roman-a';
 }
 
 String _resolveDisplayName({

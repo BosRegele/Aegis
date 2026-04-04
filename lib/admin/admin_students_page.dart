@@ -909,19 +909,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                 vertical: 14,
                               ),
                             ),
-                            backgroundImage: photoUrl.isNotEmpty
-                                ? NetworkImage(photoUrl) as ImageProvider
-                                : null,
-                            child: photoUrl.isEmpty
-                                ? Text(
-                                    _initials(fullName),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 16,
-                                    ),
-                                  )
-                                : null,
+                            child: const Text('Închide'),
                           ),
                           const SizedBox(width: 20),
                           ElevatedButton(

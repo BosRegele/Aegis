@@ -1,10 +1,38 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 import 'account_bottom_sheet.dart';
 
-const _kOrarHeaderGreen = Color(0xFF1D5C2B);
-const _kOrarPageBg = Color(0xFFFFFFFF);
+const _kOrarHeaderGreen = Color(0xFF0D631B);
+const _kOrarPageBg = Color(0xFFF7F9F0);
+
+// ─── Roman numeral helpers ────────────────────────────────────────────────────
+
+String _toRoman(int n) {
+  if (n <= 0) return n.toString();
+  const vals = [10, 9, 5, 4, 1];
+  const syms = ['X', 'IX', 'V', 'IV', 'I'];
+  var result = '';
+  var num = n;
+  for (var i = 0; i < vals.length; i++) {
+    while (num >= vals[i]) {
+      result += syms[i];
+      num -= vals[i];
+    }
+  }
+  return result;
+}
+
+String _classToRoman(String classId) {
+  final match = RegExp(r'^(\d+)([A-Za-z]*)$').firstMatch(classId.trim());
+  if (match == null) return classId;
+  final num = int.tryParse(match.group(1) ?? '') ?? 0;
+  final letter = (match.group(2) ?? '').toUpperCase();
+  final roman = _toRoman(num);
+  return letter.isNotEmpty ? 'a $roman-a $letter' : 'a $roman-a';
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 class OrarDirPage extends StatefulWidget {
   const OrarDirPage({super.key});
@@ -36,16 +64,13 @@ class _OrarDirPageState extends State<OrarDirPage> {
         bottom: false,
         child: Column(
           children: [
-            _OrarTopHeader(
-              onBack: () => Navigator.of(context).maybePop(),
-              onProfile: () => showAccountBottomSheet(context),
-            ),
+            _OrarTopHeader(onBack: () => Navigator.of(context).maybePop()),
             Expanded(
-              child: FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
                     .collection('users')
                     .doc(teacherUid)
-                    .get(),
+                    .snapshots(),
                 builder: (context, userSnap) {
                   if (userSnap.hasError) {
                     return Center(child: Text('Eroare: ${userSnap.error}'));
@@ -56,17 +81,39 @@ class _OrarDirPageState extends State<OrarDirPage> {
 
                   final userData =
                       userSnap.data!.data() as Map<String, dynamic>? ?? {};
+                  final fullName = (userData['fullName'] ?? '')
+                      .toString()
+                      .trim();
                   final classId = (userData['classId'] ?? '').toString().trim();
+                  final email = (userData['personalEmail'] ?? '')
+                      .toString()
+                      .trim();
+                  final username = (userData['username'] ?? '')
+                      .toString()
+                      .trim();
+                  final displayName = fullName.isNotEmpty
+                      ? fullName
+                      : (AppSession.username ?? 'Profesor');
 
                   if (classId.isEmpty) {
-                    return const Center(child: Text('Nu ai clasa asignata.'));
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                      child: _TeacherProfileCard(
+                        displayName: displayName,
+                        classRoman: '',
+                        email: email,
+                        username: username,
+                        studentCount: null,
+                        onSettings: () => showAccountBottomSheet(context),
+                      ),
+                    );
                   }
 
-                  return FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance
+                  return StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
                         .collection('classes')
                         .doc(classId)
-                        .get(),
+                        .snapshots(),
                     builder: (context, classSnap) {
                       if (classSnap.hasError) {
                         return Center(
@@ -106,100 +153,130 @@ class _OrarDirPageState extends State<OrarDirPage> {
                       }
 
                       final sortedDays = schedule.keys.toList()..sort();
+                      final rawId = className.isNotEmpty ? className : classId;
+                      final classRoman = _classToRoman(rawId);
 
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(18, 22, 18, 28),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // -- Card clasa ------------------------------
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 22,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5F7F1),
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(
-                                  color: const Color(0xFFDDE3D6),
-                                ),
-                              ),
-                              child: Text(
-                                className.isEmpty ? classId : className,
-                                style: const TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF0E6A1E),
-                                  height: 1,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 28),
-                            // -- Titlu sec?iune + badge modul ------------
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
+                      return FutureBuilder<QuerySnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('users')
+                            .where('classId', isEqualTo: classId)
+                            .where('role', isEqualTo: 'student')
+                            .get(),
+                        builder: (context, studentsSnap) {
+                          final studentCount = studentsSnap.hasData
+                              ? studentsSnap.data!.docs.length
+                              : null;
+
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                const Text(
-                                  'Orar Saptamanal',
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF111811),
-                                    height: 1,
+                                _TeacherProfileCard(
+                                  displayName: displayName,
+                                  classRoman: classRoman,
+                                  email: email,
+                                  username: username,
+                                  studentCount: studentCount,
+                                  onSettings: () =>
+                                      showAccountBottomSheet(context),
+                                ),
+                                const SizedBox(height: 16),
+                                Container(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    18,
+                                    18,
+                                    18,
+                                    18,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(
+                                      color: const Color(
+                                        0xFFC8D1C2,
+                                      ).withValues(alpha: 0.18),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            classRoman.isNotEmpty
+                                                ? 'Orar Clasa $classRoman'
+                                                : 'Orar Săptămanal',
+                                            style: const TextStyle(
+                                              color: Color(0xFF151A14),
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          if (modul.isNotEmpty)
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 7,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFDAEDD9),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                              child: Text(
+                                                modul,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF1A601F),
+                                                  height: 1,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 14),
+                                      if (sortedDays.isEmpty)
+                                        Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF0F4E9),
+                                            borderRadius: BorderRadius.circular(
+                                              18,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Nu există orar definit pentru clasa ta.',
+                                            style: TextStyle(
+                                              color: Color(0xFF717B6E),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        )
+                                      else
+                                        for (final dayNum in sortedDays) ...[
+                                          _OrarRow(
+                                            day:
+                                                _dayMap[dayNum] ??
+                                                'Ziua $dayNum',
+                                            interval:
+                                                '${schedule[dayNum]!['start']} - ${schedule[dayNum]!['end']}',
+                                          ),
+                                          const SizedBox(height: 10),
+                                        ],
+                                    ],
                                   ),
                                 ),
-                                const Spacer(),
-                                if (modul.isNotEmpty)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDAEDD9),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      modul,
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF1A601F),
-                                        height: 1,
-                                      ),
-                                    ),
-                                  ),
                               ],
                             ),
-                            const SizedBox(height: 20),
-                            // -- R�nduri zile ----------------------------
-                            if (sortedDays.isEmpty)
-                              const Padding(
-                                padding: EdgeInsets.only(top: 24),
-                                child: Center(
-                                  child: Text(
-                                    'Nu exista orar definit pentru clasa ta.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Color(0xFF5F6771),
-                                    ),
-                                  ),
-                                ),
-                              )
-                            else
-                              for (final dayNum in sortedDays) ...[
-                                _OrarRow(
-                                  day: _dayMap[dayNum] ?? 'Ziua $dayNum',
-                                  interval:
-                                      '${schedule[dayNum]!['start']} - ${schedule[dayNum]!['end']}',
-                                ),
-                                const SizedBox(height: 12),
-                              ],
-                          ],
-                        ),
+                          );
+                        },
                       );
                     },
                   );
@@ -213,7 +290,238 @@ class _OrarDirPageState extends State<OrarDirPage> {
   }
 }
 
-// --- Header ------------------------------------------------------------------
+// ─── Teacher Profile Card ─────────────────────────────────────────────────────
+
+class _TeacherProfileCard extends StatelessWidget {
+  final String displayName;
+  final String classRoman;
+  final String email;
+  final String username;
+  final int? studentCount;
+  final VoidCallback onSettings;
+
+  const _TeacherProfileCard({
+    required this.displayName,
+    required this.classRoman,
+    required this.email,
+    required this.username,
+    required this.studentCount,
+    required this.onSettings,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(38),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.all(Radius.circular(38)),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x120D631B),
+              blurRadius: 28,
+              offset: Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Top row: name + settings ──────────────────────────────────
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName,
+                          style: const TextStyle(
+                            color: Color(0xFF151A14),
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            height: 1.1,
+                          ),
+                        ),
+                        if (username.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '@$username',
+                            style: const TextStyle(
+                              color: Color(0xFF0D631B),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: onSettings,
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F4E9),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.settings_outlined,
+                          color: Color(0xFF0D631B),
+                          size: 26,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 22),
+              Container(height: 1, color: const Color(0xFFF0F1EA)),
+              const SizedBox(height: 18),
+              // ── Info boxes ────────────────────────────────────────────────
+              _InfoBox(
+                icon: Icons.mail_outline_rounded,
+                label: 'EMAIL',
+                value: email.isNotEmpty ? email : 'Nedefinit',
+              ),
+              const SizedBox(height: 10),
+              _InfoBox(
+                icon: Icons.group_rounded,
+                label: 'NR. ELEVI',
+                value: studentCount == null ? '...' : '$studentCount elevi',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoBox extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _InfoBox({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: const Color(0xFF0D631B).withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Icon(icon, color: const Color(0xFF0D631B), size: 28),
+        ),
+        const SizedBox(width: 18),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF717B6E),
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF151A14),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactInfoBox extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _CompactInfoBox({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D631B).withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF0D631B), size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF717B6E),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF151A14),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
 
 class _OrarTopHeader extends StatelessWidget {
   final VoidCallback onBack;
@@ -224,74 +532,90 @@ class _OrarTopHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final compact = MediaQuery.sizeOf(context).width < 390;
+    final headerHeight = compact ? 138.0 : 146.0;
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(38)),
-      child: SizedBox(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(54),
+        bottomRight: Radius.circular(54),
+      ),
+      child: Container(
+        height: headerHeight,
         width: double.infinity,
-        height: 90 + topPadding,
+        color: _kOrarHeaderGreen,
         child: Stack(
-          fit: StackFit.expand,
-          clipBehavior: Clip.none,
           children: [
-            Container(color: _kOrarHeaderGreen),
-            Positioned(right: -60, top: -60, child: _circle(180)),
-            Positioned(right: 120, top: topPadding + 15, child: _circle(55)),
-            Positioned(left: -40, bottom: -30, child: _circle(130)),
-            if (onProfile != null)
-              Positioned(
-                top: topPadding + 5,
-                right: 14,
-                child: Hero(
-                  tag: 'teacher-profile-btn',
-                  child: GestureDetector(
-                    onTap: onProfile,
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: const Color(0x337DE38D),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0x6DC7F4CE),
-                          width: 1,
+            Positioned(top: -72, right: -52, child: _circle(220)),
+            Positioned(top: 44, right: 34, child: _circle(72)),
+            Positioned(left: 156, bottom: -28, child: _circle(82)),
+            Padding(
+              padding: EdgeInsets.zero,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: onBack,
+                        behavior: HitTestBehavior.opaque,
+                        child: const SizedBox(
+                          width: 34,
+                          height: 34,
+                          child: Center(
+                            child: Icon(
+                              Icons.arrow_back_rounded,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
                         ),
                       ),
-                      child: const Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 21,
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Text(
+                          'Profil',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 29,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.6,
+                          ),
+                        ),
                       ),
+                      if (onProfile != null) const SizedBox(width: 64),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (onProfile != null)
+              Positioned(
+                top: 5,
+                right: 14,
+                child: GestureDetector(
+                  onTap: onProfile,
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: const Color(0x337DE38D),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0x6DC7F4CE),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 21,
                     ),
                   ),
                 ),
               ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(4, topPadding - 6, 18, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: onBack,
-                    splashRadius: 22,
-                    icon: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: Colors.white,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Text(
-                    'Orar',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      height: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -302,8 +626,8 @@ class _OrarTopHeader extends StatelessWidget {
     width: size,
     height: size,
     decoration: BoxDecoration(
-      color: Colors.white.withOpacity(0.10),
       shape: BoxShape.circle,
+      color: Colors.white.withValues(alpha: 0.08),
     ),
   );
 }
@@ -320,19 +644,18 @@ class _OrarRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE4E8DF)),
+        color: const Color(0xFFF0F4E9),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
           Text(
             day,
             style: const TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w500,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: Color(0xFF111811),
               height: 1,
             ),
@@ -341,9 +664,9 @@ class _OrarRow extends StatelessWidget {
           Text(
             interval,
             style: const TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF4A7A52),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0D631B),
               height: 1,
             ),
           ),
