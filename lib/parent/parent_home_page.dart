@@ -1051,18 +1051,72 @@ class _MesajeCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: _primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.chat_bubble_outline_rounded,
-                  color: _primary,
-                  size: 22,
-                ),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: _primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      color: _primary,
+                      size: 22,
+                    ),
+                  ),
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: pendingRequestsStream,
+                      builder: (context, pendingSnap) {
+                        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                          stream: decisionStream,
+                          builder: (context, decisionSnap) {
+                            return _buildMergedStream(secretariatStreams, (
+                              secretariatDocs,
+                            ) {
+                              final unread =
+                                  _countUnreadPendingRequests(
+                                    pendingSnap.data?.docs ?? const [],
+                                  ) +
+                                  _countUnreadDecisions(
+                                    decisionSnap.data?.docs ?? const [],
+                                  ) +
+                                  _countUnreadSecretariat(secretariatDocs);
+                              if (unread == 0) return const SizedBox();
+                              return Container(
+                                width: 18,
+                                height: 18,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF4444),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: _surfaceContainerLow,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '$unread',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
               const Spacer(),
               const Text(
@@ -1105,7 +1159,7 @@ class _MesajeCard extends StatelessWidget {
                             Text(
                               unread > 0
                                   ? '$unread mesaje noi'
-                                  : 'Niciun mesaj nou',
+                                  : 'Vezi rapid',
                               style: TextStyle(
                                 color: unread > 0 ? _primary : _outline,
                                 fontSize: 11,

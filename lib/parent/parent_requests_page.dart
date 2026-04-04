@@ -15,7 +15,6 @@ class ParentRequestsPage extends StatefulWidget {
 
 class _ParentRequestsPageState extends State<ParentRequestsPage> {
   bool _loadedOnce = false;
-  Stream<QuerySnapshot<Map<String, dynamic>>>? _leaveRequestsStream;
 
   @override
   void initState() {
@@ -24,20 +23,7 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
   }
 
   void _setupStream() {
-    final parentUid = (AppSession.uid ?? '').trim();
-    if (parentUid.isEmpty) {
-      setState(() => _loadedOnce = true);
-      return;
-    }
-
-    setState(() {
-      _leaveRequestsStream = FirebaseFirestore.instance
-          .collection('leaveRequests')
-          .where('targetUid', isEqualTo: parentUid)
-          .where('status', isEqualTo: 'pending')
-          .snapshots();
-      _loadedOnce = true;
-    });
+    setState(() => _loadedOnce = true);
   }
 
   @override
@@ -109,7 +95,6 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
 
         final linkedChildIds = linkedSnapshot.data!;
         final streams = <Stream<QuerySnapshot<Map<String, dynamic>>>>[
-          if (_leaveRequestsStream != null) _leaveRequestsStream!,
           ..._buildLegacyChildRequestStreams(linkedChildIds),
         ];
 
@@ -118,17 +103,12 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
             final data = doc.data();
             final status = (data['status'] ?? '').toString().trim();
             final source = (data['source'] ?? '').toString().trim();
-            final targetRole = (data['targetRole'] ?? '').toString().trim();
-            final targetUid = (data['targetUid'] ?? '').toString().trim();
             final studentUid = (data['studentUid'] ?? '').toString().trim();
-
-            final isTargetedForParent =
-                targetRole == 'parent' && targetUid == parentUid;
             final isLegacyLinkedRequest = linkedChildIds.contains(studentUid);
 
             return status == 'pending' &&
                 source != 'secretariat' &&
-                (isTargetedForParent || isLegacyLinkedRequest);
+              isLegacyLinkedRequest;
           }).toList()..sort((a, b) {
             final aTs = a.data()['requestedAt'] as Timestamp?;
             final bTs = b.data()['requestedAt'] as Timestamp?;
@@ -253,7 +233,8 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
         stream: streams[index],
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('Eroare: ${snapshot.error}'));
+            // Continue with other streams if one chunk is denied.
+            return step(index + 1, acc);
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -364,211 +345,202 @@ class _RequestCard extends StatelessWidget {
         : 'ELEV • CLASA ${classId.toUpperCase()}';
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const Color(0xFFE5E9E0)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 78,
-                height: 78,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFC9DCCB),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFBCD2BE)),
-                ),
-                child: Center(
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      fontSize: 38,
-                      fontWeight: FontWeight.w700,
-                      color: _kHeaderGreen,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        studentName,
-                        style: const TextStyle(
-                          fontSize: 21,
-                          height: 1,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF111811),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDDE9DD),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Text(
-                          classLabel,
-                          style: const TextStyle(
-                            color: _kHeaderGreen,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.0,
-                            height: 1,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _InfoLine(icon: Icons.calendar_today_rounded, text: dateText),
-          const SizedBox(height: 11),
-          _InfoLine(icon: Icons.access_time_filled_rounded, text: timeText),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEAEFE4),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(top: 2),
-                  child: Icon(
-                    Icons.description_rounded,
-                    color: _kHeaderGreen,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'MOTIV SOLICITARE',
-                        style: TextStyle(
-                          color: Color(0xFF2A342A),
-                          fontSize: 13,
-                          letterSpacing: 1,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '"$reason"',
-                        style: const TextStyle(
-                          color: Color(0xFF1A211A),
-                          fontSize: 17,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _BouncingButton(
-                  onTap: onAccept,
-                  borderRadius: BorderRadius.circular(18),
-                  child: Container(
-                    height: 82,
-                    decoration: BoxDecoration(
-                      color: _kHeaderGreen,
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF0D6F1C).withOpacity(0.25),
-                          blurRadius: 14,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.check_circle_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                        SizedBox(width: 10),
-                        Text(
-                          'Accepta',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _BouncingButton(
-                  onTap: onReject,
-                  borderRadius: BorderRadius.circular(18),
-                  child: Container(
-                    height: 82,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0E8EE),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.cancel_rounded,
-                          color: Color(0xFF9C2A60),
-                          size: 28,
-                        ),
-                        SizedBox(width: 10),
-                        Text(
-                          'Respinge',
-                          style: TextStyle(
-                            color: Color(0xFF9C2A60),
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(22),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFD0DFD0),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF07731F),
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          studentName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            color: Color(0xFF111512),
+                            fontWeight: FontWeight.w800,
+                            height: 1.18,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDDE9DE),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            classLabel,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              letterSpacing: 1.2,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF126D24),
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _InfoLine(
+                icon: Icons.calendar_today_rounded,
+                text: dateText.isEmpty ? '-' : dateText,
+              ),
+              const SizedBox(height: 10),
+              _InfoLine(
+                icon: Icons.access_time_filled_rounded,
+                text: timeText.isEmpty ? '-' : timeText,
+              ),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F4EA),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 2),
+                      child: Icon(
+                        Icons.description_rounded,
+                        size: 28,
+                        color: Color(0xFF0C6A20),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'MOTIV SOLICITARE',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF364037),
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            reason.isEmpty ? '-' : '"$reason"',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontStyle: FontStyle.italic,
+                              color: Color(0xFF1D231D),
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: onAccept,
+                        icon: const Icon(Icons.check_rounded, size: 18),
+                        label: const Text('Acceptă'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0D631B),
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: onReject,
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                        label: const Text('Respinge'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF7E7EE),
+                          foregroundColor: const Color(0xFF9C2D62),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -595,14 +567,17 @@ class _InfoLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: _kHeaderGreen, size: 27),
+        Icon(icon, size: 20, color: const Color(0xFF0A7221)),
         const SizedBox(width: 12),
-        Text(
-          text,
-          style: const TextStyle(
-            color: Color(0xFF1B221B),
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Color(0xFF303730),
+              fontWeight: FontWeight.w600,
+              height: 1.2,
+            ),
           ),
         ),
       ],
