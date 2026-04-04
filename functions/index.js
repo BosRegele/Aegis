@@ -1766,6 +1766,51 @@ exports.cleanupExpiredQrTokens = onSchedule("every 60 minutes", async (event) =>
     console.log(`cleanupExpiredQrTokens: deleted ${deletedCount} expired QR tokens`);
 });
 
+exports.resetStudentsOutsideSchoolNightly = onSchedule({
+    schedule: "0 2 * * *",
+    timeZone: "Europe/Bucharest",
+}, async (event) => {
+    const db = admin.firestore();
+    const studentsRef = db.collection("users");
+    const chunkSize = 500;
+    let updatedCount = 0;
+    let lastDoc = null;
+
+    while (true) {
+        let query = studentsRef
+            .where("role", "==", "student")
+            .orderBy(admin.firestore.FieldPath.documentId())
+            .limit(chunkSize);
+
+        if (lastDoc) {
+            query = query.startAfter(lastDoc);
+        }
+
+        const snap = await query.get();
+        if (snap.empty) {
+            break;
+        }
+
+        const batch = db.batch();
+
+        for (const doc of snap.docs) {
+            batch.update(doc.ref, {
+                inSchool: false,
+            });
+        }
+
+        await batch.commit();
+        updatedCount += snap.size;
+        lastDoc = snap.docs[snap.docs.length - 1];
+
+        if (snap.size < chunkSize) {
+            break;
+        }
+    }
+
+    console.log(`resetStudentsOutsideSchoolNightly: set inSchool=false for ${updatedCount} student(s)`);
+});
+
 // Increment unreadCount when a new accessEvent is created for a student
 exports.onAccessEventCreated = onDocumentCreated("accessEvents/{docId}", async (event) => {
     const data = event.data?.data();

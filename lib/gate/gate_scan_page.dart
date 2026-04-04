@@ -1,14 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-<<<<<<< HEAD
 import 'package:audioplayers/audioplayers.dart';
-=======
->>>>>>> origin/main
 
 class GateScanPage extends StatefulWidget {
   const GateScanPage({super.key});

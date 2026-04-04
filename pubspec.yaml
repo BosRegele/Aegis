@@ -50,12 +50,10 @@ dependencies:
   google_fonts: ^6.3.1
   excel: ^4.0.6
   file_saver: ^0.2.14
-<<<<<<< HEAD
   audioplayers: ^6.5.1
-=======
-  flutter_ringtone_player: ^4.0.0+4
   web: ^1.1.1
->>>>>>> origin/main
+  image_picker: ^1.2.1
+  firebase_storage: ^13.2.0
 
 dev_dependencies:
   flutter_test:

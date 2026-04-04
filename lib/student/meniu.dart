@@ -410,7 +410,7 @@ class _AccessHubCard extends StatefulWidget {
 }
 
 class _AccessHubCardState extends State<_AccessHubCard> {
-  static const int _renewIntervalSeconds = 5;
+  static const int _renewIntervalSeconds = 15;
   Timer? _regenTimer;
   Timer? _countdownTimer;
   String _token = '';
