@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firster/student/meniu.dart';
@@ -12,8 +14,15 @@ const _textMuted = Color(0xFF6F7669);
 
 class InboxScreen extends StatefulWidget {
   final ValueChanged<int>? onNavigateTab;
+  final String? highlightDocId;
+  final VoidCallback? onHighlightConsumed;
 
-  const InboxScreen({super.key, this.onNavigateTab});
+  const InboxScreen({
+    super.key,
+    this.onNavigateTab,
+    this.highlightDocId,
+    this.onHighlightConsumed,
+  });
 
   @override
   State<InboxScreen> createState() => _InboxScreenState();
@@ -22,6 +31,10 @@ class InboxScreen extends StatefulWidget {
 class _InboxScreenState extends State<InboxScreen> {
   Stream<QuerySnapshot<Map<String, dynamic>>>? _leaveStream;
   Stream<QuerySnapshot<Map<String, dynamic>>>? _secretariatStream;
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _itemKeys = {};
+  String? _activeHighlightId;
+  Timer? _highlightTimer;
 
   @override
   void initState() {
@@ -42,6 +55,42 @@ class _InboxScreenState extends State<InboxScreen> {
           .limit(50)
           .snapshots();
     }
+  }
+
+  @override
+  void didUpdateWidget(InboxScreen old) {
+    super.didUpdateWidget(old);
+    final newId = widget.highlightDocId;
+    if (newId != null && newId.isNotEmpty && newId != old.highlightDocId) {
+      setState(() => _activeHighlightId = newId);
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollToHighlight(newId),
+      );
+    }
+  }
+
+  void _scrollToHighlight(String docId) {
+    widget.onHighlightConsumed?.call();
+    final key = _itemKeys[docId];
+    if (key?.currentContext != null) {
+      Scrollable.ensureVisible(
+        key!.currentContext!,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOut,
+        alignment: 0.25,
+      );
+    }
+    _highlightTimer?.cancel();
+    _highlightTimer = Timer(const Duration(milliseconds: 2200), () {
+      if (mounted) setState(() => _activeHighlightId = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _highlightTimer?.cancel();
+    super.dispose();
   }
 
   void _goBack(BuildContext context) {
@@ -111,14 +160,25 @@ class _InboxScreenState extends State<InboxScreen> {
 
   _InboxCardData _toInboxCardData(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const <String, dynamic>{};
-    final status = (data['status'] ?? 'pending').toString();
+    var status = (data['status'] ?? 'pending').toString();
     final requestedAt = (data['requestedAt'] as Timestamp?)?.toDate();
     final requestedForDate = (data['requestedForDate'] as Timestamp?)?.toDate();
     final message = (data['message'] ?? '').toString().trim();
 
+    // Client-side: expire pending/approved requests once the date has passed
+    if ((status == 'pending' || status == 'approved') &&
+        requestedForDate != null) {
+      final today = DateTime.now();
+      final todayMidnight = DateTime(today.year, today.month, today.day);
+      if (requestedForDate.isBefore(todayMidnight)) {
+        status = 'expired';
+      }
+    }
+
     switch (status) {
       case 'approved':
         return _InboxCardData(
+          docId: doc.id,
           title: _formatRequestTitle(requestedForDate),
           topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty ? 'Cererea a fost aprobată.' : message,
@@ -133,6 +193,7 @@ class _InboxScreenState extends State<InboxScreen> {
         );
       case 'rejected':
         return _InboxCardData(
+          docId: doc.id,
           title: _formatRequestTitle(requestedForDate),
           topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty ? 'Cererea a fost respinsă.' : message,
@@ -147,6 +208,7 @@ class _InboxScreenState extends State<InboxScreen> {
         );
       case 'expired':
         return _InboxCardData(
+          docId: doc.id,
           title: _formatRequestTitle(requestedForDate),
           topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty ? 'Cererea a expirat automat.' : message,
@@ -161,6 +223,7 @@ class _InboxScreenState extends State<InboxScreen> {
         );
       default:
         return _InboxCardData(
+          docId: doc.id,
           title: _formatRequestTitle(requestedForDate),
           topLabel: _formatSentLabel(requestedAt),
           message: message.isEmpty
@@ -187,6 +250,7 @@ class _InboxScreenState extends State<InboxScreen> {
     final senderName = (data['senderName'] ?? 'Secretariat').toString().trim();
 
     return _InboxCardData(
+      docId: doc.id,
       title: 'Mesaj Secretariat',
       topLabel: _formatSentLabel(createdAt),
       message: message.isEmpty ? 'Ai primit un mesaj nou.' : message,
@@ -268,6 +332,7 @@ class _InboxScreenState extends State<InboxScreen> {
                 : 18.0;
 
             return ListView(
+              controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
@@ -296,7 +361,11 @@ class _InboxScreenState extends State<InboxScreen> {
                     ),
                   ),
                 for (final item in items) ...[
-                  _InboxRequestTile(data: item),
+                  _InboxRequestTile(
+                    key: _itemKeys.putIfAbsent(item.docId, GlobalKey.new),
+                    data: item,
+                    highlighted: _activeHighlightId == item.docId,
+                  ),
                   const SizedBox(height: 12),
                 ],
                 const SizedBox(height: 4),
@@ -386,113 +455,158 @@ class _InboxHeader extends StatelessWidget {
   }
 }
 
-class _InboxRequestTile extends StatelessWidget {
+class _InboxRequestTile extends StatefulWidget {
   final _InboxCardData data;
+  final bool highlighted;
 
-  const _InboxRequestTile({required this.data});
+  const _InboxRequestTile({
+    super.key,
+    required this.data,
+    this.highlighted = false,
+  });
+
+  @override
+  State<_InboxRequestTile> createState() => _InboxRequestTileState();
+}
+
+class _InboxRequestTileState extends State<_InboxRequestTile>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _bounceCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _bounceCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    if (widget.highlighted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted)
+          _bounceCtrl.forward().then((_) {
+            if (mounted) _bounceCtrl.reverse();
+          });
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(_InboxRequestTile old) {
+    super.didUpdateWidget(old);
+    if (widget.highlighted && !old.highlighted) {
+      _bounceCtrl.forward().then((_) {
+        if (mounted) _bounceCtrl.reverse();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _bounceCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF7A8374), // A slightly darker, 3D looking color
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A000000),
-            blurRadius: 10,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      // Creating the 3D volume (thickness) by exposing the left and slightly bottom edge
-      padding: const EdgeInsets.only(left: 4, bottom: 1),
+    return AnimatedBuilder(
+      animation: _bounceCtrl,
+      builder: (context, child) {
+        final scale = 1.0 + (_bounceCtrl.value * 0.04);
+        return Transform.scale(scale: scale, child: child);
+      },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: widget.data.leadingForeground,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.white, _card],
+        padding: const EdgeInsets.only(left: 4, bottom: 1),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.white, _card],
+                        ),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Cerere învoire',
+                                      style: TextStyle(
+                                        color: _textDark,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: -0.3,
+                                        height: 1.2,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      widget.data.title.contains(' - ')
+                                          ? widget.data.title.split(' - ').last
+                                          : widget.data.title,
+                                      style: const TextStyle(
+                                        color: _textMuted,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                widget.data.topLabel,
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  color: _textMuted,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            widget.data.message,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: _textMuted,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              height: 1.45,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _StatusBadge(data: widget.data),
+                        ],
                       ),
                     ),
-                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Cerere învoire',
-                                    style: TextStyle(
-                                      color: _textDark,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: -0.3,
-                                      height: 1.2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    data.title.contains(' - ')
-                                        ? data.title.split(' - ').last
-                                        : data.title,
-                                    style: const TextStyle(
-                                      color: _textMuted,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              data.topLabel,
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(
-                                color: _textMuted,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          data.message,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: _textMuted,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            height: 1.45,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _StatusBadge(data: data),
-                      ],
-                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -573,6 +687,7 @@ class _HeaderCircle extends StatelessWidget {
 }
 
 class _InboxCardData {
+  final String docId;
   final String title;
   final String topLabel;
   final String message;
@@ -586,6 +701,7 @@ class _InboxCardData {
   final DateTime sortAt;
 
   const _InboxCardData({
+    required this.docId,
     required this.title,
     required this.topLabel,
     required this.message,

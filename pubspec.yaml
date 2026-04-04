@@ -51,8 +51,12 @@ dependencies:
   excel: ^4.0.6
   file_saver: ^0.2.14
   audioplayers: ^6.5.1
+<<<<<<< HEAD
   web: ^1.1.1
   image_picker: ^1.2.1
+=======
+  image_picker: ^1.1.2
+>>>>>>> origin/main
   firebase_storage: ^13.2.0
 
 dev_dependencies:

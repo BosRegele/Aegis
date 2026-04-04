@@ -1,9 +1,10 @@
 ﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
+import 'account_bottom_sheet.dart';
 
-const _kHeaderGreen = Color(0xFF0D6F1C);
-const _kPageBg = Color(0xFFF1F5EC);
+const _kHeaderGreen = Color(0xFF1D5C2B);
+const _kPageBg = Color(0xFFFFFFFF);
 const _kCardBg = Color(0xFFF8F8F8);
 
 class MesajeDirPage extends StatefulWidget {
@@ -42,7 +43,8 @@ _MessageCardData _fromLeaveRequest(Map<String, dynamic> d) {
       title = 'Cerere Aprobată - ${studentName.isEmpty ? 'Elev' : studentName}';
       statusLabel = 'APROBATĂ';
       type = _MessageItemType.success;
-      sourceLabel = 'Părinte';
+      // show same footer as rejected in messages view
+      sourceLabel = 'Prof. Diriginte';
       break;
     case 'rejected':
       title = 'Cerere Respinsă - ${studentName.isEmpty ? 'Elev' : studentName}';
@@ -52,10 +54,11 @@ _MessageCardData _fromLeaveRequest(Map<String, dynamic> d) {
       break;
     default:
       title =
-          'Cerere in asteptare - ${studentName.isEmpty ? 'Elev' : studentName}';
-      statusLabel = 'SISTEM';
-      type = _MessageItemType.system;
-      sourceLabel = 'Secretariat';
+        'Cerere în așteptare - ${studentName.isEmpty ? 'Elev' : studentName}';
+      statusLabel = 'ÎN AȘTEPTARE';
+      // pending requests: detailed layout but neutral/gray styling and no footer
+      type = _MessageItemType.pending;
+      sourceLabel = '';
   }
 
   return _MessageCardData(
@@ -95,13 +98,13 @@ class _MessageCardData {
   });
 }
 
-enum _MessageItemType { success, error, system }
+enum _MessageItemType { success, error, system, pending }
 
 class _MessageCard extends StatelessWidget {
   final _MessageCardData data;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
-  const _MessageCard({required this.data, required this.onTap});
+  const _MessageCard({required this.data, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -125,10 +128,16 @@ class _MessageCard extends StatelessWidget {
         sourceIcon = Icons.cancel_rounded;
         break;
       case _MessageItemType.system:
-        accentColor = const Color(0xFF7C8679);
-        tagBg = const Color(0xFFE1E6DB);
-        tagText = const Color(0xFF3E473F);
+        accentColor = const Color(0xFF1565C0);
+        tagBg = const Color(0xFFDCEEFB);
+        tagText = const Color(0xFF0B57A4);
         sourceIcon = Icons.info_rounded;
+        break;
+      case _MessageItemType.pending:
+        accentColor = const Color(0xFF6E6E6E);
+        tagBg = const Color(0xFFF4F4F4);
+        tagText = const Color(0xFF6D6D6D);
+        sourceIcon = Icons.hourglass_top_rounded;
         break;
     }
 
@@ -209,29 +218,31 @@ class _MessageCard extends StatelessWidget {
                         _MessageInfoLine(
                           icon: Icons.calendar_today_rounded,
                           text: data.dateText.isEmpty ? '-' : data.dateText,
+                          iconColor: accentColor,
                         ),
                         const SizedBox(height: 12),
                         _MessageInfoLine(
                           icon: Icons.access_time_filled_rounded,
                           text: data.timeText.isEmpty ? '-' : data.timeText,
+                          iconColor: accentColor,
                         ),
                         const SizedBox(height: 14),
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF0F4EA),
+                            color: tagBg,
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Padding(
-                                padding: EdgeInsets.only(top: 1),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 1),
                                 child: Icon(
                                   Icons.description_rounded,
                                   size: 28,
-                                  color: Color(0xFF0D6F1C),
+                                  color: accentColor,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -278,37 +289,45 @@ class _MessageCard extends StatelessWidget {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 14),
-                      const Divider(color: Color(0xFFDFE3DC), height: 1),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFDCE3D8),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              sourceIcon,
-                              size: 28,
-                              color: accentColor,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              data.sourceLabel,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Color(0xFF646D63),
-                                fontWeight: FontWeight.w500,
+                      if (data.sourceLabel.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        const Divider(color: Color(0xFFDFE3DC), height: 1),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDCE3D8),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                sourceIcon,
+                                size: 28,
+                                color: accentColor,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                data.sourceLabel,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF646D63),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ] else ...[
+                        Container(
+                          width: double.infinity,
+                          height: 1,
+                          color: const Color(0xFFDFE3DC),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -324,14 +343,15 @@ class _MessageCard extends StatelessWidget {
 class _MessageInfoLine extends StatelessWidget {
   final IconData icon;
   final String text;
+  final Color iconColor;
 
-  const _MessageInfoLine({required this.icon, required this.text});
+  const _MessageInfoLine({required this.icon, required this.text, required this.iconColor});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 30, color: const Color(0xFF0D6F1C)),
+        Icon(icon, size: 30, color: iconColor),
         const SizedBox(width: 12),
         Text(
           text,
@@ -362,12 +382,14 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
     return Scaffold(
       backgroundColor: _kPageBg,
       body: SafeArea(
+        top: false,
         bottom: false,
         child: Column(
           children: [
             _TopHeader(
               title: 'Mesaje',
               onBack: () => Navigator.of(context).maybePop(),
+              onProfile: () => showAccountBottomSheet(context),
             ),
             Expanded(
               child: FutureBuilder<DocumentSnapshot>(
@@ -439,18 +461,13 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
 
                       return Stack(
                         children: [
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: CustomPaint(painter: _TopDotsPainter()),
-                            ),
-                          ),
                           ListView.separated(
                             padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
                             itemBuilder: (context, index) {
                               final message = items[index];
-                              return _MessageCard(data: message, onTap: () {});
+                              return _MessageCard(data: message, onTap: null);
                             },
-                            separatorBuilder: (_, _) =>
+                            separatorBuilder: (_, __) =>
                                 const SizedBox(height: 14),
                             itemCount: items.length,
                           ),
@@ -471,27 +488,62 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
 class _TopHeader extends StatelessWidget {
   final String title;
   final VoidCallback onBack;
+  final VoidCallback? onProfile;
 
-  const _TopHeader({required this.title, required this.onBack});
+  const _TopHeader({required this.title, required this.onBack, this.onProfile});
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
       child: SizedBox(
         width: double.infinity,
-        height: 164,
+        height: 90 + topPadding,
         child: Stack(
           fit: StackFit.expand,
+          clipBehavior: Clip.none,
           children: [
             Container(color: _kHeaderGreen),
-            CustomPaint(painter: _HeaderDotsPainter()),
-            Positioned(right: 74, top: -44, child: _decorCircle(126)),
-            Positioned(left: 178, bottom: -36, child: _decorCircle(82)),
+            Positioned(right: -60, top: -60, child: _decorCircle(180)),
+            Positioned(
+              right: 120,
+              top: topPadding + 15,
+              child: _decorCircle(55),
+            ),
+            Positioned(left: -40, bottom: -30, child: _decorCircle(130)),
+            if (onProfile != null)
+              Positioned(
+                top: topPadding + 5,
+                right: 14,
+                child: Hero(
+                  tag: 'teacher-profile-btn',
+                  child: GestureDetector(
+                    onTap: onProfile,
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: const Color(0x337DE38D),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0x6DC7F4CE),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 21,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 22, 18, 0),
+              padding: EdgeInsets.fromLTRB(4, topPadding - 6, 18, 0),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   IconButton(
                     onPressed: onBack,
@@ -499,20 +551,17 @@ class _TopHeader extends StatelessWidget {
                     icon: const Icon(
                       Icons.arrow_back_rounded,
                       color: Colors.white,
-                      size: 30,
+                      size: 26,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        height: 1,
-                      ),
+                  const SizedBox(width: 4),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      height: 1,
                     ),
                   ),
                 ],
@@ -529,41 +578,9 @@ class _TopHeader extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
+        color: Colors.white.withOpacity(0.10),
         shape: BoxShape.circle,
       ),
     );
   }
-}
-
-class _HeaderDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withValues(alpha: 0.14);
-    const spacing = 18.0;
-    for (double y = 14; y < size.height; y += spacing) {
-      for (double x = 16; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), 1.3, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _TopDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFFC8D8C4);
-    const spacing = 32.0;
-    for (double y = 12; y < 82; y += spacing) {
-      for (double x = 16; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), 2.1, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

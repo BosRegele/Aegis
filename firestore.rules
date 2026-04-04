@@ -52,6 +52,13 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly([
         'unreadCount',
         'inboxLastOpenedAt',
+        'profilePictureUrl',
+        'photoUrl',
+        'authEmail',
+        'updatedAt',
+        'fcmToken',
+        'twoFactorVerifiedUntil',
+        'passwordChanged',
       ]);
     }
 

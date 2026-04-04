@@ -1,6 +1,12 @@
+﻿import 'dart:typed_data';
+import 'dart:ui';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:excel/excel.dart' as xls;
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
+import 'admin_api.dart';
 import 'services/admin_store.dart';
 
 class AdminStudentsPage extends StatefulWidget {
@@ -324,7 +330,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                         .toString();
                                     final inSchool =
                                         data['inSchool'] as bool? ?? false;
-                                    final email = data['email']?.toString();
+                                    final email =
+                                        (data['personalEmail'] ?? data['email'])
+                                            ?.toString();
                                     final status = (data['status'] ?? 'active')
                                         .toString();
                                     final onboardingComplete =
@@ -530,6 +538,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                       email: email,
                                                       parentUsernames:
                                                           parentUsernames,
+                                                      photoUrl: photoUrl,
                                                     ),
                                               ),
                                             ),
@@ -762,13 +771,36 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     required bool passwordChanged,
     required String? email,
     required List<String> parentUsernames,
+    String photoUrl = '',
   }) async {
     final addParentC = TextEditingController();
-    final renameC = TextEditingController();
+    final renameC = TextEditingController(text: fullName);
 
-    await showDialog(
+    await showGeneralDialog(
       context: context,
-      builder: (_) {
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 220),
+      transitionBuilder: (_, animation, __, child) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 10 * animation.value,
+            sigmaY: 10 * animation.value,
+          ),
+          child: Container(
+            color: Colors.black.withValues(alpha: 0.55 * animation.value),
+            child: FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOut,
+              ),
+              child: child,
+            ),
+          ),
+        );
+      },
+      pageBuilder: (_, __, ___) {
         bool busy = false;
         String? msg;
         bool msgIsError = false;
@@ -800,124 +832,43 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
 
         return StatefulBuilder(
           builder: (ctx, setS) {
-            Widget sectionHeader(String label) => Padding(
-              padding: const EdgeInsets.fromLTRB(0, 16, 0, 8),
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1,
-                  color: Color(0xFF9AB88A),
-                ),
-              ),
-            );
-
-            Widget infoRow(String label, Widget value) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 140,
-                    child: Text(
-                      label,
-                      style: const TextStyle(
-                        color: Color(0xFF5F6771),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Expanded(child: value),
-                ],
-              ),
-            );
-
-            Widget chip(String text, Color bg, Color fg) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                text,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: fg,
-                ),
-              ),
-            );
-
-            Widget boolRow(bool val, String yes, String no) => Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  val ? Icons.check_circle : Icons.cancel_outlined,
-                  size: 16,
-                  color: val
-                      ? const Color(0xFF388E3C)
-                      : const Color(0xFFBDBDBD),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  val ? yes : no,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: val
-                        ? const Color(0xFF388E3C)
-                        : const Color(0xFF9E9E9E),
-                  ),
-                ),
-              ],
-            );
-
             InputDecoration fieldDeco(String hint) => InputDecoration(
               hintText: hint,
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
-                vertical: 10,
+                vertical: 12,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFCDE8B0)),
+                borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFCDE8B0)),
+                borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                  color: Color(0xFF5C8B42),
-                  width: 2,
-                ),
+                borderSide: BorderSide.none,
               ),
-            );
-
-            ButtonStyle greenFilled() => ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF5C8B42),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+              filled: true,
+              fillColor: const Color(0xFFF4F9F3),
             );
 
             return Dialog(
               backgroundColor: Colors.transparent,
               insetPadding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 24,
+                horizontal: 55,
+                vertical: 16,
               ),
               child: Container(
-                constraints: const BoxConstraints(maxWidth: 540),
+                constraints: const BoxConstraints(
+                  maxWidth: 860,
+                  minHeight: 760,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(28),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -925,55 +876,113 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                   children: [
                     // ── HEADER ──────────────────────────────────────────────
                     Container(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF5C8B42), Color(0xFF40632D)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                      padding: const EdgeInsets.fromLTRB(32, 22, 36, 22),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(28),
                         ),
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(24),
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Colors.grey.shade200,
+                            width: 1,
+                          ),
                         ),
                       ),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 26,
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.25,
-                            ),
-                            child: Text(
-                              _initials(fullName),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16,
-                              ),
+                          const Text(
+                            'Setări Utilizator',
+                            style: TextStyle(
+                              fontSize: 27,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF1A2E1A),
                             ),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  fullName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '@$username',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF5F6771),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 14,
+                              ),
+                            ),
+                            backgroundImage: photoUrl.isNotEmpty
+                                ? NetworkImage(photoUrl) as ImageProvider
+                                : null,
+                            child: photoUrl.isEmpty
+                                ? Text(
+                                    _initials(fullName),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 20),
+                          ElevatedButton(
+                            onPressed: () async {
+                              final newName = renameC.text.trim();
+                              if (newName.isNotEmpty &&
+                                  newName != currentFullName) {
+                                setS(() {
+                                  busy = true;
+                                  msg = null;
+                                });
+                                try {
+                                  await FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(uid)
+                                      .update({
+                                        'fullName': newName,
+                                        'updatedAt':
+                                            FieldValue.serverTimestamp(),
+                                      });
+                                  setS(() {
+                                    busy = false;
+                                    currentFullName = newName;
+                                    renameC.clear();
+                                    msg =
+                                        'Numele a fost schimbat în "$newName".';
+                                    msgIsError = false;
+                                  });
+                                  return; // stay open to show success message
+                                } catch (e) {
+                                  setS(() {
+                                    busy = false;
+                                    msg = e.toString().replaceFirst(
+                                      'Exception: ',
+                                      '',
+                                    );
+                                    msgIsError = true;
+                                  });
+                                  return;
+                                }
+                              }
+                              if (ctx.mounted) Navigator.pop(ctx);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2E6B2E),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text(
+                              'Salvează modificările',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -983,377 +992,225 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                     // ── SCROLLABLE CONTENT ───────────────────────────────────
                     Flexible(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                        padding: const EdgeInsets.fromLTRB(32, 36, 16, 24),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Message bar
                             if (msg != null) ...[
-                              const SizedBox(height: 12),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: msgIsError
-                                      ? const Color(0xFFFFEBEB)
-                                      : const Color(0xFFE8F5E0),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: msgIsError
-                                        ? const Color(0xFFE57373)
-                                        : const Color(0xFF81C784),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 560,
                                   ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      msgIsError
-                                          ? Icons.error_outline
-                                          : Icons.check_circle_outline,
-                                      size: 16,
-                                      color: msgIsError
-                                          ? const Color(0xFFE53935)
-                                          : const Color(0xFF388E3C),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 8,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: SelectableText(
-                                        msg!,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: msgIsError
-                                              ? const Color(0xFFB71C1C)
-                                              : const Color(0xFF1B5E20),
-                                        ),
+                                    decoration: BoxDecoration(
+                                      color: msgIsError
+                                          ? const Color(0xFFFFEBEB)
+                                          : const Color(0xFFE8F5E0),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: msgIsError
+                                            ? const Color(0xFFE57373)
+                                            : const Color(0xFF81C784),
                                       ),
                                     ),
-                                  ],
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          msgIsError
+                                              ? Icons.error_outline
+                                              : Icons.check_circle_outline,
+                                          size: 16,
+                                          color: msgIsError
+                                              ? const Color(0xFFE53935)
+                                              : const Color(0xFF388E3C),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: SelectableText(
+                                            msg!,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: msgIsError
+                                                  ? const Color(0xFFB71C1C)
+                                                  : const Color(0xFF1B5E20),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
-
-                            // ── INFORMAȚII ──────────────────────────────────
-                            sectionHeader('INFORMAȚII'),
-                            infoRow(
-                              'Clasă',
-                              currentClassId.isNotEmpty
-                                  ? chip(
-                                      currentClassId,
-                                      const Color(0xFFE8F5E0),
-                                      const Color(0xFF3A6B2A),
-                                    )
-                                  : const Text(
-                                      '-',
-                                      style: TextStyle(color: Colors.black38),
-                                    ),
-                            ),
-                            infoRow(
-                              'Email',
-                              Text(
-                                email ?? '-',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF2E3B4E),
-                                ),
-                              ),
-                            ),
-                            infoRow(
-                              'Status',
-                              chip(
-                                inSchool ? 'În incintă' : 'În afara incintei',
-                                inSchool
-                                    ? const Color(0xFFE8F5E0)
-                                    : const Color(0xFFFFEBEB),
-                                inSchool
-                                    ? const Color(0xFF2E7D32)
-                                    : const Color(0xFFB71C1C),
-                              ),
-                            ),
-                            infoRow(
-                              'Onboarding',
-                              boolRow(
-                                onboardingComplete,
-                                'Completat',
-                                'Incomplet',
-                              ),
-                            ),
-                            const Divider(height: 28, color: Color(0xFFEEEEEE)),
-
-                            // ── SCHIMBĂ NUME ──────────────────────────────────
-                            sectionHeader('SCHIMBĂ NUME'),
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                // Left: form content
                                 Expanded(
-                                  child: TextField(
-                                    controller: renameC,
-                                    textCapitalization:
-                                        TextCapitalization.words,
-                                    decoration: fieldDeco(
-                                      'Nume complet nou...',
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                ElevatedButton(
-                                  style: greenFilled(),
-                                  onPressed: busy
-                                      ? null
-                                      : () async {
-                                          final newName = renameC.text.trim();
-                                          if (newName.isEmpty ||
-                                              newName == currentFullName) {
-                                            return;
-                                          }
-                                          setS(() {
-                                            busy = true;
-                                            msg = null;
-                                          });
-                                          try {
-                                            await FirebaseFirestore.instance
-                                                .collection('users')
-                                                .doc(uid)
-                                                .update({
-                                                  'fullName': newName,
-                                                  'updatedAt':
-                                                      FieldValue.serverTimestamp(),
-                                                });
-                                            setS(() {
-                                              busy = false;
-                                              currentFullName = newName;
-                                              renameC.clear();
-                                              msg =
-                                                  'Numele a fost schimbat în "$newName".';
-                                              msgIsError = false;
-                                            });
-                                          } catch (e) {
-                                            setS(() {
-                                              busy = false;
-                                              msg = e.toString().replaceFirst(
-                                                'Exception: ',
-                                                '',
-                                              );
-                                              msgIsError = true;
-                                            });
-                                          }
-                                        },
-                                  child: const Text('Salvează'),
-                                ),
-                              ],
-                            ),
-
-                            const Divider(height: 28, color: Color(0xFFEEEEEE)),
-
-                            // ── MUTĂ ÎN CLASĂ ────────────────────────────────
-                            sectionHeader('MUTĂ ÎN ALTĂ CLASĂ'),
-                            FutureBuilder<QuerySnapshot>(
-                              future: allClassesLoaded
-                                  ? null
-                                  : FirebaseFirestore.instance
-                                        .collection('classes')
-                                        .get(),
-                              builder: (ctx2, snap) {
-                                if (!allClassesLoaded &&
-                                    snap.connectionState ==
-                                        ConnectionState.done &&
-                                    snap.hasData) {
-                                  allClassesLoaded = true;
-                                  allClassesList =
-                                      snap.data!.docs
-                                          .map((d) => d.id)
-                                          .where((id) => id != currentClassId)
-                                          .toList()
-                                        ..sort();
-                                }
-                                final filteredClasses = classSearchQuery.isEmpty
-                                    ? allClassesList
-                                    : allClassesList
-                                          .where(
-                                            (c) => c.toLowerCase().contains(
-                                              classSearchQuery.toLowerCase(),
-                                            ),
-                                          )
-                                          .toList();
-                                return Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    // Search field
-                                    TextField(
-                                      onChanged: (v) => setS(() {
-                                        classSearchQuery = v.trim();
-                                        selectedClassId = null;
-                                        selectedClassLabel = null;
-                                      }),
-                                      decoration:
-                                          fieldDeco(
-                                            'Caută clasă (ex: 10A)...',
-                                          ).copyWith(
-                                            prefixIcon: const Icon(
-                                              Icons.search,
-                                              size: 18,
-                                              color: Color(0xFF9AB88A),
-                                            ),
-                                          ),
-                                    ),
-                                    // Selected badge
-                                    if (selectedClassId != null)
-                                      Container(
-                                        margin: const EdgeInsets.only(top: 6),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFE8F5E0),
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          border: Border.all(
-                                            color: const Color(0xFF81C784),
-                                          ),
-                                        ),
-                                        child: Row(
+                                  flex: 5,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(right: 16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // Title + status badge
+                                        Row(
                                           children: [
-                                            const Icon(
-                                              Icons.check_circle,
-                                              size: 16,
-                                              color: Color(0xFF3A7A40),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                selectedClassLabel ?? '',
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF2E3B4E),
-                                                ),
+                                            const Text(
+                                              'Detalii Elev',
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w800,
+                                                color: Color(0xFF1A2E1A),
                                               ),
                                             ),
-                                            GestureDetector(
-                                              onTap: () => setS(() {
-                                                selectedClassId = null;
-                                                selectedClassLabel = null;
-                                              }),
-                                              child: const Icon(
-                                                Icons.close,
-                                                size: 15,
-                                                color: Color(0xFF888888),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    // Dropdown list (only when typing)
-                                    if (classSearchQuery.isNotEmpty &&
-                                        selectedClassId == null)
-                                      Container(
-                                        margin: const EdgeInsets.only(top: 2),
-                                        constraints: const BoxConstraints(
-                                          maxHeight: 160,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          border: Border.all(
-                                            color: const Color(0xFFCDE8B0),
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.07,
-                                              ),
-                                              blurRadius: 8,
-                                            ),
-                                          ],
-                                        ),
-                                        child:
-                                            snap.connectionState ==
-                                                    ConnectionState.waiting &&
-                                                !allClassesLoaded
-                                            ? const Padding(
-                                                padding: EdgeInsets.all(12),
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                    ),
-                                              )
-                                            : filteredClasses.isEmpty
-                                            ? const Padding(
-                                                padding: EdgeInsets.all(12),
-                                                child: Text(
-                                                  'Nicio clasă găsită.',
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.black38,
+                                            const Spacer(),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 8,
                                                   ),
+                                              decoration: BoxDecoration(
+                                                color: onboardingComplete
+                                                    ? const Color(0xFFE6EFE8)
+                                                    : const Color(0xFFFFEBEB),
+                                                border: Border.all(
+                                                  color: onboardingComplete
+                                                      ? const Color(0xFFC6DAC9)
+                                                      : const Color(0xFFE8AAAA),
+                                                  width: 1.5,
                                                 ),
-                                              )
-                                            : ListView.builder(
-                                                padding: EdgeInsets.zero,
-                                                shrinkWrap: true,
-                                                itemCount:
-                                                    filteredClasses.length,
-                                                itemBuilder: (_, idx) {
-                                                  final cid =
-                                                      filteredClasses[idx];
-                                                  return InkWell(
-                                                    onTap: () => setS(() {
-                                                      selectedClassId = cid;
-                                                      selectedClassLabel = cid;
-                                                      classSearchQuery = '';
-                                                    }),
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 12,
-                                                            vertical: 10,
-                                                          ),
-                                                      child: Text(
-                                                        cid,
-                                                        style: const TextStyle(
-                                                          fontSize: 13,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    onboardingComplete
+                                                        ? 'CONT CONFIGURAT'
+                                                        : 'CONT NECONFIGURAT',
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: onboardingComplete
+                                                          ? const Color(
+                                                              0xFF2E793A,
+                                                            )
+                                                          : const Color(
+                                                              0xFFC0392B,
+                                                            ),
+                                                      letterSpacing: 0.5,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  if (onboardingComplete)
+                                                    _PulsingDot(
+                                                      colorA: const Color(
+                                                        0xFFC6DAC9,
+                                                      ),
+                                                      colorB: const Color(
+                                                        0xFF2E793A,
+                                                      ),
+                                                    )
+                                                  else
+                                                    _PulsingDot(
+                                                      colorA: const Color(
+                                                        0xFFE8AAAA,
+                                                      ),
+                                                      colorB: const Color(
+                                                        0xFFC0392B,
                                                       ),
                                                     ),
-                                                  );
-                                                },
+                                                ],
                                               ),
-                                      ),
-                                    const SizedBox(height: 10),
-                                    ElevatedButton(
-                                      style: greenFilled(),
-                                      onPressed:
-                                          (busy || selectedClassId == null)
-                                          ? null
-                                          : () async {
-                                              final nc = selectedClassId!;
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 20),
+                                        // NUME COMPLET
+                                        const Text(
+                                          'NUME COMPLET',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 1,
+                                            color: Color(0xFF2A5C30),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          width: double.infinity,
+                                          height: 48,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                          ),
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEBEFE5),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                          child: TextField(
+                                            controller: renameC,
+                                            textCapitalization:
+                                                TextCapitalization.words,
+                                            textAlignVertical:
+                                                TextAlignVertical.center,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF000000),
+                                            ),
+                                            decoration: InputDecoration(
+                                              hintText: currentFullName,
+                                              hintStyle: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFF000000),
+                                              ),
+                                              border: InputBorder.none,
+                                              isDense: true,
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 14,
+                                                  ),
+                                            ),
+                                            onSubmitted: (val) async {
+                                              final newName = val.trim();
+                                              if (newName.isEmpty ||
+                                                  newName == currentFullName)
+                                                return;
                                               setS(() {
                                                 busy = true;
                                                 msg = null;
                                               });
                                               try {
-                                                await store.moveStudent(
-                                                  uid,
-                                                  nc,
-                                                );
+                                                await FirebaseFirestore.instance
+                                                    .collection('users')
+                                                    .doc(uid)
+                                                    .update({
+                                                      'fullName': newName,
+                                                      'updatedAt':
+                                                          FieldValue.serverTimestamp(),
+                                                    });
                                                 setS(() {
                                                   busy = false;
-                                                  currentClassId = nc;
-                                                  allClassesLoaded = false;
-                                                  allClassesList = [];
-                                                  selectedClassId = null;
-                                                  selectedClassLabel = null;
-                                                  classSearchQuery = '';
+                                                  currentFullName = newName;
+                                                  renameC.clear();
                                                   msg =
-                                                      'Elevul a fost mutat în clasa $nc.';
+                                                      'Numele a fost schimbat în "$newName".';
                                                   msgIsError = false;
                                                 });
                                               } catch (e) {
@@ -1369,126 +1226,252 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                 });
                                               }
                                             },
-                                      child: const Text(
-                                        'Mută în clasa selectată',
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-
-                            const Divider(height: 28, color: Color(0xFFEEEEEE)),
-
-                            // ── PĂRINȚI ──────────────────────────────────────
-                            sectionHeader('PĂRINȚI ASIGNAȚI'),
-                            if (parents.length >= 2)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Text(
-                                  'Limită atinsă: maximum 2 părinți.',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.orange.shade700,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            if (parents.isEmpty)
-                              const Padding(
-                                padding: EdgeInsets.only(bottom: 10),
-                                child: Text(
-                                  'Niciun părinte asignat.',
-                                  style: TextStyle(
-                                    color: Colors.black38,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              )
-                            else
-                              ...parents.map(
-                                (p) => Container(
-                                  margin: const EdgeInsets.only(bottom: 6),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF8FFF5),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: const Color(0xFFCDE8B0),
-                                    ),
-                                  ),
-                                  child: FutureBuilder<DocumentSnapshot>(
-                                    future: FirebaseFirestore.instance
-                                        .collection('users')
-                                        .doc(p)
-                                        .get(),
-                                    builder: (_, snap) {
-                                      String display = p;
-                                      if (snap.hasData && snap.data!.exists) {
-                                        display =
-                                            (snap.data!.data()
-                                                    as Map<
-                                                      String,
-                                                      dynamic
-                                                    >)['fullName']
-                                                ?.toString() ??
-                                            p;
-                                      }
-                                      return Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.family_restroom,
-                                            size: 18,
-                                            color: Color(0xFF7AAF5B),
                                           ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              display,
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                                color: Color(0xFF2E3B4E),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        // USERNAME + EMAIL
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text(
+                                                    'USERNAME',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      letterSpacing: 1,
+                                                      color: Color(0xFF2A5C30),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Container(
+                                                    width: double.infinity,
+                                                    height: 48,
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 12,
+                                                          vertical: 12,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(
+                                                        0xFFF7F9F3,
+                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      username,
+                                                      style: const TextStyle(
+                                                        fontSize: 16,
+                                                        color: Color(
+                                                          0xFF555555,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                          ),
-                                          GestureDetector(
-                                            onTap: busy
-                                                ? null
-                                                : () async {
+                                            const SizedBox(width: 14),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text(
+                                                    'EMAIL',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      letterSpacing: 1,
+                                                      color: Color(0xFF2A5C30),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Container(
+                                                    width: double.infinity,
+                                                    height: 48,
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 12,
+                                                          vertical: 12,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(
+                                                        0xFFF7F9F3,
+                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      email ?? '-',
+                                                      style: const TextStyle(
+                                                        fontSize: 16,
+                                                        color: Color(
+                                                          0xFF555555,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        // PĂRINȚI + DIRIGINTE
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            // PĂRINȚI
+                                            Expanded(
+                                              child: FutureBuilder<QuerySnapshot>(
+                                                future: allParentsLoaded
+                                                    ? null
+                                                    : FirebaseFirestore.instance
+                                                          .collection('users')
+                                                          .where(
+                                                            'role',
+                                                            isEqualTo: 'parent',
+                                                          )
+                                                          .get(),
+                                                builder: (_, snap) {
+                                                  if (!allParentsLoaded &&
+                                                      snap.connectionState ==
+                                                          ConnectionState
+                                                              .waiting) {
+                                                    return const Padding(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                            vertical: 10,
+                                                          ),
+                                                      child:
+                                                          LinearProgressIndicator(
+                                                            minHeight: 2,
+                                                          ),
+                                                    );
+                                                  }
+                                                  if (!allParentsLoaded &&
+                                                      snap.connectionState ==
+                                                          ConnectionState
+                                                              .done &&
+                                                      snap.hasData) {
+                                                    allParentsLoaded = true;
+                                                    allParentsList = snap
+                                                        .data!
+                                                        .docs
+                                                        .map((d) {
+                                                          final dd =
+                                                              d.data()
+                                                                  as Map<
+                                                                    String,
+                                                                    dynamic
+                                                                  >;
+                                                          return {
+                                                            'uid': d.id,
+                                                            'fullName':
+                                                                (dd['fullName'] ??
+                                                                        '')
+                                                                    .toString(),
+                                                            'username':
+                                                                (dd['username'] ??
+                                                                        '')
+                                                                    .toString(),
+                                                          };
+                                                        })
+                                                        .toList();
+                                                    allParentsList.sort(
+                                                      (a, b) => a['fullName']!
+                                                          .compareTo(
+                                                            b['fullName']!,
+                                                          ),
+                                                    );
+                                                  }
+
+                                                  Future<void> setParentSlot(
+                                                    int slot,
+                                                    String? newUid,
+                                                  ) async {
+                                                    final oldUid =
+                                                        slot < parents.length
+                                                        ? parents[slot]
+                                                        : null;
+                                                    if (oldUid == newUid)
+                                                      return;
                                                     setS(() {
                                                       busy = true;
                                                       msg = null;
                                                     });
                                                     try {
-                                                      await FirebaseFirestore
-                                                          .instance
-                                                          .collection('users')
-                                                          .doc(uid)
-                                                          .update({
-                                                            'parents':
-                                                                FieldValue.arrayRemove(
-                                                                  [p],
-                                                                ),
-                                                          });
-                                                      await FirebaseFirestore
-                                                          .instance
-                                                          .collection('users')
-                                                          .doc(p)
-                                                          .update({
-                                                            'children':
-                                                                FieldValue.arrayRemove(
-                                                                  [uid],
-                                                                ),
-                                                          });
+                                                      // remove old
+                                                      if (oldUid != null) {
+                                                        await FirebaseFirestore
+                                                            .instance
+                                                            .collection('users')
+                                                            .doc(uid)
+                                                            .update({
+                                                              'parents':
+                                                                  FieldValue.arrayRemove(
+                                                                    [oldUid],
+                                                                  ),
+                                                            });
+                                                        await FirebaseFirestore
+                                                            .instance
+                                                            .collection('users')
+                                                            .doc(oldUid)
+                                                            .update({
+                                                              'children':
+                                                                  FieldValue.arrayRemove(
+                                                                    [uid],
+                                                                  ),
+                                                            });
+                                                      }
+                                                      // add new
+                                                      if (newUid != null) {
+                                                        await FirebaseFirestore
+                                                            .instance
+                                                            .collection('users')
+                                                            .doc(uid)
+                                                            .update({
+                                                              'parents':
+                                                                  FieldValue.arrayUnion(
+                                                                    [newUid],
+                                                                  ),
+                                                            });
+                                                        await FirebaseFirestore
+                                                            .instance
+                                                            .collection('users')
+                                                            .doc(newUid)
+                                                            .update({
+                                                              'children':
+                                                                  FieldValue.arrayUnion(
+                                                                    [uid],
+                                                                  ),
+                                                            });
+                                                      }
                                                       setS(() {
                                                         busy = false;
-                                                        parents.remove(p);
+                                                        if (oldUid != null)
+                                                          parents.remove(
+                                                            oldUid,
+                                                          );
+                                                        if (newUid != null &&
+                                                            !parents.contains(
+                                                              newUid,
+                                                            ))
+                                                          parents.add(newUid);
                                                         msg =
-                                                            'Părintele $display a fost eliminat.';
+                                                            'Parentele a fost actualizat.';
                                                         msgIsError = false;
                                                       });
                                                     } catch (e) {
@@ -1503,452 +1486,814 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                         msgIsError = true;
                                                       });
                                                     }
-                                                  },
-                                            child: const Icon(
-                                              Icons.close,
-                                              size: 16,
-                                              color: Color(0xFFB71C1C),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(height: 8),
-                            // ── Searchable parent dropdown ─────────────────
-                            FutureBuilder<QuerySnapshot>(
-                              future: allParentsLoaded
-                                  ? null
-                                  : FirebaseFirestore.instance
-                                        .collection('users')
-                                        .where('role', isEqualTo: 'parent')
-                                        .get(),
-                              builder: (_, snap) {
-                                if (!allParentsLoaded &&
-                                    snap.connectionState ==
-                                        ConnectionState.done &&
-                                    snap.hasData) {
-                                  allParentsLoaded = true;
-                                  allParentsList = snap.data!.docs.map((d) {
-                                    final dd = d.data() as Map<String, dynamic>;
-                                    return {
-                                      'uid': d.id,
-                                      'fullName': (dd['fullName'] ?? '')
-                                          .toString(),
-                                      'username': (dd['username'] ?? '')
-                                          .toString(),
-                                    };
-                                  }).toList();
-                                  allParentsList.sort(
-                                    (a, b) => a['fullName']!.compareTo(
-                                      b['fullName']!,
-                                    ),
-                                  );
-                                }
+                                                  }
 
-                                final filtered = parentSearchQuery.isEmpty
-                                    ? allParentsList
-                                    : allParentsList.where((e) {
-                                        final q = parentSearchQuery
-                                            .toLowerCase();
-                                        return e['fullName']!
-                                                .toLowerCase()
-                                                .contains(q) ||
-                                            e['username']!
-                                                .toLowerCase()
-                                                .contains(q);
-                                      }).toList();
-
-                                return Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    // Search field
-                                    TextField(
-                                      controller: addParentC,
-                                      onChanged: (v) => setS(() {
-                                        parentSearchQuery = v.trim();
-                                        selectedParentUid = null;
-                                        selectedParentLabel = null;
-                                      }),
-                                      decoration:
-                                          fieldDeco(
-                                            'Caută părinte după nume...',
-                                          ).copyWith(
-                                            prefixIcon: const Icon(
-                                              Icons.search,
-                                              size: 18,
-                                              color: Color(0xFF9AB88A),
-                                            ),
-                                            suffixIcon:
-                                                addParentC.text.isNotEmpty
-                                                ? IconButton(
-                                                    icon: const Icon(
-                                                      Icons.clear,
-                                                      size: 16,
-                                                    ),
-                                                    onPressed: () => setS(() {
-                                                      addParentC.clear();
-                                                      parentSearchQuery = '';
-                                                      selectedParentUid = null;
-                                                      selectedParentLabel =
-                                                          null;
-                                                    }),
-                                                  )
-                                                : null,
-                                          ),
-                                    ),
-                                    // Selected badge
-                                    if (selectedParentUid != null)
-                                      Container(
-                                        margin: const EdgeInsets.only(top: 6),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFE8F5E0),
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          border: Border.all(
-                                            color: const Color(0xFF81C784),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.check_circle,
-                                              size: 16,
-                                              color: Color(0xFF3A7A40),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                selectedParentLabel ?? '',
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF2E3B4E),
-                                                ),
-                                              ),
-                                            ),
-                                            GestureDetector(
-                                              onTap: () => setS(() {
-                                                selectedParentUid = null;
-                                                selectedParentLabel = null;
-                                              }),
-                                              child: const Icon(
-                                                Icons.close,
-                                                size: 15,
-                                                color: Color(0xFF888888),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    // Dropdown list (only when typing)
-                                    if (parentSearchQuery.isNotEmpty &&
-                                        selectedParentUid == null)
-                                      Container(
-                                        margin: const EdgeInsets.only(top: 2),
-                                        constraints: const BoxConstraints(
-                                          maxHeight: 160,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          border: Border.all(
-                                            color: const Color(0xFFCDE8B0),
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.07,
-                                              ),
-                                              blurRadius: 8,
-                                            ),
-                                          ],
-                                        ),
-                                        child:
-                                            snap.connectionState ==
-                                                    ConnectionState.waiting &&
-                                                !allParentsLoaded
-                                            ? const Padding(
-                                                padding: EdgeInsets.all(12),
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                    ),
-                                              )
-                                            : filtered.isEmpty
-                                            ? const Padding(
-                                                padding: EdgeInsets.all(12),
-                                                child: Text(
-                                                  'Niciun părinte găsit.',
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.black38,
-                                                  ),
-                                                ),
-                                              )
-                                            : ListView.builder(
-                                                padding: EdgeInsets.zero,
-                                                shrinkWrap: true,
-                                                itemCount: filtered.length,
-                                                itemBuilder: (_, idx) {
-                                                  final e = filtered[idx];
-                                                  final alreadyAssigned =
-                                                      parents.contains(
-                                                        e['uid'],
-                                                      );
-                                                  return InkWell(
-                                                    onTap: alreadyAssigned
-                                                        ? null
-                                                        : () => setS(() {
-                                                            selectedParentUid =
-                                                                e['uid'];
-                                                            selectedParentLabel =
-                                                                '${e['fullName']} (@${e['username']})';
-                                                            addParentC.clear();
-                                                            parentSearchQuery =
-                                                                '';
-                                                          }),
-                                                    child: Padding(
+                                                  Widget parentDropdown(
+                                                    int slot,
+                                                  ) {
+                                                    final currentUid =
+                                                        slot < parents.length
+                                                        ? parents[slot]
+                                                        : null;
+                                                    final otherUid =
+                                                        slot == 0 &&
+                                                            parents.length > 1
+                                                        ? parents[1]
+                                                        : (slot == 1 &&
+                                                                  parents
+                                                                      .isNotEmpty
+                                                              ? parents[0]
+                                                              : null);
+                                                    return Container(
+                                                      width: double.infinity,
+                                                      height: 48,
                                                       padding:
                                                           const EdgeInsets.symmetric(
                                                             horizontal: 12,
                                                             vertical: 10,
                                                           ),
-                                                      child: Row(
-                                                        children: [
-                                                          Expanded(
-                                                            child: Text(
-                                                              '${e['fullName']} (@${e['username']})',
-                                                              style: TextStyle(
-                                                                fontSize: 13,
-                                                                color:
-                                                                    alreadyAssigned
-                                                                    ? Colors
-                                                                          .black26
-                                                                    : const Color(
-                                                                        0xFF2E3B4E,
-                                                                      ),
-                                                              ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFFEBEFE5,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              10,
+                                                            ),
+                                                      ),
+                                                      child: DropdownButtonHideUnderline(
+                                                        child: DropdownButton<String>(
+                                                          value:
+                                                              allParentsList.any(
+                                                                (e) =>
+                                                                    e['uid'] ==
+                                                                    currentUid,
+                                                              )
+                                                              ? currentUid
+                                                              : null,
+                                                          isExpanded: true,
+                                                          hint: Text(
+                                                            currentUid != null
+                                                                ? (allParentsList.firstWhere(
+                                                                        (e) =>
+                                                                            e['uid'] ==
+                                                                            currentUid,
+                                                                        orElse: () => {
+                                                                          'fullName':
+                                                                              currentUid,
+                                                                        },
+                                                                      )['fullName'] ??
+                                                                      currentUid)
+                                                                : 'Niciun părinte',
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 16,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: Color(
+                                                                    0xFF000000,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                          icon: const Icon(
+                                                            Icons
+                                                                .keyboard_arrow_down_rounded,
+                                                            size: 20,
+                                                            color: Color(
+                                                              0xFF9AB88A,
                                                             ),
                                                           ),
-                                                          if (alreadyAssigned)
-                                                            const Text(
-                                                              'asignat',
-                                                              style: TextStyle(
-                                                                fontSize: 11,
-                                                                color: Color(
-                                                                  0xFF9AB88A,
+                                                          items: [
+                                                            const DropdownMenuItem<
+                                                              String
+                                                            >(
+                                                              value: '__none__',
+                                                              child: Text(
+                                                                'Niciun părinte',
+                                                                style: TextStyle(
+                                                                  fontSize: 16,
+                                                                  color: Color(
+                                                                    0xFF9AB88A,
+                                                                  ),
                                                                 ),
                                                               ),
                                                             ),
+                                                            ...allParentsList
+                                                                .where(
+                                                                  (e) =>
+                                                                      e['uid'] !=
+                                                                      otherUid,
+                                                                )
+                                                                .map(
+                                                                  (
+                                                                    e,
+                                                                  ) => DropdownMenuItem<String>(
+                                                                    value:
+                                                                        e['uid'],
+                                                                    child: Text(
+                                                                      e['fullName']!,
+                                                                      style: const TextStyle(
+                                                                        fontSize:
+                                                                            16,
+                                                                        fontWeight:
+                                                                            FontWeight.w600,
+                                                                        color: Color(
+                                                                          0xFF000000,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                          ],
+                                                          onChanged: busy
+                                                              ? null
+                                                              : (val) async {
+                                                                  final newVal =
+                                                                      val ==
+                                                                          '__none__'
+                                                                      ? null
+                                                                      : val;
+                                                                  await setParentSlot(
+                                                                    slot,
+                                                                    newVal,
+                                                                  );
+                                                                },
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+
+                                                  return Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      const Text(
+                                                        'PĂRINȚI',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          letterSpacing: 1,
+                                                          color: Color(
+                                                            0xFF2A5C30,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 6),
+                                                      Row(
+                                                        children: [
+                                                          Expanded(
+                                                            child:
+                                                                parentDropdown(
+                                                                  0,
+                                                                ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 8,
+                                                          ),
+                                                          Expanded(
+                                                            child:
+                                                                parentDropdown(
+                                                                  1,
+                                                                ),
+                                                          ),
                                                         ],
                                                       ),
-                                                    ),
+                                                    ],
                                                   );
                                                 },
                                               ),
-                                      ),
-                                    // Add button
-                                    const SizedBox(height: 8),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                        style: greenFilled(),
-                                        icon: const Icon(
-                                          Icons.person_add,
-                                          size: 16,
+                                            ),
+                                            const SizedBox(width: 14),
+                                            // DIRIGINTE
+                                            Expanded(
+                                              child: FutureBuilder<String>(
+                                                future:
+                                                    currentClassId.isNotEmpty
+                                                    ? FirebaseFirestore.instance
+                                                          .collection('classes')
+                                                          .doc(currentClassId)
+                                                          .get()
+                                                          .then((snap) async {
+                                                            if (!snap.exists)
+                                                              return '-';
+                                                            final d =
+                                                                snap.data()
+                                                                    as Map<
+                                                                      String,
+                                                                      dynamic
+                                                                    >;
+                                                            final tu =
+                                                                (d['teacherUsername'] ??
+                                                                        '')
+                                                                    .toString();
+                                                            if (tu.isEmpty)
+                                                              return '-';
+                                                            final uSnap =
+                                                                await FirebaseFirestore
+                                                                    .instance
+                                                                    .collection(
+                                                                      'users',
+                                                                    )
+                                                                    .where(
+                                                                      'username',
+                                                                      isEqualTo:
+                                                                          tu,
+                                                                    )
+                                                                    .limit(1)
+                                                                    .get();
+                                                            if (uSnap
+                                                                .docs
+                                                                .isEmpty)
+                                                              return tu;
+                                                            return (uSnap
+                                                                        .docs
+                                                                        .first
+                                                                        .data()['fullName'] ??
+                                                                    tu)
+                                                                .toString();
+                                                          })
+                                                    : Future.value('-'),
+                                                builder: (_, snap) {
+                                                  final diriginte =
+                                                      snap.data ?? '…';
+
+                                                  return Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      const Text(
+                                                        'DIRIGINTE',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          letterSpacing: 1,
+                                                          color: Color(
+                                                            0xFF2A5C30,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 6),
+                                                      Container(
+                                                        width: double.infinity,
+                                                        height: 48,
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 12,
+                                                              vertical: 12,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(
+                                                            0xFFF7F9F3,
+                                                          ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10,
+                                                              ),
+                                                        ),
+                                                        child: Row(
+                                                          children: [
+                                                            Expanded(
+                                                              child: Text(
+                                                                diriginte,
+                                                                style: const TextStyle(
+                                                                  fontSize: 16,
+                                                                  color: Color(
+                                                                    0xFF555555,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const Icon(
+                                                              Icons
+                                                                  .keyboard_arrow_down_rounded,
+                                                              size: 18,
+                                                              color: Color(
+                                                                0xFF9AB88A,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      const Text(
+                                                        '* Se actualizează automat în funcție de clasă',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          fontStyle:
+                                                              FontStyle.italic,
+                                                          color: Color(
+                                                            0xFF555555,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        label: const Text('Adaugă părinte'),
-                                        onPressed:
-                                            (busy ||
-                                                selectedParentUid == null ||
-                                                parents.length >= 2)
-                                            ? null
-                                            : () async {
-                                                final pUid = selectedParentUid!;
-                                                setS(() {
-                                                  busy = true;
-                                                  msg = null;
-                                                });
-                                                try {
-                                                  if (parents.length >= 2) {
-                                                    throw Exception(
-                                                      'Un elev poate avea maximum 2 părinți asignați.',
-                                                    );
-                                                  }
-                                                  if (parents.contains(pUid)) {
-                                                    throw Exception(
-                                                      'Părintele este deja asignat.',
-                                                    );
-                                                  }
-                                                  await FirebaseFirestore
-                                                      .instance
-                                                      .collection('users')
-                                                      .doc(uid)
-                                                      .update({
-                                                        'parents':
-                                                            FieldValue.arrayUnion(
-                                                              [pUid],
-                                                            ),
-                                                      });
-                                                  await FirebaseFirestore
-                                                      .instance
-                                                      .collection('users')
-                                                      .doc(pUid)
-                                                      .update({
-                                                        'children':
-                                                            FieldValue.arrayUnion(
-                                                              [uid],
-                                                            ),
-                                                      });
-                                                  final label =
-                                                      selectedParentLabel ??
-                                                      pUid;
-                                                  setS(() {
-                                                    busy = false;
-                                                    parents.add(pUid);
-                                                    selectedParentUid = null;
-                                                    selectedParentLabel = null;
-                                                    msg =
-                                                        '$label a fost asignat.';
-                                                    msgIsError = false;
-                                                  });
-                                                } catch (e) {
-                                                  setS(() {
-                                                    busy = false;
-                                                    msg = e
-                                                        .toString()
-                                                        .replaceFirst(
-                                                          'Exception: ',
-                                                          '',
-                                                        );
-                                                    msgIsError = true;
-                                                  });
-                                                }
-                                              },
-                                      ),
+                                        const SizedBox(height: 16),
+                                        // CLASĂ
+                                        const Text(
+                                          'CLASĂ',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 1,
+                                            color: Color(0xFF2A5C30),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        FutureBuilder<QuerySnapshot>(
+                                          future: allClassesLoaded
+                                              ? null
+                                              : FirebaseFirestore.instance
+                                                    .collection('classes')
+                                                    .get(),
+                                          builder: (ctx2, snap) {
+                                            if (!allClassesLoaded &&
+                                                snap.connectionState ==
+                                                    ConnectionState.done &&
+                                                snap.hasData) {
+                                              allClassesLoaded = true;
+                                              allClassesList =
+                                                  snap.data!.docs
+                                                      .map((d) => d.id)
+                                                      .toList()
+                                                    ..sort();
+                                            }
+                                            return Container(
+                                              width: double.infinity,
+                                              height: 48,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 10,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFEBEFE5),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: DropdownButtonHideUnderline(
+                                                child: DropdownButton<String>(
+                                                  value:
+                                                      allClassesList.contains(
+                                                        currentClassId,
+                                                      )
+                                                      ? currentClassId
+                                                      : null,
+                                                  isExpanded: true,
+                                                  hint: Text(
+                                                    currentClassId.isNotEmpty
+                                                        ? _formatClassName(
+                                                            currentClassId,
+                                                          )
+                                                        : 'Selectează clasă...',
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Color(0xFF000000),
+                                                    ),
+                                                  ),
+                                                  icon: const Icon(
+                                                    Icons
+                                                        .keyboard_arrow_down_rounded,
+                                                    size: 20,
+                                                    color: Color(0xFF9AB88A),
+                                                  ),
+                                                  items: allClassesList
+                                                      .map(
+                                                        (c) => DropdownMenuItem(
+                                                          value: c,
+                                                          child: Text(
+                                                            _formatClassName(c),
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 16,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: Color(
+                                                                    0xFF000000,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      )
+                                                      .toList(),
+                                                  onChanged: busy
+                                                      ? null
+                                                      : (val) async {
+                                                          if (val == null ||
+                                                              val ==
+                                                                  currentClassId)
+                                                            return;
+                                                          setS(() {
+                                                            busy = true;
+                                                            msg = null;
+                                                          });
+                                                          try {
+                                                            await store
+                                                                .moveStudent(
+                                                                  uid,
+                                                                  val,
+                                                                );
+                                                            setS(() {
+                                                              busy = false;
+                                                              currentClassId =
+                                                                  val;
+                                                              msg =
+                                                                  'Elevul a fost mutat în clasa $val.';
+                                                              msgIsError =
+                                                                  false;
+                                                            });
+                                                          } catch (e) {
+                                                            setS(() {
+                                                              busy = false;
+                                                              msg = e
+                                                                  .toString()
+                                                                  .replaceFirst(
+                                                                    'Exception: ',
+                                                                    '',
+                                                                  );
+                                                              msgIsError = true;
+                                                            });
+                                                          }
+                                                        },
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                );
-                              },
-                            ),
-
-                            const Divider(height: 28, color: Color(0xFFEEEEEE)),
-
-                            // ── CONT ─────────────────────────────────────────
-                            sectionHeader('CONT'),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                icon: busy
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.delete_outline,
-                                        size: 18,
-                                      ),
-                                label: const Text('Șterge cont'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFE53935),
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                                onPressed: busy
-                                    ? null
-                                    : () async {
-                                        final ok = await showDialog<bool>(
-                                          context: ctx,
-                                          builder: (_) => AlertDialog(
-                                            title: const Text('Ștergere elev'),
-                                            content: Text(
-                                              'Ești sigur că vrei să ștergi elevul $fullName?',
+                                // Right: avatar
+                                SizedBox(
+                                  width: 160,
+                                  child: Center(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.12,
                                             ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(ctx, false),
-                                                child: const Text('Anulează'),
-                                              ),
-                                              ElevatedButton(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.red,
-                                                  foregroundColor: Colors.white,
-                                                ),
-                                                onPressed: () =>
-                                                    Navigator.pop(ctx, true),
-                                                child: const Text('Șterge'),
-                                              ),
-                                            ],
+                                            blurRadius: 16,
+                                            spreadRadius: 2,
                                           ),
-                                        );
-                                        if (ok != true) return;
-                                        setS(() {
-                                          busy = true;
-                                          msg = null;
-                                        });
-                                        try {
-                                          await store.deleteUser(username);
-                                          if (mounted) Navigator.pop(context);
-                                        } catch (e) {
+                                        ],
+                                      ),
+                                      padding: const EdgeInsets.all(5),
+                                      child: CircleAvatar(
+                                        radius: 63,
+                                        backgroundColor: _avatarColor(
+                                          currentFullName,
+                                        ),
+                                        backgroundImage: photoUrl.isNotEmpty
+                                            ? NetworkImage(photoUrl)
+                                            : null,
+                                        child: photoUrl.isEmpty
+                                            ? Text(
+                                                _initials(currentFullName),
+                                                style: const TextStyle(
+                                                  color: Color(0xFF1A1A1A),
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 34,
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 72),
+                            // Export + Reset Password
+                            SizedBox(
+                              width: double.infinity,
+                              child: Center(
+                                child: ElevatedButton.icon(
+                                  icon: busy
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.download_outlined,
+                                          size: 18,
+                                        ),
+                                  label: const Text(
+                                    'Extrage Date / Resetează Parola',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 17,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF7B2D5E),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 22,
+                                      horizontal: 36,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  onPressed: busy
+                                      ? null
+                                      : () async {
+                                          // Ask for new password
+                                          final newPassC =
+                                              TextEditingController();
+                                          final confirmed = await showDialog<bool>(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              title: const Text(
+                                                'Extrage Date & Resetează Parola',
+                                              ),
+                                              content: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text(
+                                                    'Datele elevului vor fi exportate în Excel, iar parola va fi resetată la valoarea introdusă mai jos.',
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  TextField(
+                                                    controller: newPassC,
+                                                    decoration:
+                                                        const InputDecoration(
+                                                          labelText:
+                                                              'Parolă nouă',
+                                                          border:
+                                                              OutlineInputBorder(),
+                                                        ),
+                                                    obscureText: true,
+                                                  ),
+                                                ],
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(ctx, false),
+                                                  child: const Text('Anulează'),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(ctx, true),
+                                                  child: const Text('Confirmă'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirmed != true) return;
+                                          final newPass = newPassC.text.trim();
+                                          if (newPass.isEmpty) {
+                                            setS(() {
+                                              msg =
+                                                  'Parola nouă nu poate fi goală.';
+                                              msgIsError = true;
+                                            });
+                                            return;
+                                          }
+
                                           setS(() {
-                                            busy = false;
-                                            msg = e.toString().replaceFirst(
-                                              'Exception: ',
-                                              '',
-                                            );
-                                            msgIsError = true;
+                                            busy = true;
+                                            msg = null;
                                           });
-                                        }
-                                      },
+                                          try {
+                                            // 1. Export Excel
+                                            final excel =
+                                                xls.Excel.createExcel();
+                                            final sheet = excel['Elev'];
+                                            sheet.appendRow([
+                                              xls.TextCellValue('Nume Complet'),
+                                              xls.TextCellValue('Username'),
+                                              xls.TextCellValue('Email'),
+                                              xls.TextCellValue('Clasă'),
+                                              xls.TextCellValue('Parolă Nouă'),
+                                            ]);
+                                            sheet.appendRow([
+                                              xls.TextCellValue(
+                                                currentFullName,
+                                              ),
+                                              xls.TextCellValue(username),
+                                              xls.TextCellValue(email ?? '-'),
+                                              xls.TextCellValue(
+                                                _formatClassName(
+                                                  currentClassId,
+                                                ),
+                                              ),
+                                              xls.TextCellValue(newPass),
+                                            ]);
+                                            final bytes = excel.encode();
+                                            if (bytes != null) {
+                                              await FileSaver.instance.saveFile(
+                                                name: 'elev_${username}',
+                                                bytes: Uint8List.fromList(
+                                                  bytes,
+                                                ),
+                                                ext: 'xlsx',
+                                                mimeType:
+                                                    MimeType.microsoftExcel,
+                                              );
+                                            }
+
+                                            // 2. Reset password
+                                            await AdminApi().resetPassword(
+                                              username: username,
+                                              newPassword: newPass,
+                                            );
+
+                                            setS(() {
+                                              busy = false;
+                                              msg =
+                                                  'Date exportate și parola resetată cu succes.';
+                                              msgIsError = false;
+                                            });
+                                          } catch (e) {
+                                            setS(() {
+                                              busy = false;
+                                              msg = e.toString().replaceFirst(
+                                                'Exception: ',
+                                                '',
+                                              );
+                                              msgIsError = true;
+                                            });
+                                          }
+                                        },
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 44),
+                            const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                            const SizedBox(height: 28),
+                            // Delete
+                            SizedBox(
+                              width: double.infinity,
+                              child: Center(
+                                child: TextButton.icon(
+                                  icon: busy
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFFD92D20),
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.delete_outline,
+                                          size: 22,
+                                        ),
+                                  label: const Text('Șterge Utilizator'),
+                                  style: ButtonStyle(
+                                    foregroundColor:
+                                        WidgetStateProperty.resolveWith((
+                                          states,
+                                        ) {
+                                          if (states.contains(
+                                            WidgetState.disabled,
+                                          )) {
+                                            return const Color(0xFFED8F88);
+                                          }
+                                          return const Color(0xFFD92D20);
+                                        }),
+                                    backgroundColor:
+                                        WidgetStateProperty.resolveWith((
+                                          states,
+                                        ) {
+                                          if (states.contains(
+                                            WidgetState.hovered,
+                                          )) {
+                                            return const Color(0xFFF8E4E2);
+                                          }
+                                          if (states.contains(
+                                            WidgetState.pressed,
+                                          )) {
+                                            return const Color(0xFFF3D6D3);
+                                          }
+                                          return Colors.transparent;
+                                        }),
+                                    overlayColor:
+                                        WidgetStateProperty.resolveWith((
+                                          states,
+                                        ) {
+                                          if (states.contains(
+                                                WidgetState.hovered,
+                                              ) ||
+                                              states.contains(
+                                                WidgetState.pressed,
+                                              )) {
+                                            return Colors.transparent;
+                                          }
+                                          return null;
+                                        }),
+                                    elevation: const WidgetStatePropertyAll(0),
+                                    padding: const WidgetStatePropertyAll(
+                                      EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 18,
+                                      ),
+                                    ),
+                                    shape: WidgetStatePropertyAll(
+                                      RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    textStyle: const WidgetStatePropertyAll(
+                                      TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  onPressed: busy
+                                      ? null
+                                      : () async {
+                                          final ok = await showDialog<bool>(
+                                            context: ctx,
+                                            builder: (_) => AlertDialog(
+                                              title: const Text(
+                                                'Ștergere elev',
+                                              ),
+                                              content: Text(
+                                                'Ești sigur că vrei să ștergi elevul $currentFullName?',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(ctx, false),
+                                                  child: const Text('Anulează'),
+                                                ),
+                                                ElevatedButton(
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            Colors.red,
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                      ),
+                                                  onPressed: () =>
+                                                      Navigator.pop(ctx, true),
+                                                  child: const Text('Șterge'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (ok != true) return;
+                                          setS(() {
+                                            busy = true;
+                                            msg = null;
+                                          });
+                                          try {
+                                            await store.deleteUser(username);
+                                            if (mounted) {
+                                              Navigator.pop(context);
+                                            }
+                                          } catch (e) {
+                                            setS(() {
+                                              busy = false;
+                                              msg = e.toString().replaceFirst(
+                                                'Exception: ',
+                                                '',
+                                              );
+                                              msgIsError = true;
+                                            });
+                                          }
+                                        },
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
 
-                    // ── FOOTER ───────────────────────────────────────────────
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                      child: TextButton(
-                        style: TextButton.styleFrom(
-                          backgroundColor: Colors.grey.withValues(alpha: 0.1),
-                          foregroundColor: const Color(0xFF5F6771),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text(
-                          'Închide',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
@@ -1994,6 +2339,52 @@ class _PaginationButton extends StatelessWidget {
           size: 20,
           color: enabled ? const Color(0xFF333333) : const Color(0xFFCCCCCC),
         ),
+      ),
+    );
+  }
+}
+
+class _PulsingDot extends StatefulWidget {
+  final Color colorA;
+  final Color colorB;
+  const _PulsingDot({required this.colorA, required this.colorB});
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Color?> _color;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _color = ColorTween(
+      begin: widget.colorA,
+      end: widget.colorB,
+    ).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _color,
+      builder: (_, __) => Container(
+        width: 7,
+        height: 7,
+        decoration: BoxDecoration(color: _color.value, shape: BoxShape.circle),
       ),
     );
   }
