@@ -1,10 +1,11 @@
 ﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
+import 'account_bottom_sheet.dart';
 
-const _kHeaderGreen = Color(0xFF0E6A22);
-const _kPageBg = Color(0xFFF0F3EC);
-const _kCardBg = Color(0xFFF7F7F7);
+const _kHeaderGreen = Color(0xFF1D5C2B);
+const _kPageBg = Color(0xFFF4F6F4);
+const _kCardBg = Color(0xFFFFFFFF);
 
 /// Placeholder status page for teachers. Currently mirrors the dashboard UI.
 class StatusEleviPage extends StatefulWidget {
@@ -29,12 +30,14 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
     return Scaffold(
       backgroundColor: _kPageBg,
       body: SafeArea(
+        top: false,
         bottom: false,
         child: Column(
           children: [
             _TopHeader(
               title: 'Clasa Mea',
               onBack: () => Navigator.of(context).maybePop(),
+              onProfile: () => showAccountBottomSheet(context),
             ),
             Expanded(
               child: FutureBuilder<DocumentSnapshot>(
@@ -142,7 +145,7 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
                             });
 
                           return ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(14, 10, 14, 18),
+                            padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
                             itemCount: sortedStudents.length,
                             itemBuilder: (context, index) {
                               final stu = sortedStudents[index];
@@ -185,6 +188,20 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
                                 builder: (context, permSnap) {
                                   final hasPermission =
                                       permSnap.data?.docs.isNotEmpty ?? false;
+                                  final parentsRaw = ud['parents'];
+                                  final parentUid = parentsRaw is List
+                                      ? parentsRaw
+                                            .map(
+                                              (parent) =>
+                                                  parent.toString().trim(),
+                                            )
+                                            .firstWhere(
+                                              (parent) => parent.isNotEmpty,
+                                              orElse: () => '',
+                                            )
+                                      : (ud['parentUid'] ?? '')
+                                            .toString()
+                                            .trim();
                                   final initials = name
                                       .trim()
                                       .split(' ')
@@ -201,15 +218,22 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
                                     onTap: () {
                                       Navigator.push(
                                         context,
-                                        MaterialPageRoute(
-                                          builder: (_) => _StudentDetailPage(
-                                            name: name,
-                                            status: statusText,
-                                            lastScanDate: lastScanDate,
-                                            lastScanTime: lastScanTime,
-                                            lastScanLocation: lastScanLocation,
-                                            hasPermission: hasPermission,
-                                          ),
+                                        PageRouteBuilder(
+                                          pageBuilder: (_, __, ___) =>
+                                              _StudentDetailPage(
+                                                name: name,
+                                                classLabel: 'Clasa a $classId',
+                                                parentUid: parentUid,
+                                                status: statusText,
+                                                lastScanDate: lastScanDate,
+                                                lastScanTime: lastScanTime,
+                                                lastScanLocation:
+                                                    lastScanLocation,
+                                                hasPermission: hasPermission,
+                                              ),
+                                          transitionDuration: Duration.zero,
+                                          reverseTransitionDuration:
+                                              Duration.zero,
                                         ),
                                       );
                                     },
@@ -235,26 +259,62 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
 class _TopHeader extends StatelessWidget {
   final String title;
   final VoidCallback onBack;
+  final VoidCallback? onProfile;
 
-  const _TopHeader({required this.title, required this.onBack});
+  const _TopHeader({required this.title, required this.onBack, this.onProfile});
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(38)),
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(52)),
       child: SizedBox(
-        height: 152,
+        height: 120 + topPadding,
         width: double.infinity,
         child: Stack(
           fit: StackFit.expand,
+          clipBehavior: Clip.none,
           children: [
             Container(color: _kHeaderGreen),
-            CustomPaint(painter: _HeaderDotsPainter()),
-            Positioned(right: 58, top: -40, child: _decorCircle(110)),
-            Positioned(left: 175, bottom: -28, child: _decorCircle(72)),
+            Positioned(right: -60, top: -60, child: _decorCircle(180)),
+            Positioned(
+              right: 120,
+              top: topPadding + 28,
+              child: _decorCircle(55),
+            ),
+            Positioned(left: -40, bottom: -30, child: _decorCircle(130)),
+            if (onProfile != null)
+              Positioned(
+                top: topPadding + 5,
+                right: 14,
+                child: Hero(
+                  tag: 'teacher-profile-btn',
+                  child: GestureDetector(
+                    onTap: onProfile,
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: const Color(0x337DE38D),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0x6DC7F4CE),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 21,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 18, 18, 12),
+              padding: EdgeInsets.fromLTRB(4, topPadding - 2, 18, 0),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   IconButton(
                     onPressed: onBack,
@@ -270,8 +330,8 @@ class _TopHeader extends StatelessWidget {
                     title,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 43,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
                       height: 1,
                     ),
                   ),
@@ -290,27 +350,10 @@ class _TopHeader extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.10),
+        color: Colors.white.withOpacity(0.10),
       ),
     );
   }
-}
-
-class _HeaderDotsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withValues(alpha: 0.15);
-    const spacing = 18.0;
-    const radius = 1.3;
-    for (double y = 12; y < size.height; y += spacing) {
-      for (double x = 16; x < size.width; x += spacing) {
-        canvas.drawCircle(Offset(x, y), radius, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _StudentListCard extends StatelessWidget {
@@ -346,11 +389,17 @@ class _StudentListCard extends StatelessWidget {
         : const Color(0xFF922255);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 13),
+      margin: const EdgeInsets.only(bottom: 18),
       decoration: BoxDecoration(
         color: _kCardBg,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE3E6DE)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -358,13 +407,13 @@ class _StudentListCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+            padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 74,
-                  height: 74,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
                     color: avatarBg,
                     shape: BoxShape.circle,
@@ -374,13 +423,13 @@ class _StudentListCard extends StatelessWidget {
                     initials,
                     style: TextStyle(
                       color: avatarText,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 20,
                       height: 1,
                     ),
                   ),
                 ),
-                const SizedBox(width: 18),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 4),
@@ -393,26 +442,26 @@ class _StudentListCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Color(0xFF101310),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
                             height: 1.15,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Text(
                           classLabel,
                           style: const TextStyle(
                             color: Color(0xFF273027),
                             fontWeight: FontWeight.w500,
-                            fontSize: 18,
+                            fontSize: 13,
                             height: 1.15,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 7,
+                            horizontal: 10,
+                            vertical: 5,
                           ),
                           decoration: BoxDecoration(
                             color: pillBg,
@@ -423,21 +472,24 @@ class _StudentListCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
-                                width: 11,
-                                height: 11,
+                                width: 8,
+                                height: 8,
                                 decoration: BoxDecoration(
                                   color: pillText,
                                   shape: BoxShape.circle,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                statusText,
-                                style: TextStyle(
-                                  color: pillText,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 22,
-                                  height: 1,
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  statusText,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: pillText,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                    height: 1,
+                                  ),
                                 ),
                               ),
                             ],
@@ -449,16 +501,23 @@ class _StudentListCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Container(
-                  width: 56,
-                  height: 56,
-                  margin: const EdgeInsets.only(top: 12),
+                  width: 44,
+                  height: 44,
+                  margin: const EdgeInsets.only(top: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE0E4DB),
+                    color: const Color(0xFFECEFE6),
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: const Icon(
                     Icons.chevron_right_rounded,
-                    size: 36,
+                    size: 26,
                     color: Color(0xFF1B231A),
                   ),
                 ),
@@ -475,6 +534,8 @@ class _StudentListCard extends StatelessWidget {
 
 class _StudentDetailPage extends StatelessWidget {
   final String name;
+  final String classLabel;
+  final String parentUid;
   final String status;
   final String lastScanDate;
   final String lastScanTime;
@@ -483,6 +544,8 @@ class _StudentDetailPage extends StatelessWidget {
 
   const _StudentDetailPage({
     required this.name,
+    required this.classLabel,
+    required this.parentUid,
     required this.status,
     required this.lastScanDate,
     required this.lastScanTime,
@@ -492,198 +555,302 @@ class _StudentDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inSchool = status == 'in incinta';
+    // ignore: unused_local_variable
     final hasScan = lastScanDate.isNotEmpty || lastScanTime.isNotEmpty;
-    final initials = name
-        .trim()
-        .split(' ')
-        .where((w) => w.isNotEmpty)
-        .take(2)
-        .map((w) => w[0].toUpperCase())
-        .join();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE6EBEE),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF7AAF5B),
-        title: Text(name, style: const TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Hero card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: inSchool
-                      ? [const Color(0xFF7AAF5B), const Color(0xFF4E8A3A)]
-                      : [const Color(0xFFE57373), const Color(0xFFC62828)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color:
-                        (inSchool
-                                ? const Color(0xFF7AAF5B)
-                                : const Color(0xFFE57373))
-                            .withValues(alpha: 0.30),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 34,
-                    backgroundColor: Colors.white.withValues(alpha: 0.22),
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 22,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                          ),
+      backgroundColor: const Color(0xFFF4F6F4),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(38),
+            ),
+            child: Container(
+              color: _kHeaderGreen,
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 18, 16),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white,
+                          size: 22,
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              inSchool
-                                  ? Icons.school_rounded
-                                  : Icons.logout_rounded,
-                              color: Colors.white.withValues(alpha: 0.85),
-                              size: 16,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              inSchool
-                                  ? 'În incinta școlii'
-                                  : 'În afara școlii',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.90),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Detalii Elev',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          right: -10,
+                          top: -10,
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF0F4EC),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                                            Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Container(
+                                                  width: 72,
+                                                  height: 72,
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFDFF3E6),
+                                                    borderRadius: BorderRadius.circular(12),
+                                                  ),
+                                                  alignment: Alignment.center,
+                                                  child: Text(
+                                                    name
+                                                        .trim()
+                                                        .split(' ')
+                                                        .where((w) => w.isNotEmpty)
+                                                        .take(2)
+                                                        .map((w) => w[0].toUpperCase())
+                                                        .join(),
+                                                    style: const TextStyle(
+                                                      fontSize: 22,
+                                                      fontWeight: FontWeight.w800,
+                                                      color: Color(0xFF0D6D1E),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 14),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        name,
+                                                        style: const TextStyle(
+                                                          fontSize: 28,
+                                                          fontWeight: FontWeight.w800,
+                                                          color: Color(0xFF111811),
+                                                          height: 1.15,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 6),
+                                                      Text(
+                                                        classLabel,
+                                                        style: const TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight: FontWeight.w500,
+                                                          color: Color(0xFF5A6B5C),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 18),
+                                                      _ParentTutorRow(parentUid: parentUid),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(height: 18),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            // Last scan card
-            _InfoCard(
-              icon: Icons.qr_code_scanner,
-              iconColor: const Color.fromRGBO(122, 175, 91, 1),
-              label: 'Ultima scanare',
-              value: hasScan
-                  ? '$lastScanDate${lastScanTime.isNotEmpty ? ', $lastScanTime' : ''}${lastScanLocation.isNotEmpty ? '\n$lastScanLocation' : ''}'
-                  : 'Nicio scanare înregistrată',
-            ),
-            const SizedBox(height: 12),
-            // Permission card
-            _InfoCard(
-              icon: hasPermission ? Icons.verified : Icons.block,
-              iconColor: hasPermission ? Colors.green : Colors.red,
-              label: 'Permisiune activă',
-              value: hasPermission ? 'Da' : 'Nu',
-              valueColor: hasPermission ? Colors.green : Colors.red,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _InfoCard extends StatelessWidget {
+class _ParentTutorRow extends StatelessWidget {
+  final String parentUid;
+
+  const _ParentTutorRow({required this.parentUid});
+
+  @override
+  Widget build(BuildContext context) {
+    if (parentUid.isEmpty) {
+      return const _PersonMetaRow(
+        icon: Icons.family_restroom_rounded,
+        label: 'PĂRINȚI / TUTORI',
+        value: 'Neasignat',
+      );
+    }
+
+    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      future: FirebaseFirestore.instance
+          .collection('users')
+          .doc(parentUid)
+          .get(),
+      builder: (context, snapshot) {
+        final parentData = snapshot.data?.data() ?? const <String, dynamic>{};
+        final parentName =
+            (parentData['fullName'] ?? parentData['username'] ?? 'Neasignat')
+                .toString()
+                .trim();
+
+        return _PersonMetaRow(
+          icon: Icons.family_restroom_rounded,
+          label: 'PĂRINȚI / TUTORI',
+          value: parentName.isEmpty ? 'Neasignat' : parentName,
+        );
+      },
+    );
+  }
+}
+
+class _PersonMetaRow extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
   final String label;
   final String value;
-  final Color? valueColor;
 
-  const _InfoCard({
+  const _PersonMetaRow({
     required this.icon,
-    required this.iconColor,
     required this.label,
     required this.value,
-    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F2E8),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: const Color(0xFF1D5C2B), size: 24),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: Color(0xFF6E7C70),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111811),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ignore: unused_element
+class _DetailCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final String label;
+  final Widget trailing;
+
+  const _DetailCard({
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.label,
+    required this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: iconColor, size: 28),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: valueColor ?? const Color(0xFF1C1C1C),
-                  ),
-                ),
-              ],
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(12),
             ),
+            child: Icon(icon, color: iconColor, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1C1C1C),
+            ),
+          ),
+          const Spacer(),
+          Flexible(
+            child: Align(alignment: Alignment.centerRight, child: trailing),
           ),
         ],
       ),
