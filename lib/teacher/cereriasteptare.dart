@@ -433,12 +433,6 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                                   dateText: dateText,
                                   timeText: timeText,
                                   message: message,
-<<<<<<< Updated upstream
-                                  onTap: () =>
-                                      _showRequestDialog(context, requestId, d),
-                                  isPending: true,
-=======
->>>>>>> Stashed changes
                                   onAccept: () => _reviewRequest(
                                     requestId: requestId,
                                     status: 'approved',
