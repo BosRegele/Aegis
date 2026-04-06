@@ -7,6 +7,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:excel/excel.dart' as xls;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_saver/file_saver.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../core/session.dart';
@@ -1033,22 +1034,24 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
         ]);
       }
 
-      final bytes = excel.save();
-      if (bytes == null) {
-        throw Exception('Nu am putut genera fisierul Excel.');
+      final fileName = 'StudentData_$classId';
+
+      if (kIsWeb) {
+        // On web, excel.save(fileName:) handles the browser download directly.
+        // Using FileSaver on top would cause a second download.
+        excel.save(fileName: '$fileName.xlsx');
+      } else {
+        final bytes = excel.save();
+        if (bytes == null) {
+          throw Exception('Nu am putut genera fisierul Excel.');
+        }
+        await FileSaver.instance.saveFile(
+          name: fileName,
+          bytes: Uint8List.fromList(bytes),
+          ext: 'xlsx',
+          mimeType: MimeType.microsoftExcel,
+        );
       }
-
-      final now = DateTime.now();
-      final stamp =
-          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_'
-          '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
-
-      await FileSaver.instance.saveFile(
-        name: 'student_report_${classId}_$stamp',
-        bytes: Uint8List.fromList(bytes),
-        ext: 'xlsx',
-        mimeType: MimeType.microsoftExcel,
-      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3667,10 +3670,38 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                         .trim();
 
                 if (classOptions.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'Nu exista clase configurate.',
-                      style: TextStyle(fontSize: 16, color: Color(0xFF5B6B58)),
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Nu exista clase configurate.',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF5B6B58),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          onPressed: _showCreateClassDialog,
+                          icon: const Icon(
+                            Icons.add_circle_outline_rounded,
+                            size: 22,
+                          ),
+                          label: const Text('Creează Clasă Nouă'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2E6B2E),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 22,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }
@@ -4451,6 +4482,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
   late Set<String> _selectedDays;
   bool _editing = false;
   bool _saving = false;
+  bool _isPickingTime = false;
 
   @override
   void initState() {
@@ -4511,21 +4543,8 @@ class _ScheduleCardState extends State<_ScheduleCard> {
     widget.selectedClassData?['schedule'] as Map<String, dynamic>?,
   );
 
-  TimeOfDay _toTimeOfDay(String? value) {
-    final raw = (value ?? '').trim();
-    final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(raw);
-    if (match == null) {
-      return const TimeOfDay(hour: 8, minute: 0);
-    }
-    final hour = int.tryParse(match.group(1) ?? '8') ?? 8;
-    final minute = int.tryParse(match.group(2) ?? '0') ?? 0;
-    return TimeOfDay(hour: hour.clamp(0, 23), minute: minute.clamp(0, 59));
-  }
-
-  String _fmtTime(TimeOfDay t) {
-    final hh = t.hour.toString().padLeft(2, '0');
-    final mm = t.minute.toString().padLeft(2, '0');
-    return '$hh:$mm';
+  String _fmtTime(int hour, int minute) {
+    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
   }
 
   int _minutesOf(String value) {
@@ -4540,27 +4559,159 @@ class _ScheduleCardState extends State<_ScheduleCard> {
     required String dayKey,
     required String field,
   }) async {
-    final currentValue =
-        _draftSchedule[dayKey]?[field] ??
-        (field == 'start' ? '08:00' : '14:00');
+    if (_isPickingTime) return;
+    _isPickingTime = true;
+    try {
+      final currentValue =
+          _draftSchedule[dayKey]?[field] ??
+          (field == 'start' ? '08:00' : '14:00');
 
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _toTimeOfDay(currentValue),
-      helpText: field == 'start'
-          ? 'Selecteaza ora de intrare'
-          : 'Selecteaza ora de iesire',
-    );
-    if (picked == null || !mounted) return;
+      final match = RegExp(
+        r'^(\d{1,2}):(\d{2})$',
+      ).firstMatch(currentValue.trim());
+      final initHour = int.tryParse(match?.group(1) ?? '8') ?? 8;
+      final initMinute = int.tryParse(match?.group(2) ?? '0') ?? 0;
 
-    setState(() {
-      final day = Map<String, String>.from(
-        _draftSchedule[dayKey] ??
-            const <String, String>{'start': '08:00', 'end': '14:00'},
+      final hourCtrl = TextEditingController(
+        text: initHour.toString().padLeft(2, '0'),
       );
-      day[field] = _fmtTime(picked);
-      _draftSchedule[dayKey] = day;
-    });
+      final minCtrl = TextEditingController(
+        text: initMinute.toString().padLeft(2, '0'),
+      );
+
+      final result = await showDialog<String>(
+        context: context,
+        barrierDismissible: true,
+        builder: (ctx) {
+          String? error;
+          return StatefulBuilder(
+            builder: (ctx, setS) {
+              return AlertDialog(
+                title: Text(
+                  field == 'start' ? 'Ora de intrare' : 'Ora de ieșire',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A2E1A),
+                  ),
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 72,
+                          child: TextField(
+                            controller: hourCtrl,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            maxLength: 2,
+                            decoration: const InputDecoration(
+                              labelText: 'Ora',
+                              counterText: '',
+                              border: OutlineInputBorder(),
+                            ),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(
+                            ':',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 72,
+                          child: TextField(
+                            controller: minCtrl,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            maxLength: 2,
+                            decoration: const InputDecoration(
+                              labelText: 'Min',
+                              counterText: '',
+                              border: OutlineInputBorder(),
+                            ),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (error != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        error!,
+                        style: const TextStyle(
+                          color: Color(0xFFD32F2F),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Anul'),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E6B2E),
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () {
+                      final h = int.tryParse(hourCtrl.text.trim());
+                      final m = int.tryParse(minCtrl.text.trim());
+                      if (h == null || h < 0 || h > 23) {
+                        setS(() => error = 'Ora trebuie sa fie intre 0 si 23.');
+                        return;
+                      }
+                      if (m == null || m < 0 || m > 59) {
+                        setS(
+                          () => error = 'Minutul trebuie sa fie intre 0 si 59.',
+                        );
+                        return;
+                      }
+                      Navigator.of(ctx).pop(_fmtTime(h, m));
+                    },
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+
+      hourCtrl.dispose();
+      minCtrl.dispose();
+
+      if (result == null || !mounted) return;
+
+      setState(() {
+        final day = Map<String, String>.from(
+          _draftSchedule[dayKey] ??
+              const <String, String>{'start': '08:00', 'end': '14:00'},
+        );
+        day[field] = result;
+        _draftSchedule[dayKey] = day;
+      });
+    } finally {
+      if (mounted) _isPickingTime = false;
+    }
   }
 
   void _toggleDay(String dayKey, bool selected) {
@@ -5522,7 +5673,7 @@ class _ExportBar extends StatelessWidget {
                   ),
                 )
               : const Icon(Icons.description_outlined, size: 18),
-          label: Text(busy ? 'Export...' : 'Exportă Excel'),
+          label: Text(busy ? 'Export...' : 'Exportă conturi elevi'),
           style: FilledButton.styleFrom(
             backgroundColor: const Color(0xFF0F7422),
             foregroundColor: Colors.white,

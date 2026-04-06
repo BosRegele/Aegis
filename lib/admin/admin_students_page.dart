@@ -22,8 +22,8 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
   final Random _rng = Random.secure();
   int _currentPage = 0;
   static const int _pageSize = 7;
-  String _searchQuery = '';
-  String _sortBy = 'name';
+  final String _searchQuery = '';
+  final String _sortBy = 'name';
 
   String _randPassword(int len) {
     const chars =
@@ -77,13 +77,6 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                                }),
-                        child: Row(
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     Container(
                       padding: const EdgeInsets.fromLTRB(40, 16, 40, 16),
                       decoration: const BoxDecoration(color: Color(0xFFF4F9F3)),
@@ -693,7 +686,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       barrierLabel: '',
       barrierColor: Colors.transparent,
       transitionDuration: const Duration(milliseconds: 220),
-      transitionBuilder: (_, animation, __, child) {
+      transitionBuilder: (_, animation, _, child) {
         return BackdropFilter(
           filter: ImageFilter.blur(
             sigmaX: 10 * animation.value,
@@ -711,7 +704,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
           ),
         );
       },
-      pageBuilder: (_, __, ___) {
+      pageBuilder: (_, _, _) {
         bool busy = false;
         String? msg;
         bool msgIsError = false;
@@ -728,44 +721,14 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
         // All parents cache for dropdown: uid -> {fullName, username}
         List<Map<String, String>> allParentsList = [];
         bool allParentsLoaded = false;
-        String parentSearchQuery = '';
-        // Selected parent from dropdown (uid)
-        String? selectedParentUid;
-        String? selectedParentLabel;
         // Class search/dropdown state
         String currentClassId = classId; // mutable — updated after move
         String currentFullName = fullName; // mutable — updated after rename
         List<String> allClassesList = [];
         bool allClassesLoaded = false;
-        String classSearchQuery = '';
-        String? selectedClassId;
-        String? selectedClassLabel;
 
         return StatefulBuilder(
           builder: (ctx, setS) {
-            InputDecoration fieldDeco(String hint) => InputDecoration(
-              hintText: hint,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: const Color(0xFFF4F9F3),
-            );
-
             return PopScope(
               canPop: !busy,
               child: Dialog(
@@ -802,8 +765,6 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                             ),
                           ),
                         ),
-                      ),
-                        child: Row(
                         child: Row(
                           children: [
                             const Text(
@@ -1121,8 +1082,10 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                 if (busy) return;
                                                 final newName = val.trim();
                                                 if (newName.isEmpty ||
-                                                    newName == currentFullName)
+                                                    newName ==
+                                                        currentFullName) {
                                                   return;
+                                                }
                                                 setS(() {
                                                   busy = true;
                                                   msg = null;
@@ -1342,8 +1305,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                           slot < parents.length
                                                           ? parents[slot]
                                                           : null;
-                                                      if (oldUid == newUid)
+                                                      if (oldUid == newUid) {
                                                         return;
+                                                      }
                                                       setS(() {
                                                         busy = true;
                                                         msg = null;
@@ -1405,15 +1369,17 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                         }
                                                         setS(() {
                                                           busy = false;
-                                                          if (oldUid != null)
+                                                          if (oldUid != null) {
                                                             parents.remove(
                                                               oldUid,
                                                             );
+                                                          }
                                                           if (newUid != null &&
                                                               !parents.contains(
                                                                 newUid,
-                                                              ))
+                                                              )) {
                                                             parents.add(newUid);
+                                                          }
                                                           msg =
                                                               'Parentele a fost actualizat.';
                                                           msgIsError = false;
@@ -1627,8 +1593,10 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                             .doc(currentClassId)
                                                             .get()
                                                             .then((snap) async {
-                                                              if (!snap.exists)
+                                                              if (!snap
+                                                                  .exists) {
                                                                 return '-';
+                                                              }
                                                               final d =
                                                                   snap.data()
                                                                       as Map<
@@ -1639,8 +1607,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                                   (d['teacherUsername'] ??
                                                                           '')
                                                                       .toString();
-                                                              if (tu.isEmpty)
+                                                              if (tu.isEmpty) {
                                                                 return '-';
+                                                              }
                                                               final uSnap =
                                                                   await FirebaseFirestore
                                                                       .instance
@@ -1656,8 +1625,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                                       .get();
                                                               if (uSnap
                                                                   .docs
-                                                                  .isEmpty)
+                                                                  .isEmpty) {
                                                                 return tu;
+                                                              }
                                                               return (uSnap
                                                                           .docs
                                                                           .first
@@ -1857,8 +1827,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                         : (val) async {
                                                             if (val == null ||
                                                                 val ==
-                                                                    currentClassId)
+                                                                    currentClassId) {
                                                               return;
+                                                            }
                                                             setS(() {
                                                               busy = true;
                                                               msg = null;
@@ -2024,7 +1995,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                               if (bytes != null) {
                                                 await FileSaver.instance
                                                     .saveFile(
-                                                      name: 'elev_${username}',
+                                                      name: 'elev_$username',
                                                       bytes: Uint8List.fromList(
                                                         bytes,
                                                       ),
@@ -2153,6 +2124,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                     onPressed: busy
                                         ? null
                                         : () async {
+                                            final nav = Navigator.of(context);
                                             final ok = await showGeneralDialog<bool>(
                                               context: ctx,
                                               barrierDismissible: true,
@@ -2164,7 +2136,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                     milliseconds: 220,
                                                   ),
                                               transitionBuilder:
-                                                  (_, animation, __, child) {
+                                                  (_, animation, _, child) {
                                                     return BackdropFilter(
                                                       filter: ImageFilter.blur(
                                                         sigmaX:
@@ -2195,7 +2167,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                       ),
                                                     );
                                                   },
-                                              pageBuilder: (dialogCtx, _, __) {
+                                              pageBuilder: (dialogCtx, _, _) {
                                                 return SafeArea(
                                                   child: Center(
                                                     child: Padding(
@@ -2490,7 +2462,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                             try {
                                               await store.deleteUser(username);
                                               if (mounted) {
-                                                Navigator.pop(context);
+                                                nav.pop();
                                               }
                                             } catch (e) {
                                               setS(() {
@@ -2600,7 +2572,7 @@ class _PulsingDotState extends State<_PulsingDot>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _color,
-      builder: (_, __) => Container(
+      builder: (_, _) => Container(
         width: 7,
         height: 7,
         decoration: BoxDecoration(color: _color.value, shape: BoxShape.circle),

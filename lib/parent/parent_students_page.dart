@@ -44,101 +44,101 @@ class ParentStudentsPage extends StatelessWidget {
             _TopHeader(onBack: () => Navigator.of(context).pop()),
             Expanded(
               child: parentUid.isEmpty
-                    ? const Center(child: Text('Sesiune invalidă'))
-                    : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                        stream: FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(parentUid)
-                            .snapshots(),
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
-
-                          final parentData = snapshot.data!.data();
-                          if (parentData == null) {
-                            return const Center(child: Text('Nu exista date.'));
-                          }
-
-                          final childIds = _extractChildUids(
-                            parentData,
-                            parentUid,
+                  ? const Center(child: Text('Sesiune invalidă'))
+                  : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(parentUid)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
                           );
-                          if (childIds.isEmpty) {
-                            return const Center(
-                              child: Text('Nu exista copii asignati.'),
-                            );
-                          }
+                        }
 
-                          return ListView.builder(
-                            physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                            itemCount: childIds.length,
-                            itemBuilder: (context, index) {
-                              final uid = childIds[index];
+                        final parentData = snapshot.data!.data();
+                        if (parentData == null) {
+                          return const Center(child: Text('Nu exista date.'));
+                        }
 
-                              return StreamBuilder<
-                                DocumentSnapshot<Map<String, dynamic>>
-                              >(
-                                stream: users.doc(uid).snapshots(),
-                                builder: (context, studentSnap) {
-                                  if (!studentSnap.hasData ||
-                                      !studentSnap.data!.exists) {
-                                    return const SizedBox();
-                                  }
-
-                                  final data = studentSnap.data!.data()!;
-                                  final viewData = _toStudentViewData(
-                                    studentSnap.data!.id,
-                                    data,
-                                  );
-                                  final name = viewData.fullName.trim().isNotEmpty
-                                      ? viewData.fullName.trim()
-                                      : viewData.username.trim().isNotEmpty
-                                      ? viewData.username.trim()
-                                      : 'Elev necunoscut';
-                                  final initials = name
-                                      .trim()
-                                      .split(' ')
-                                      .where((w) => w.isNotEmpty)
-                                      .take(2)
-                                      .map((w) => w[0].toUpperCase())
-                                      .join();
-                                  return _StudentCard(
-                                    avatarSeed: viewData.uid,
-                                    photoUrl: viewData.photoUrl,
-                                    initials: initials,
-                                    name: name,
-                                    inSchool: viewData.inSchool,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        PageRouteBuilder(
-                                          pageBuilder: (_, __, ___) =>
-                                              _StudentDetailPage(
-                                                avatarSeed: viewData.uid,
-                                                name: name,
-                                                username: viewData.username,
-                                                classId: viewData.classId,
-                                                status: viewData.inSchool
-                                                    ? 'IN INCINTA'
-                                                    : 'IN AFARA INCINTEI',
-                                              ),
-                                          transitionDuration: Duration.zero,
-                                          reverseTransitionDuration:
-                                              Duration.zero,
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
-                              );
-                            },
+                        final childIds = _extractChildUids(
+                          parentData,
+                          parentUid,
+                        );
+                        if (childIds.isEmpty) {
+                          return const Center(
+                            child: Text('Nu exista copii asignati.'),
                           );
-                        },
-                      ),
+                        }
+
+                        return ListView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                          itemCount: childIds.length,
+                          itemBuilder: (context, index) {
+                            final uid = childIds[index];
+
+                            return StreamBuilder<
+                              DocumentSnapshot<Map<String, dynamic>>
+                            >(
+                              stream: users.doc(uid).snapshots(),
+                              builder: (context, studentSnap) {
+                                if (!studentSnap.hasData ||
+                                    !studentSnap.data!.exists) {
+                                  return const SizedBox();
+                                }
+
+                                final data = studentSnap.data!.data()!;
+                                final viewData = _toStudentViewData(
+                                  studentSnap.data!.id,
+                                  data,
+                                );
+                                final name = viewData.fullName.trim().isNotEmpty
+                                    ? viewData.fullName.trim()
+                                    : viewData.username.trim().isNotEmpty
+                                    ? viewData.username.trim()
+                                    : 'Elev necunoscut';
+                                final initials = name
+                                    .trim()
+                                    .split(' ')
+                                    .where((w) => w.isNotEmpty)
+                                    .take(2)
+                                    .map((w) => w[0].toUpperCase())
+                                    .join();
+                                return _StudentCard(
+                                  avatarSeed: viewData.uid,
+                                  photoUrl: viewData.photoUrl,
+                                  initials: initials,
+                                  name: name,
+                                  inSchool: viewData.inSchool,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      PageRouteBuilder(
+                                        pageBuilder: (_, __, ___) =>
+                                            _StudentDetailPage(
+                                              avatarSeed: viewData.uid,
+                                              name: name,
+                                              username: viewData.username,
+                                              classId: viewData.classId,
+                                              status: viewData.inSchool
+                                                  ? 'IN INCINTA'
+                                                  : 'IN AFARA INCINTEI',
+                                            ),
+                                        transitionDuration: Duration.zero,
+                                        reverseTransitionDuration:
+                                            Duration.zero,
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -187,7 +187,13 @@ class ParentStudentsPage extends StatelessWidget {
       role: (data['role'] ?? 'student').toString(),
       classId: (data['classId'] ?? '').toString(),
       inSchool: data['inSchool'] == true,
-      photoUrl: (data['profilePictureUrl'] ?? data['photoUrl'] ?? data['avatarUrl'] ?? '').toString().trim(),
+      photoUrl:
+          (data['profilePictureUrl'] ??
+                  data['photoUrl'] ??
+                  data['avatarUrl'] ??
+                  '')
+              .toString()
+              .trim(),
     );
   }
 }
@@ -292,8 +298,12 @@ class _StudentCard extends StatelessWidget {
     final avatarBg = _avatarBackgroundColor(avatarSeed);
     final statusText = inSchool ? 'ÎN INCINTĂ' : 'ÎN AFARA INCINTEI';
     final pillBg = inSchool ? const Color(0xFFE2EFE6) : const Color(0xFFF1E4EC);
-    final pillBorder = inSchool ? const Color(0xFFA6C8B0) : const Color(0xFFDCB1C5);
-    final pillText = inSchool ? const Color(0xFF0D6D1E) : const Color(0xFF922255);
+    final pillBorder = inSchool
+        ? const Color(0xFFA6C8B0)
+        : const Color(0xFFDCB1C5);
+    final pillText = inSchool
+        ? const Color(0xFF0D6D1E)
+        : const Color(0xFF922255);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
@@ -497,7 +507,13 @@ class _StudentDetailPage extends StatelessWidget {
     required this.status,
   });
 
-  static const _dayMap = {1: 'Luni', 2: 'Marti', 3: 'Miercuri', 4: 'Joi', 5: 'Vineri'};
+  static const _dayMap = {
+    1: 'Luni',
+    2: 'Marti',
+    3: 'Miercuri',
+    4: 'Joi',
+    5: 'Vineri',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -539,7 +555,11 @@ class _StudentDetailPage extends StatelessWidget {
                                 width: 34,
                                 height: 34,
                                 child: Center(
-                                  child: Icon(Icons.arrow_back_rounded, color: Colors.white, size: 32),
+                                  child: Icon(
+                                    Icons.arrow_back_rounded,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
                                 ),
                               ),
                             ),
@@ -592,8 +612,11 @@ class _StudentDetailPage extends StatelessWidget {
                   if (snap.hasData) {
                     final teacherSnap = snap.data![0] as QuerySnapshot?;
                     if (teacherSnap != null && teacherSnap.docs.isNotEmpty) {
-                      final td = teacherSnap.docs.first.data() as Map<String, dynamic>;
-                      diriginte = (td['fullName'] ?? td['username'] ?? '').toString().trim();
+                      final td =
+                          teacherSnap.docs.first.data() as Map<String, dynamic>;
+                      diriginte = (td['fullName'] ?? td['username'] ?? '')
+                          .toString()
+                          .trim();
                     }
 
                     final classDoc = snap.data![1] as DocumentSnapshot?;
@@ -603,7 +626,10 @@ class _StudentDetailPage extends StatelessWidget {
                       if (raw is Map) {
                         for (final e in raw.entries) {
                           final day = int.tryParse(e.key.toString());
-                          if (day != null && day >= 1 && day <= 5 && e.value is Map) {
+                          if (day != null &&
+                              day >= 1 &&
+                              day <= 5 &&
+                              e.value is Map) {
                             final t = e.value as Map;
                             final start = (t['start'] ?? '').toString();
                             final end = (t['end'] ?? '').toString();
@@ -644,11 +670,15 @@ class _StudentDetailPage extends StatelessWidget {
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _DetailAvatarFallback(avatarSeed: avatarSeed, name: name),
+                                  _DetailAvatarFallback(
+                                    avatarSeed: avatarSeed,
+                                    name: name,
+                                  ),
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           name,
@@ -676,18 +706,25 @@ class _StudentDetailPage extends StatelessWidget {
                                 ],
                               ),
                               const SizedBox(height: 26),
-                              Container(height: 1, color: const Color(0xFFF0F1EA)),
+                              Container(
+                                height: 1,
+                                color: const Color(0xFFF0F1EA),
+                              ),
                               const SizedBox(height: 22),
                               _PersonMetaRow(
                                 icon: Icons.person_rounded,
                                 label: 'DIRIGINTE',
-                                value: diriginte.isNotEmpty ? diriginte : 'Nedefinit',
+                                value: diriginte.isNotEmpty
+                                    ? diriginte
+                                    : 'Nedefinit',
                               ),
                               const SizedBox(height: 12),
                               _PersonMetaRow(
                                 icon: Icons.school_rounded,
                                 label: 'CLASĂ',
-                                value: classId.isNotEmpty ? 'Clasa $classId' : 'Nedefinit',
+                                value: classId.isNotEmpty
+                                    ? 'Clasa $classId'
+                                    : 'Nedefinit',
                               ),
                               const SizedBox(height: 18),
                               _StatusMetaRow(status: status),
@@ -703,14 +740,18 @@ class _StudentDetailPage extends StatelessWidget {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(30),
                             border: Border.all(
-                              color: const Color(0xFFC8D1C2).withValues(alpha: 0.18),
+                              color: const Color(
+                                0xFFC8D1C2,
+                              ).withValues(alpha: 0.18),
                             ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                classId.isNotEmpty ? 'Orar Clasa $classId' : 'Orar',
+                                classId.isNotEmpty
+                                    ? 'Orar Clasa $classId'
+                                    : 'Orar',
                                 style: const TextStyle(
                                   color: Color(0xFF151A14),
                                   fontSize: 22,
@@ -741,9 +782,11 @@ class _StudentDetailPage extends StatelessWidget {
                                 for (final day in sortedDays) ...[
                                   _OrarRow(
                                     day: _dayMap[day] ?? 'Ziua $day',
-                                    interval: '${schedule[day]!['start']} - ${schedule[day]!['end']}',
+                                    interval:
+                                        '${schedule[day]!['start']} - ${schedule[day]!['end']}',
                                   ),
-                                  if (day != sortedDays.last) const SizedBox(height: 10),
+                                  if (day != sortedDays.last)
+                                    const SizedBox(height: 10),
                                 ],
                             ],
                           ),
@@ -816,10 +859,7 @@ class _DetailAvatarFallback extends StatelessWidget {
   final String avatarSeed;
   final String name;
 
-  const _DetailAvatarFallback({
-    required this.avatarSeed,
-    required this.name,
-  });
+  const _DetailAvatarFallback({required this.avatarSeed, required this.name});
 
   @override
   Widget build(BuildContext context) {
@@ -883,10 +923,12 @@ class _StatusMetaRow extends StatelessWidget {
         normalized.contains('incinta') && !normalized.contains('afara');
     final label = inSchool ? 'ÎN INCINTĂ' : 'ÎN AFARA INCINTEI';
     final pillBg = inSchool ? const Color(0xFFE2EFE6) : const Color(0xFFF1E4EC);
-    final pillBorder =
-        inSchool ? const Color(0xFFA6C8B0) : const Color(0xFFDCB1C5);
-    final pillText =
-        inSchool ? const Color(0xFF0D6D1E) : const Color(0xFF922255);
+    final pillBorder = inSchool
+        ? const Color(0xFFA6C8B0)
+        : const Color(0xFFDCB1C5);
+    final pillText = inSchool
+        ? const Color(0xFF0D6D1E)
+        : const Color(0xFF922255);
 
     return Align(
       alignment: Alignment.centerLeft,

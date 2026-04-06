@@ -9,7 +9,6 @@ const _kCardBg = Color(0xFFF8F8F8);
 const _kTextPrimary = Color(0xFF121512);
 const _kTextMuted = Color(0xFF616962);
 const _kDivider = Color(0xFFDFE3DC);
-const _kMetaBoxBg = Color(0xFFDCE9DC);
 
 enum UnifiedInboxRole { student, parent, teacher }
 
@@ -361,9 +360,12 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
           }
 
           final decisionDocs =
-              leaveSnap.data?.docs ?? const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+              leaveSnap.data?.docs ??
+              const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
           final reviewerUids = decisionDocs
-              .map((doc) => (doc.data()['reviewedByUid'] ?? '').toString().trim())
+              .map(
+                (doc) => (doc.data()['reviewedByUid'] ?? '').toString().trim(),
+              )
               .where((reviewerUid) => reviewerUid.isNotEmpty)
               .toSet();
 
@@ -371,7 +373,10 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
             future: _loadUserLabels(reviewerUids),
             builder: (context, usersSnap) {
               final usernames = usersSnap.data ?? const <String, String>{};
-              final decisionItems = _mapStudentDecisionItems(decisionDocs, usernames);
+              final decisionItems = _mapStudentDecisionItems(
+                decisionDocs,
+                usernames,
+              );
               final allItems = <_UnifiedMessageItem>[
                 ...decisionItems,
                 ...secretariatItems,
@@ -421,7 +426,9 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
           final status = (data['status'] ?? '').toString().trim();
           final source = (data['source'] ?? '').toString().trim();
           return source != 'secretariat' &&
-              (status == 'pending' || status == 'approved' || status == 'rejected');
+              (status == 'pending' ||
+                  status == 'approved' ||
+                  status == 'rejected');
         })
         .map((doc) {
           final data = doc.data();
@@ -434,11 +441,16 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
 
           final reviewedAt = (data['reviewedAt'] as Timestamp?)?.toDate();
           final requestedAt = (data['requestedAt'] as Timestamp?)?.toDate();
-          final when = reviewedAt ?? requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final when =
+              reviewedAt ??
+              requestedAt ??
+              DateTime.fromMillisecondsSinceEpoch(0);
 
           final state = status == 'approved'
               ? _MessageState.approved
-              : (status == 'rejected' ? _MessageState.rejected : _MessageState.pending);
+              : (status == 'rejected'
+                    ? _MessageState.rejected
+                    : _MessageState.pending);
 
           return _UnifiedMessageItem(
             kind: _MessageKind.decision,
@@ -476,11 +488,15 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
           final data = doc.data();
           final status = (data['status'] ?? '').toString().trim();
           final reviewedByUid = (data['reviewedByUid'] ?? '').toString().trim();
-          final sender = usernamesByUid[reviewedByUid] ??
+          final sender =
+              usernamesByUid[reviewedByUid] ??
               (data['reviewedByName'] ?? 'Diriginte').toString();
           final reviewedAt = (data['reviewedAt'] as Timestamp?)?.toDate();
           final requestedAt = (data['requestedAt'] as Timestamp?)?.toDate();
-          final when = reviewedAt ?? requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final when =
+              reviewedAt ??
+              requestedAt ??
+              DateTime.fromMillisecondsSinceEpoch(0);
           final approved = status == 'approved';
 
           return _UnifiedMessageItem(
@@ -511,7 +527,7 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(top: 2, bottom: 24),
       itemCount: items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 14),
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
         return _MessageCard(
           item: items[index],
@@ -677,14 +693,17 @@ class _MessageCard extends StatelessWidget {
                     _MetaLine(
                       icon: Icons.calendar_today_rounded,
                       iconColor: scheme.accent,
-                      text:
-                          item.dateLabel?.isNotEmpty == true ? item.dateLabel! : fallbackDate,
+                      text: item.dateLabel?.isNotEmpty == true
+                          ? item.dateLabel!
+                          : fallbackDate,
                     ),
                     const SizedBox(height: 12),
                     _MetaLine(
                       icon: Icons.access_time_filled_rounded,
                       iconColor: scheme.accent,
-                      text: item.timeLabel?.isNotEmpty == true ? item.timeLabel! : '-',
+                      text: item.timeLabel?.isNotEmpty == true
+                          ? item.timeLabel!
+                          : '-',
                     ),
                     const SizedBox(height: 14),
                     Container(
@@ -721,7 +740,9 @@ class _MessageCard extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  item.message.isEmpty ? '-' : '"${item.message}"',
+                                  item.message.isEmpty
+                                      ? '-'
+                                      : '"${item.message}"',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontStyle: FontStyle.italic,
@@ -808,7 +829,10 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Text(
         label,
         style: TextStyle(

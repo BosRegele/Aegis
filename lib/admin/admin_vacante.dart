@@ -818,94 +818,6 @@ class _VacanciesContentState extends State<_VacanciesContent> {
     return result ?? false;
   }
 
-  void _showModifyDialog() async {
-    // If a vacancy is already selected in the right panel, use it directly
-    if (_selectedDocId != null) {
-      final snap = await FirebaseFirestore.instance
-          .collection('vacancies')
-          .doc(_selectedDocId)
-          .get();
-      if (!mounted) return;
-      if (!snap.exists) {
-        setState(() => _selectedDocId = null);
-        return;
-      }
-      final data = snap.data() as Map<String, dynamic>;
-      final result = await _showDateRangePickerDialog(
-        context,
-        initialStartDate: (data['startDate'] as Timestamp).toDate(),
-        initialEndDate: (data['endDate'] as Timestamp).toDate(),
-        parent: this,
-      );
-      if (result != null && mounted) {
-        await FirebaseFirestore.instance
-            .collection('vacancies')
-            .doc(_selectedDocId)
-            .update({'startDate': result['start'], 'endDate': result['end']});
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vacanta modificata cu succes')),
-        );
-      }
-      return;
-    }
-
-    final snap = await FirebaseFirestore.instance
-        .collection('vacancies')
-        .orderBy('startDate')
-        .get();
-
-    if (!mounted) return;
-
-    if (snap.docs.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nu exista vacante de modificat')),
-      );
-      return;
-    }
-
-    final selected = await _showBlurDialog<QueryDocumentSnapshot>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Selectați vacanța de modificat'),
-        content: SizedBox(
-          width: 320,
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              for (final doc in snap.docs)
-                ListTile(
-                  title: Text(doc.data()['name'] ?? 'Vacanță'),
-                  onTap: () => Navigator.of(ctx).pop(doc),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (selected == null || !mounted) return;
-
-    final data = selected.data() as Map<String, dynamic>;
-    final result = await _showDateRangePickerDialog(
-      context,
-      initialStartDate: (data['startDate'] as Timestamp).toDate(),
-      initialEndDate: (data['endDate'] as Timestamp).toDate(),
-      parent: this,
-    );
-
-    if (result != null && mounted) {
-      await FirebaseFirestore.instance
-          .collection('vacancies')
-          .doc(selected.id)
-          .update({'startDate': result['start'], 'endDate': result['end']});
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vacanta modificata cu succes')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -1543,19 +1455,13 @@ class _VacanciesContentState extends State<_VacanciesContent> {
               layoutBuilder: (currentChild, previousChildren) {
                 return Stack(
                   alignment: Alignment.center,
-                  children: [
-                    ...previousChildren,
-                    if (currentChild != null) currentChild,
-                  ],
+                  children: [...previousChildren, ?currentChild],
                 );
               },
               transitionBuilder: (child, animation) {
                 final beginOffset = _monthTransitionForward
                     ? const Offset(0.08, 0)
                     : const Offset(-0.08, 0);
-                final endOffset = _monthTransitionForward
-                    ? const Offset(-0.08, 0)
-                    : const Offset(0.08, 0);
 
                 return ClipRect(
                   child: FadeTransition(
@@ -2030,39 +1936,6 @@ class _VacanciesContentState extends State<_VacanciesContent> {
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
-}
-
-Future<Map<String, DateTime>?> _showDateRangePickerDialog(
-  BuildContext context, {
-  required DateTime initialStartDate,
-  required DateTime initialEndDate,
-  required _VacanciesContentState parent,
-}) async {
-  // Pick start date
-  final start = await showDatePicker(
-    context: context,
-    initialDate: initialStartDate,
-    firstDate: DateTime(2020),
-    lastDate: DateTime(2030),
-    helpText: 'Data de început',
-    builder: (context, child) =>
-        _wrapBlurredPopupBackground(child ?? const SizedBox.shrink()),
-  );
-  if (start == null || !context.mounted) return null;
-
-  // Pick end date (cannot be before start)
-  final end = await showDatePicker(
-    context: context,
-    initialDate: initialEndDate.isBefore(start) ? start : initialEndDate,
-    firstDate: start,
-    lastDate: DateTime(2030),
-    helpText: 'Data de sfârşit',
-    builder: (context, child) =>
-        _wrapBlurredPopupBackground(child ?? const SizedBox.shrink()),
-  );
-  if (end == null) return null;
-
-  return {'start': start, 'end': end};
 }
 
 class _PaginationButton extends StatelessWidget {
