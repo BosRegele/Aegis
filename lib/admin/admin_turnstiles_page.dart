@@ -993,11 +993,14 @@ class _GateCardState extends State<_GateCard> {
         busy = true;
         msg = null;
       });
+      // Capture navigator before the async gap so it stays valid
+      // even after the Firestore stream triggers a rebuild.
+      final nav = Navigator.of(context);
       setState(() => _actionBusy = true);
       try {
         await _api.deleteUser(username: username);
-        if (!mounted || !dialogContext.mounted) return;
-        Navigator.of(dialogContext).pop();
+        nav.pop();
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Turnicheta $username a fost ștearsă.')),
         );

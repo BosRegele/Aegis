@@ -79,7 +79,9 @@ class _ParentHomePageState extends State<ParentHomePage> {
     List<String> directChildren,
   ) async {
     final ids = <String>{
-      ...directChildren.map((value) => value.trim()).where((value) => value.isNotEmpty),
+      ...directChildren
+          .map((value) => value.trim())
+          .where((value) => value.isNotEmpty),
     };
 
     final users = FirebaseFirestore.instance.collection('users');
@@ -130,17 +132,18 @@ class _ParentHomePageState extends State<ParentHomePage> {
             final rawChildren = data['children'];
             final directChildrenUids = rawChildren is List
                 ? rawChildren
-                    .map((e) {
-                      if (e is String) return e.trim();
-                      if (e is Map) {
-                        return ((e['uid'] ?? e['studentUid'] ?? e['id']) ?? '')
-                            .toString()
-                            .trim();
-                      }
-                      return '';
-                    })
-                    .where((s) => s.isNotEmpty)
-                    .toList()
+                      .map((e) {
+                        if (e is String) return e.trim();
+                        if (e is Map) {
+                          return ((e['uid'] ?? e['studentUid'] ?? e['id']) ??
+                                  '')
+                              .toString()
+                              .trim();
+                        }
+                        return '';
+                      })
+                      .where((s) => s.isNotEmpty)
+                      .toList()
                 : <String>[];
             final serverInboxLastOpened =
                 (data['inboxLastOpenedAt'] as Timestamp?)?.toDate();
@@ -152,7 +155,8 @@ class _ParentHomePageState extends State<ParentHomePage> {
             return FutureBuilder<List<String>>(
               future: _getOrCreateChildrenFuture(uid, directChildrenUids),
               builder: (context, childrenSnapshot) {
-                final childrenUids = childrenSnapshot.data ?? directChildrenUids;
+                final childrenUids =
+                    childrenSnapshot.data ?? directChildrenUids;
                 return Stack(
                   fit: StackFit.expand,
                   children: [
@@ -287,7 +291,6 @@ class _ParentHomePageState extends State<ParentHomePage> {
         }, SetOptions(merge: true))
         .catchError((_) {});
   }
-
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -927,61 +930,31 @@ class _CereriCardState extends State<_CereriCard> {
                     size: 24,
                   ),
                 ),
-                  if (badgeStream != null)
-                    Positioned(
-                      top: -4,
-                      right: -4,
-                      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                        stream: badgeStream,
-                        builder: (context, snap) {
-                          final count = snap.data?.docs.length ?? 0;
-                          if (count == 0) return const SizedBox();
-                          return Container(
-                            width: 18,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF4444),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: _primary, width: 2),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '$count',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                ],
+                if (badgeStream != null) const SizedBox.shrink(),
+              ],
+            ),
+            const Spacer(),
+            const Text(
+              'Cereri de\ninvoire',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                height: 1.18,
               ),
-              const Spacer(),
-              const Text(
-                'Cereri de\ninvoire',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  height: 1.18,
-                ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Vezi rapid',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.74),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Vezi rapid',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.74),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
     );
   }
 }
@@ -1111,7 +1084,8 @@ class _MesajeCardState extends State<_MesajeCard> {
       for (final doc in docs) doc.id: doc,
     };
     return uniqueDocs.values.where((doc) {
-      final when = _readDateTime(doc.data()['createdAt']) ??
+      final when =
+          _readDateTime(doc.data()['createdAt']) ??
           _readDateTime(doc.data()['reviewedAt']) ??
           _readDateTime(doc.data()['requestedAt']);
       if (when == null) {
@@ -1126,7 +1100,8 @@ class _MesajeCardState extends State<_MesajeCard> {
   ) {
     final lastViewed = widget.inboxLastOpened;
     return docs.where((doc) {
-      final when = _readDateTime(doc.data()['requestedAt']) ??
+      final when =
+          _readDateTime(doc.data()['requestedAt']) ??
           _readDateTime(doc.data()['createdAt']) ??
           _readDateTime(doc.data()['updatedAt']);
       if (when == null) {
@@ -1181,9 +1156,7 @@ class _MesajeCardState extends State<_MesajeCard> {
                   _countUnreadPendingRequests(
                     pendingSnap.data?.docs ?? const [],
                   ) +
-                  _countUnreadDecisions(
-                    decisionSnap.data?.docs ?? const [],
-                  ) +
+                  _countUnreadDecisions(decisionSnap.data?.docs ?? const []) +
                   _countUnreadSecretariat(secretariatDocs);
 
               return GestureDetector(
@@ -1200,87 +1173,61 @@ class _MesajeCardState extends State<_MesajeCard> {
                     ),
                   ),
                   child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                color: _primary.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                Icons.chat_bubble_outline_rounded,
-                                color: _primary,
-                                size: 24,
-                              ),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: _primary.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            if (unread > 0)
-                              Positioned(
-                                top: -4,
-                                right: -4,
-                                child: Container(
-                                  width: 18,
-                                  height: 18,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFF4444),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: const Color(0xFFE7EDE1),
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '$unread',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const Spacer(),
-                        const Text(
-                          'Mesaje',
-                          style: TextStyle(
-                            color: _onSurface,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
+                            child: const Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              color: _primary,
+                              size: 24,
+                            ),
                           ),
+                          if (unread > 0) const SizedBox.shrink(),
+                        ],
+                      ),
+                      const Spacer(),
+                      const Text(
+                        'Mesaje',
+                        style: TextStyle(
+                          color: _onSurface,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: unread > 0 ? _primary : _outline,
-                                shape: BoxShape.circle,
-                              ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: unread > 0 ? _primary : _outline,
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              unread > 0 ? '$unread mesaje noi' : 'Vezi rapid',
-                              style: TextStyle(
-                                color: unread > 0 ? _primary : _outline,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            unread > 0 ? '$unread mesaje noi' : 'Vezi rapid',
+                            style: TextStyle(
+                              color: unread > 0 ? _primary : _outline,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
+                ),
               );
             });
           },
@@ -1459,12 +1406,9 @@ class ParentProfilePage extends StatelessWidget {
                     .snapshots(),
                 builder: (context, snap) {
                   final data = snap.data?.data() ?? <String, dynamic>{};
-                  final fullName =
-                      (data['fullName'] ?? '').toString().trim();
-                  final username =
-                      (data['username'] ?? '').toString().trim();
-                  final email =
-                      FirebaseAuth.instance.currentUser?.email ?? '';
+                  final fullName = (data['fullName'] ?? '').toString().trim();
+                  final username = (data['username'] ?? '').toString().trim();
+                  final email = FirebaseAuth.instance.currentUser?.email ?? '';
                   final rawChildren = data['children'];
                   final childCount = rawChildren is List
                       ? rawChildren.length
@@ -2020,8 +1964,9 @@ class _ParentAccountSettingsDialogState
                         ),
                       ),
                       TextButton(
-                        onPressed:
-                            _saving ? null : () => Navigator.pop(context),
+                        onPressed: _saving
+                            ? null
+                            : () => Navigator.pop(context),
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           minimumSize: Size.zero,
@@ -2107,10 +2052,9 @@ class _ParentAccountSettingsDialogState
                                     color: _onSurface,
                                     fontSize: 15,
                                   ),
-                                  decoration:
-                                      const InputDecoration.collapsed(
-                                        hintText: 'Email',
-                                      ),
+                                  decoration: const InputDecoration.collapsed(
+                                    hintText: 'Email',
+                                  ),
                                 )
                               : Text(
                                   _emailC.text,
@@ -2191,7 +2135,9 @@ class _ParentAccountSettingsDialogState
                                 ),
                               )
                             : const Icon(Icons.send_rounded, size: 18),
-                        label: Text(_codeSent ? 'Retrimite cod' : 'Trimite cod'),
+                        label: Text(
+                          _codeSent ? 'Retrimite cod' : 'Trimite cod',
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primary,
                           foregroundColor: Colors.white,
@@ -2433,11 +2379,7 @@ class _ParentAccountSettingsDialogState
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            Icons.check_outlined,
-                            color: _primary,
-                            size: 22,
-                          ),
+                          Icon(Icons.check_outlined, color: _primary, size: 22),
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextField(

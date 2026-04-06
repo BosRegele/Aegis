@@ -698,7 +698,7 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
     try {
       final bytes = await picked.readAsBytes();
       final ref = FirebaseStorage.instance.ref().child(
-        'profilePictures/$uid.jpg',
+        'profile_pictures/$uid.jpg',
       );
       await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
       final url = await ref.getDownloadURL();

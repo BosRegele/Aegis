@@ -8,7 +8,6 @@ const _kPageBg = Color(0xFFF1F5EC);
 const _kCardBg = Color(0xFFF8F8F8);
 const _kTextPrimary = Color(0xFF121512);
 const _kTextMuted = Color(0xFF616962);
-const _kDivider = Color(0xFFDFE3DC);
 
 enum UnifiedInboxRole { student, parent, teacher }
 
@@ -253,13 +252,17 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
   }
 
   String _timeAgo(DateTime dateTime) {
-    final diff = DateTime.now().difference(dateTime);
-    if (diff.inMinutes < 1) return 'ACUM';
-    if (diff.inMinutes < 60) return 'ACUM ${diff.inMinutes} MIN';
-    if (diff.inHours < 24) return 'ACUM ${diff.inHours} ORE';
-    if (diff.inDays == 1) return 'IERI';
-    if (diff.inDays < 7) return 'ACUM ${diff.inDays} ZILE';
-    return _formatDate(dateTime).toUpperCase();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final msgDay = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    final diff = today.difference(msgDay).inDays;
+    if (diff == 0) {
+      final hh = dateTime.hour.toString().padLeft(2, '0');
+      final mm = dateTime.minute.toString().padLeft(2, '0');
+      return '$hh:$mm';
+    }
+    if (diff == 1) return 'Ieri';
+    return _formatDate(dateTime);
   }
 
   String _formatDate(DateTime date) {
@@ -425,7 +428,9 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
           final data = doc.data();
           final status = (data['status'] ?? '').toString().trim();
           final source = (data['source'] ?? '').toString().trim();
+          final targetRole = (data['targetRole'] ?? '').toString().trim();
           return source != 'secretariat' &&
+              targetRole == 'parent' &&
               (status == 'pending' ||
                   status == 'approved' ||
                   status == 'rejected');
@@ -635,184 +640,127 @@ class _MessageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = _cardScheme(item.state);
     final isSystem = item.kind == _MessageKind.system;
-    final showFooter = !isSystem && item.state != _MessageState.pending;
+
+    final titleParts = item.title.split(' - ');
+    final mainTitle = titleParts.first;
+    final nameSubtitle = titleParts.length > 1
+        ? titleParts.skip(1).join(' - ')
+        : null;
+
+    // Compact date+time for leave requests
+    String? metaText;
+    if (!isSystem) {
+      final datePart = item.dateLabel?.isNotEmpty == true
+          ? item.dateLabel!
+          : fallbackDate;
+      final timePart = item.timeLabel?.isNotEmpty == true
+          ? item.timeLabel
+          : null;
+      metaText = timePart != null ? '$datePart, $timePart' : datePart;
+    }
 
     return Container(
       decoration: BoxDecoration(
-        color: _kCardBg,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE2E7DD)),
+        color: scheme.accent,
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 6,
-            decoration: BoxDecoration(
-              color: scheme.accent,
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(24),
+      padding: const EdgeInsets.only(left: 4),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.white, _kCardBg],
               ),
             ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      _StatusPill(
-                        label: scheme.badgeLabel,
-                        bg: scheme.pillBg,
-                        fg: scheme.pillFg,
-                      ),
-                      const Spacer(),
-                      Text(
-                        timeAgoLabel,
-                        style: const TextStyle(
-                          color: _kTextMuted,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    item.title,
-                    style: const TextStyle(
-                      color: _kTextPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      height: 1.15,
-                    ),
-                  ),
-                  if (!isSystem) ...[
-                    const SizedBox(height: 14),
-                    _MetaLine(
-                      icon: Icons.calendar_today_rounded,
-                      iconColor: scheme.accent,
-                      text: item.dateLabel?.isNotEmpty == true
-                          ? item.dateLabel!
-                          : fallbackDate,
-                    ),
-                    const SizedBox(height: 12),
-                    _MetaLine(
-                      icon: Icons.access_time_filled_rounded,
-                      iconColor: scheme.accent,
-                      text: item.timeLabel?.isNotEmpty == true
-                          ? item.timeLabel!
-                          : '-',
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                      decoration: BoxDecoration(
-                        color: scheme.pillBg,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Row(
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 1),
-                            child: Icon(
-                              Icons.description_rounded,
-                              size: 28,
-                              color: scheme.accent,
+                          Text(
+                            mainTitle,
+                            style: const TextStyle(
+                              color: _kTextPrimary,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.3,
+                              height: 1.2,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'MOTIV SOLICITARE',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF2F3730),
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  item.message.isEmpty
-                                      ? '-'
-                                      : '"${item.message}"',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontStyle: FontStyle.italic,
-                                    color: Color(0xFF1A221A),
-                                    height: 1.2,
-                                  ),
-                                ),
-                              ],
+                          if (nameSubtitle != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              nameSubtitle,
+                              style: const TextStyle(
+                                color: _kTextMuted,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
-                  ] else ...[
-                    const SizedBox(height: 14),
+                    const SizedBox(width: 8),
                     Text(
-                      item.message.isEmpty ? 'Fără conținut.' : item.message,
+                      timeAgoLabel,
+                      textAlign: TextAlign.right,
                       style: const TextStyle(
-                        fontSize: 16,
-                        color: Color(0xFF283028),
-                        height: 1.55,
+                        color: _kTextMuted,
+                        fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
-                  if (showFooter) ...[
-                    const SizedBox(height: 14),
-                    const Divider(color: _kDivider, height: 1),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFDCE3D8),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            scheme.footerIcon,
-                            size: 28,
-                            color: scheme.accent,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            item.sender,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFF646D63),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
+                ),
+                if (metaText != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    metaText,
+                    style: const TextStyle(
+                      color: _kTextMuted,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
                     ),
-                  ] else ...[
-                    const SizedBox(height: 14),
-                    Container(
-                      width: double.infinity,
-                      height: 1,
-                      color: _kDivider,
-                    ),
-                  ],
+                  ),
                 ],
-              ),
+                const SizedBox(height: 10),
+                Text(
+                  item.message.isEmpty ? 'Fără conținut.' : item.message,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _kTextMuted,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _StatusPill(
+                  label: scheme.badgeLabel,
+                  icon: scheme.badgeIcon,
+                  bg: scheme.pillBg,
+                  fg: scheme.pillFg,
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -820,59 +768,42 @@ class _MessageCard extends StatelessWidget {
 
 class _StatusPill extends StatelessWidget {
   final String label;
+  final IconData? icon;
   final Color bg;
   final Color fg;
 
-  const _StatusPill({required this.label, required this.bg, required this.fg});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: fg,
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-}
-
-class _MetaLine extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String text;
-
-  const _MetaLine({
-    required this.icon,
-    required this.iconColor,
-    required this.text,
+  const _StatusPill({
+    required this.label,
+    this.icon,
+    required this.bg,
+    required this.fg,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 30, color: iconColor),
-        const SizedBox(width: 12),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 17,
-            color: Color(0xFF313831),
-            fontWeight: FontWeight.w500,
-            height: 1,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: fg, size: 15),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: fg,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -901,17 +832,17 @@ class _UnifiedMessageItem {
 
 class _CardScheme {
   final String badgeLabel;
+  final IconData badgeIcon;
   final Color accent;
   final Color pillBg;
   final Color pillFg;
-  final IconData footerIcon;
 
   const _CardScheme({
     required this.badgeLabel,
+    required this.badgeIcon,
     required this.accent,
     required this.pillBg,
     required this.pillFg,
-    required this.footerIcon,
   });
 }
 
@@ -919,35 +850,35 @@ _CardScheme _cardScheme(_MessageState state) {
   switch (state) {
     case _MessageState.pending:
       return const _CardScheme(
-        badgeLabel: 'ÎN AȘTEPTARE',
+        badgeLabel: 'În așteptare',
+        badgeIcon: Icons.watch_later_rounded,
         accent: Color(0xFF6E6E6E),
         pillBg: Color(0xFFF4F4F4),
         pillFg: Color(0xFF6D6D6D),
-        footerIcon: Icons.hourglass_top_rounded,
       );
     case _MessageState.approved:
       return const _CardScheme(
-        badgeLabel: 'APROBATĂ',
+        badgeLabel: 'Aprobată',
+        badgeIcon: Icons.check_circle_rounded,
         accent: Color(0xFF10762A),
         pillBg: Color(0xFFDCE9DC),
         pillFg: Color(0xFF0F6D25),
-        footerIcon: Icons.check_circle_rounded,
       );
     case _MessageState.rejected:
       return const _CardScheme(
-        badgeLabel: 'RESPINSĂ',
+        badgeLabel: 'Respinsă',
+        badgeIcon: Icons.cancel_rounded,
         accent: Color(0xFF9D1F5F),
         pillBg: Color(0xFFF0E4EB),
         pillFg: Color(0xFF8E2356),
-        footerIcon: Icons.cancel_rounded,
       );
     case _MessageState.system:
       return const _CardScheme(
-        badgeLabel: 'SISTEM',
+        badgeLabel: 'Sistem',
+        badgeIcon: Icons.campaign_rounded,
         accent: Color(0xFF1565C0),
         pillBg: Color(0xFFDCEEFB),
         pillFg: Color(0xFF0B57A4),
-        footerIcon: Icons.info_rounded,
       );
   }
 }
