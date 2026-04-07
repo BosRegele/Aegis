@@ -1,7 +1,6 @@
 ﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
-import 'account_bottom_sheet.dart';
 
 const _kHeaderGreen = Color(0xFF0D631B);
 const _kPageBg = Color(0xFFF7F9F0);
@@ -126,7 +125,7 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                                 16,
                                 18,
                               ),
-                              separatorBuilder: (_, __) =>
+                              separatorBuilder: (_, _) =>
                                   const SizedBox(height: 14),
                               itemCount: docs.length,
                               itemBuilder: (context, index) {
@@ -184,13 +183,11 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
 class _TopHeader extends StatelessWidget {
   final String title;
   final VoidCallback onBack;
-  final VoidCallback? onProfile;
 
-  const _TopHeader({required this.title, required this.onBack, this.onProfile});
+  const _TopHeader({required this.title, required this.onBack});
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
     final compact = MediaQuery.sizeOf(context).width < 390;
     final headerHeight = compact ? 138.0 : 146.0;
     return ClipRRect(
@@ -244,37 +241,11 @@ class _TopHeader extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (onProfile != null) const SizedBox(width: 64),
                     ],
                   ),
                 ),
               ),
             ),
-            if (onProfile != null)
-              Positioned(
-                top: 5,
-                right: 14,
-                child: GestureDetector(
-                  onTap: onProfile,
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: const Color(0x337DE38D),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0x6DC7F4CE),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 21,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -322,7 +293,7 @@ class _RequestCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),

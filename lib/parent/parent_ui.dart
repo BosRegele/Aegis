@@ -62,6 +62,7 @@ class ParentPatternHeader extends StatelessWidget {
             ),
             Positioned.fill(child: CustomPaint(painter: _HeaderDotsPainter())),
             SafeArea(
+              top: false,
               bottom: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(18, 20, 20, 0),

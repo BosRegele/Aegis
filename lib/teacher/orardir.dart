@@ -465,73 +465,15 @@ class _InfoBox extends StatelessWidget {
   }
 }
 
-class _CompactInfoBox extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _CompactInfoBox({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D631B).withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: const Color(0xFF0D631B), size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF717B6E),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF151A14),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ─── Header ───────────────────────────────────────────────────────────────────
 
 class _OrarTopHeader extends StatelessWidget {
   final VoidCallback onBack;
-  final VoidCallback? onProfile;
 
-  const _OrarTopHeader({required this.onBack, this.onProfile});
+  const _OrarTopHeader({required this.onBack});
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
     final compact = MediaQuery.sizeOf(context).width < 390;
     final headerHeight = compact ? 138.0 : 146.0;
     return ClipRRect(
@@ -585,37 +527,11 @@ class _OrarTopHeader extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (onProfile != null) const SizedBox(width: 64),
                     ],
                   ),
                 ),
               ),
             ),
-            if (onProfile != null)
-              Positioned(
-                top: 5,
-                right: 14,
-                child: GestureDetector(
-                  onTap: onProfile,
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: const Color(0x337DE38D),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0x6DC7F4CE),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 21,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),

@@ -1,7 +1,6 @@
 ﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../core/session.dart';
-import 'account_bottom_sheet.dart';
 
 const _kHeaderGreen = Color(0xFF0D631B);
 const _kPageBg = Color(0xFFF7F9F0);
@@ -350,7 +349,7 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
                                             Navigator.push(
                                               context,
                                               PageRouteBuilder(
-                                                pageBuilder: (_, __, ___) =>
+                                                pageBuilder: (_, _, _) =>
                                                     _StudentDetailPage(
                                                       avatarSeed: uid,
                                                       name: name,
@@ -400,13 +399,11 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
 class _TopHeader extends StatelessWidget {
   final String title;
   final VoidCallback onBack;
-  final VoidCallback? onProfile;
 
-  const _TopHeader({required this.title, required this.onBack, this.onProfile});
+  const _TopHeader({required this.title, required this.onBack});
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
     final compact = MediaQuery.sizeOf(context).width < 390;
     final headerHeight = compact ? 138.0 : 146.0;
     return ClipRRect(
@@ -460,37 +457,11 @@ class _TopHeader extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (onProfile != null) const SizedBox(width: 64),
                     ],
                   ),
                 ),
               ),
             ),
-            if (onProfile != null)
-              Positioned(
-                top: 5,
-                right: 14,
-                child: GestureDetector(
-                  onTap: onProfile,
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: const Color(0x337DE38D),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0x6DC7F4CE),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 21,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -545,7 +516,7 @@ class _StudentListCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 6),
           ),
@@ -658,7 +629,7 @@ class _StudentListCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
+                        color: Colors.black.withValues(alpha: 0.02),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
@@ -692,7 +663,7 @@ class _StudentListCard extends StatelessWidget {
     final normalized = seed.trim();
     final index = normalized.isEmpty
         ? 0
-        : normalized.codeUnits.fold<int>(0, (sum, unit) => sum + unit) %
+        : normalized.codeUnits.fold<int>(0, (acc, unit) => acc + unit) %
               palette.length;
     return palette[index];
   }
@@ -765,7 +736,6 @@ class _StudentDetailPage extends StatelessWidget {
         children: [
           Builder(
             builder: (context) {
-              final topPadding = MediaQuery.of(context).padding.top;
               final compact = MediaQuery.sizeOf(context).width < 390;
               final headerHeight = compact ? 138.0 : 146.0;
               return ClipRRect(
@@ -881,7 +851,7 @@ class _StudentDetailPage extends StatelessWidget {
                                       ? Image.network(
                                           photoUrl,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) =>
+                                          errorBuilder: (_, _, _) =>
                                               _DetailAvatarFallback(
                                                 avatarSeed: avatarSeed,
                                                 name: name,
@@ -964,8 +934,8 @@ void _openDetailImage(BuildContext context, String url) {
       opaque: false,
       barrierColor: Colors.black.withValues(alpha: 0.92),
       barrierDismissible: true,
-      pageBuilder: (_, __, ___) => _DetailFullScreenImage(url: url),
-      transitionsBuilder: (_, animation, __, child) {
+      pageBuilder: (_, _, _) => _DetailFullScreenImage(url: url),
+      transitionsBuilder: (_, animation, _, child) {
         return FadeTransition(opacity: animation, child: child);
       },
     ),
@@ -992,7 +962,7 @@ class _DetailFullScreenImage extends StatelessWidget {
                 child: Image.network(
                   url,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, _, _) => const Icon(
                     Icons.broken_image_outlined,
                     color: Colors.white70,
                     size: 56,
@@ -1078,7 +1048,7 @@ Color _detailAvatarColor(String seed) {
   final normalized = seed.trim();
   final index = normalized.isEmpty
       ? 0
-      : normalized.codeUnits.fold<int>(0, (sum, unit) => sum + unit) %
+      : normalized.codeUnits.fold<int>(0, (acc, unit) => acc + unit) %
             palette.length;
   return palette[index];
 }
@@ -1259,7 +1229,7 @@ class _DetailCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),

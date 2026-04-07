@@ -9,6 +9,16 @@ import 'package:firster/core/session.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+class _DampedScrollPhysics extends ScrollPhysics {
+  const _DampedScrollPhysics({super.parent});
+  @override
+  _DampedScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      _DampedScrollPhysics(parent: buildParent(ancestor));
+  @override
+  double applyPhysicsToUserOffset(ScrollMetrics position, double offset) =>
+      super.applyPhysicsToUserOffset(position, offset) * 0.55;
+}
+
 const _primary = Color(0xFF0D631B);
 const _surface = Color(0xFFF7F9F0);
 const _surfaceContainerLow = Color(0xFFF0F4E9);
@@ -211,9 +221,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
                       right: 0,
                       bottom: 0,
                       child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
+                        physics: const _DampedScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                         child: Column(
                           children: [
@@ -863,67 +871,80 @@ class _MesajeCard extends StatelessWidget {
                       .limit(50)
                       .snapshots(),
             builder: (context, secretariatSnapshot) {
-              final unreadCount = _countUnread(
-                leaveSnapshot.data?.docs ?? const [],
-                secretariatSnapshot.data?.docs ?? const [],
-              );
+              return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: studentUid.isEmpty
+                    ? null
+                    : FirebaseFirestore.instance
+                          .collection('secretariatMessages')
+                          .where('recipientUid', isEqualTo: '')
+                          .where('recipientRole', isEqualTo: 'student')
+                          .limit(50)
+                          .snapshots(),
+                builder: (context, globalSecretariatSnapshot) {
+                  final unreadCount =
+                      _countUnread(leaveSnapshot.data?.docs ?? const [], [
+                        ...(secretariatSnapshot.data?.docs ?? const []),
+                        ...(globalSecretariatSnapshot.data?.docs ?? const []),
+                      ]);
 
-              return Container(
-                height: 184,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: _outlineVariant.withValues(alpha: 0.36),
-                    width: 1.1,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: _primary.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.forum_rounded,
-                        color: _primary,
-                        size: 24,
+                  return Container(
+                    height: 184,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: _surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: _outlineVariant.withValues(alpha: 0.36),
+                        width: 1.1,
                       ),
                     ),
-                    const Spacer(),
-                    const Text(
-                      'Mesaje',
-                      style: TextStyle(
-                        color: _onSurface,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.circle, size: 12, color: _primary),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '$unreadCount mesaje noi',
-                            style: const TextStyle(
-                              color: _outline,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: _primary.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(16),
                           ),
+                          child: const Icon(
+                            Icons.forum_rounded,
+                            color: _primary,
+                            size: 24,
+                          ),
+                        ),
+                        const Spacer(),
+                        const Text(
+                          'Mesaje',
+                          style: TextStyle(
+                            color: _onSurface,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.circle, size: 12, color: _primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '$unreadCount mesaje noi',
+                                style: const TextStyle(
+                                  color: _outline,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  );
+                },
               );
             },
           );
@@ -983,12 +1004,17 @@ class _LeaveStatusCard extends StatelessWidget {
                       })
                       .firstOrNull
                 : null;
+            final pendingDoc = docs
+                .cast<QueryDocumentSnapshot<Map<String, dynamic>>>()
+                .where((doc) {
+                  final d = doc.data();
+                  return ['active', 'pending'].contains(d['status']) &&
+                      !isExpiredLocally(d);
+                })
+                .firstOrNull;
             final hasActive = activeDoc != null;
-            final hasPending = docs.any((doc) {
-              final d = doc.data();
-              return ['active', 'pending'].contains(d['status']) &&
-                  !isExpiredLocally(d);
-            });
+            final hasPending = pendingDoc != null;
+            final tapDoc = activeDoc ?? pendingDoc;
 
             final statusText = hasActive
                 ? 'Activă'
@@ -1076,9 +1102,9 @@ class _LeaveStatusCard extends StatelessWidget {
               ),
             );
 
-            if (hasActive && onActiveTap != null) {
+            if (tapDoc != null && onActiveTap != null) {
               return GestureDetector(
-                onTap: () => onActiveTap!(activeDoc.id),
+                onTap: () => onActiveTap!(tapDoc.id),
                 child: card,
               );
             }
