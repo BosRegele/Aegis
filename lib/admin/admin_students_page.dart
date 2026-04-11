@@ -22,8 +22,8 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
   final Random _rng = Random.secure();
   int _currentPage = 0;
   static const int _pageSize = 7;
-  final String _searchQuery = '';
-  final String _sortBy = 'name';
+  String _searchQuery = '';
+  String _sortBy = 'name';
 
   String _randPassword(int len) {
     const chars =
@@ -35,7 +35,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
   Widget build(BuildContext context) {
     if (!AppSession.isAdmin) {
       return const Scaffold(
-        body: Center(child: Text("Access denied (admin only)")),
+        body: Center(child: Text("Acces interzis (doar admin).")),
       );
     }
 
@@ -77,6 +77,110 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(40, 16, 40, 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 420),
+                              child: TextField(
+                                onChanged: (v) => setState(() {
+                                  _searchQuery = v.trim().toLowerCase();
+                                  _currentPage = 0;
+                                }),
+                                decoration: InputDecoration(
+                                  hintText:
+                                      'Caută elev după nume, username sau clasă...',
+                                  hintStyle: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFFA0B090),
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.search_rounded,
+                                    size: 20,
+                                    color: Color(0xFF7A9070),
+                                  ),
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF4F9F3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFDDE8D5),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFDDE8D5),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF5C8B42),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF4F9F3),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFDDE8D5),
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _sortBy,
+                                icon: const Icon(
+                                  Icons.unfold_more_rounded,
+                                  size: 18,
+                                  color: Color(0xFF7A9070),
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF2E4A2E),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'name',
+                                    child: Text('Sortare: Nume'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'class',
+                                    child: Text('Sortare: Clasă'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'status',
+                                    child: Text('Sortare: Status'),
+                                  ),
+                                ],
+                                onChanged: (v) => setState(() {
+                                  _sortBy = v!;
+                                  _currentPage = 0;
+                                }),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     Container(
                       padding: const EdgeInsets.fromLTRB(40, 16, 40, 16),
                       decoration: const BoxDecoration(color: Color(0xFFF4F9F3)),
@@ -2129,7 +2233,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                               context: ctx,
                                               barrierDismissible: true,
                                               barrierLabel:
-                                                  'Confirmare stergere elev',
+                                                  'Confirmare ștergere elev',
                                               barrierColor: Colors.transparent,
                                               transitionDuration:
                                                   const Duration(
@@ -2260,7 +2364,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                                             CrossAxisAlignment.start,
                                                                         children: [
                                                                           Text(
-                                                                            'Sterge elev',
+                                                                            'Șterge elev',
                                                                             style: TextStyle(
                                                                               fontSize: 24,
                                                                               fontWeight: FontWeight.w800,
@@ -2274,7 +2378,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                                                 6,
                                                                           ),
                                                                           Text(
-                                                                            'Confirmarea este permanenta si va sterge contul elevului si datele asociate acestuia.',
+                                                                            'Confirmarea este permanentă și va șterge contul elevului și datele asociate acestuia.',
                                                                             style: TextStyle(
                                                                               fontSize: 13,
                                                                               height: 1.4,
@@ -2438,7 +2542,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                                           dialogCtx,
                                                                         ).pop(true),
                                                                         child: const Text(
-                                                                          'Sterge elev',
+                                                                          'Șterge elev',
                                                                         ),
                                                                       ),
                                                                     ),

@@ -35,7 +35,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
   Widget build(BuildContext context) {
     if (!AppSession.isAdmin) {
       return const Scaffold(
-        body: Center(child: Text("Access denied (admin only)")),
+        body: Center(child: Text("Acces interzis (doar admin).")),
       );
     }
 
@@ -1493,7 +1493,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                           Icons.delete_outline,
                                           size: 22,
                                         ),
-                                  label: const Text('Sterge Utilizator'),
+                                  label: const Text('Șterge Utilizator'),
                                   style: ButtonStyle(
                                     foregroundColor:
                                         WidgetStateProperty.resolveWith((
@@ -1562,7 +1562,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                             context: ctx,
                                             barrierDismissible: true,
                                             barrierLabel:
-                                                'Confirmare stergere diriginte',
+                                                'Confirmare ștergere diriginte',
                                             barrierColor: Colors.transparent,
                                             transitionDuration: const Duration(
                                               milliseconds: 220,
@@ -1701,7 +1701,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                                                               CrossAxisAlignment.start,
                                                                           children: [
                                                                             Text(
-                                                                              'Sterge diriginte',
+                                                                              'Șterge diriginte',
                                                                               style: TextStyle(
                                                                                 fontSize: 24,
                                                                                 fontWeight: FontWeight.w800,
@@ -1714,7 +1714,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                                                               height: 6,
                                                                             ),
                                                                             Text(
-                                                                              'Confirmarea este permanenta si va sterge contul dirigintelui si datele asociate acestuia.',
+                                                                              'Confirmarea este permanentă și va șterge contul dirigintelui și datele asociate acestuia.',
                                                                               style: TextStyle(
                                                                                 fontSize: 13,
                                                                                 height: 1.4,
@@ -1877,7 +1877,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                                                             ),
                                                                           ),
                                                                           child: const Text(
-                                                                            'Sterge diriginte',
+                                                                            'Șterge diriginte',
                                                                           ),
                                                                         ),
                                                                       ),

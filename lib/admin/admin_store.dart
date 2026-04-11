@@ -16,7 +16,7 @@ class AdminStore {
     username = username.trim().toLowerCase();
 
     if (username.isEmpty || password.isEmpty || fullName.isEmpty) {
-      throw Exception("Campuri lipsa");
+      throw Exception("Câmpuri lipsă");
     }
     if (!["student", "teacher", "admin", "gate", "parent"].contains(role)) {
       throw Exception("Role invalid");
@@ -31,12 +31,12 @@ class AdminStore {
       final classSnap = await _db.collection('classes').doc(cId).get();
 
       if (!classSnap.exists) {
-        throw Exception("Clasa $cId nu exista");
+        throw Exception("Clasa $cId nu există");
       }
     }
     final ref = _db.collection('users').doc(username);
     final snap = await ref.get();
-    if (snap.exists) throw Exception("Username deja exista");
+    if (snap.exists) throw Exception("Username deja există");
     if (role == "teacher") {
       await _createTeacherAndAssign(
         username: username,
@@ -71,18 +71,18 @@ class AdminStore {
     required String endHHmm,
   }) async {
     classId = classId.trim().toUpperCase();
-    if (classId.isEmpty) throw Exception("classId lipsa");
+    if (classId.isEmpty) throw Exception("classId lipsă");
 
     // (opțional) verifică format HH:mm
     bool ok(String s) => RegExp(r'^\d{2}:\d{2}$').hasMatch(s);
     if (!ok(startHHmm) || !ok(endHHmm)) {
-      throw Exception("Format invalid. Foloseste HH:mm (ex: 07:30)");
+      throw Exception("Format invalid. Folosește HH:mm (ex: 07:30)");
     }
 
     // clasa trebuie să existe (cum ai vrut)
     final classRef = _db.collection('classes').doc(classId);
     final snap = await classRef.get();
-    if (!snap.exists) throw Exception("Clasa $classId nu exista");
+    if (!snap.exists) throw Exception("Clasa $classId nu există");
 
     await classRef.set({
       "noExitStart": startHHmm,
@@ -99,18 +99,18 @@ class AdminStore {
     required List<String> days,
   }) async {
     classId = classId.trim().toUpperCase();
-    if (classId.isEmpty) throw Exception("classId lipsa");
+    if (classId.isEmpty) throw Exception("classId lipsă");
 
     // (opțional) verifică format HH:mm
     bool ok(String s) => RegExp(r'^\d{2}:\d{2}$').hasMatch(s);
     if (!ok(startHHmm) || !ok(endHHmm)) {
-      throw Exception("Format invalid. Foloseste HH:mm (ex: 07:30)");
+      throw Exception("Format invalid. Folosește HH:mm (ex: 07:30)");
     }
 
     // clasa trebuie să existe
     final classRef = _db.collection('classes').doc(classId);
     final snap = await classRef.get();
-    if (!snap.exists) throw Exception("Clasa $classId nu exista");
+    if (!snap.exists) throw Exception("Clasa $classId nu există");
 
     // converti zilele din Romanian format la numere (1-5)
     final dayMapping = {
@@ -136,7 +136,7 @@ class AdminStore {
 
   Future<void> deleteClassCascade(String classId) async {
     classId = classId.trim().toUpperCase();
-    if (classId.isEmpty) throw Exception("classId lipsa");
+    if (classId.isEmpty) throw Exception("classId lipsă");
 
     final classRef = _db.collection('classes').doc(classId);
 
@@ -190,7 +190,7 @@ class AdminStore {
 
     await _db.runTransaction((tx) async {
       final uSnap = await tx.get(userRef);
-      if (uSnap.exists) throw Exception("Username deja exista");
+      if (uSnap.exists) throw Exception("Username deja există");
 
       final cSnap = await tx.get(classRef);
       final existingTeacher = cSnap.exists
@@ -240,7 +240,7 @@ class AdminStore {
 
   Future<void> deleteUser(String username) async {
     username = username.trim().toLowerCase();
-    if (username.isEmpty) throw Exception("username lipsa");
+    if (username.isEmpty) throw Exception("username lipsă");
 
     Future<void> clearTeacherFromClasses() async {
       final classesSnap = await _db
@@ -303,7 +303,7 @@ class AdminStore {
 
   Future<void> setDisabled(String username, bool disabled) async {
     username = username.trim().toLowerCase();
-    if (username.isEmpty) throw Exception("username lipsa");
+    if (username.isEmpty) throw Exception("username lipsă");
 
     final callable = FirebaseFunctions.instance.httpsCallable(
       'adminSetDisabled',
@@ -318,8 +318,8 @@ class AdminStore {
     userIdentifier = userIdentifier.trim();
     newClassId = newClassId.trim().toUpperCase();
 
-    if (userIdentifier.isEmpty) throw Exception("identificator user lipsa");
-    if (newClassId.isEmpty) throw Exception("classId lipsa");
+    if (userIdentifier.isEmpty) throw Exception("identificator user lipsă");
+    if (newClassId.isEmpty) throw Exception("classId lipsă");
 
     // Support both user document id (uid/username) and username field.
     DocumentReference<Map<String, dynamic>>? userRef;
@@ -449,7 +449,7 @@ class AdminStore {
     await _db.runTransaction((tx) async {
       final classSnap = await tx.get(classRef);
       if (!classSnap.exists) {
-        throw Exception("Clasa $classId nu exista");
+        throw Exception("Clasa $classId nu există");
       }
 
       String? oldTeacher;
@@ -462,7 +462,7 @@ class AdminStore {
         if (oldTeacher.isEmpty) oldTeacher = null;
       }
 
-      // daca exista deja diriginte si incerci sa pui altul -> ERROR
+      // dacă există deja diriginte și încerci să pui altul -> ERROR
       if (teacherUsername.isNotEmpty &&
           oldTeacher != null &&
           oldTeacher != teacherUsername) {
@@ -505,7 +505,7 @@ class AdminStore {
         final newSnap = await tx.get(newTeacherRef);
 
         if (!newSnap.exists) {
-          throw Exception("Profesorul '$teacherUsername' nu exista in users");
+          throw Exception("Profesorul '$teacherUsername' nu există în users");
         }
 
         final newData = newSnap.data() as Map<String, dynamic>;
@@ -555,9 +555,9 @@ class AdminStore {
     String? teacherUsername, // null = nu schimba, "" = remove, "abc" = set
   }) async {
     classId = classId.trim().toUpperCase();
-    if (classId.isEmpty) throw Exception("classId lipsa");
+    if (classId.isEmpty) throw Exception("classId lipsă");
 
-    // doar asigura clasa exista
+    // doar asigură clasa există
     await _db.collection('classes').doc(classId).set({
       "name": classId,
       "updatedAt": FieldValue.serverTimestamp(),

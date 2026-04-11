@@ -255,7 +255,7 @@ Future<bool?> _showDeleteUserConfirmationDialog({
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            child: const Text('Anuleaza'),
+                            child: const Text('Anulează'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -568,7 +568,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'Actiunea va inchide sesiunea curenta si te va duce inapoi la ecranul principal de autentificare.',
+                                'Acțiunea va închide sesiunea curentă și te va duce înapoi la ecranul principal de autentificare.',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Color(0xFF667466),
@@ -891,6 +891,12 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                       setDialogState(() => busy = true);
                                       try {
                                         await api.createClass(name: name);
+                                        // Pop dialog FIRST to remove it from the
+                                        // tree before parent setState triggers a
+                                        // rebuild (avoids _dependents.isEmpty).
+                                        if (ctx.mounted) {
+                                          Navigator.of(ctx).pop();
+                                        }
                                         if (mounted) {
                                           setState(() {
                                             _optimisticClassIds.add(name);
@@ -898,9 +904,6 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                             selectedClassData = {'name': name};
                                             _pendingCreatedClassId = name;
                                           });
-                                        }
-                                        if (ctx.mounted) {
-                                          Navigator.of(ctx).pop();
                                         }
                                       } catch (e) {
                                         setDialogState(() {
@@ -956,89 +959,334 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
     setState(() => _exportBusy = true);
 
     try {
+      // ── 1. Fetch teacher/diriginte ──────────────────────────────────────
+      final teacherUsername =
+          (selectedClassData?['teacherUsername'] ?? '').toString().trim().toLowerCase();
+
+      Map<String, String>? teacherEntry; // {fullName, userId, password}
+      if (teacherUsername.isNotEmpty) {
+        final teacherSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .where('username', isEqualTo: teacherUsername)
+            .limit(1)
+            .get();
+        if (teacherSnap.docs.isNotEmpty) {
+          final td = teacherSnap.docs.first.data();
+          final fullName = (td['fullName'] ?? teacherUsername).toString();
+          final newPass = _randPassword(10);
+          try {
+            await api.resetPassword(username: teacherUsername, newPassword: newPass);
+            teacherEntry = {
+              'fullName': fullName,
+              'userId': teacherUsername,
+              'password': newPass,
+            };
+          } catch (_) {
+            teacherEntry = {
+              'fullName': fullName,
+              'userId': teacherUsername,
+              'password': 'RESETARE EȘUATĂ',
+            };
+          }
+        }
+      }
+
+      // ── 2. Fetch students ───────────────────────────────────────────────
       final snap = await FirebaseFirestore.instance
           .collection('users')
           .where('role', isEqualTo: 'student')
           .where('classId', isEqualTo: classId)
           .get();
 
-      final students = snap.docs.map((d) {
+      // Build list of {fullName, userId, parentUids:[]}
+      final studentDocs = snap.docs.map((d) {
         final data = d.data();
         return {
           'fullName': (data['fullName'] ?? '').toString(),
           'userId': (data['username'] ?? d.id).toString(),
+          'parentUids': ((data['parents'] as List?) ?? const [])
+              .map((p) => p.toString())
+              .toList(),
         };
       }).toList();
 
-      students.sort((a, b) {
-        final an = (a['fullName'] ?? '').toLowerCase();
-        final bn = (b['fullName'] ?? '').toLowerCase();
-        return an.compareTo(bn);
+      studentDocs.sort((a, b) {
+        return (a['fullName'] as String)
+            .toLowerCase()
+            .compareTo((b['fullName'] as String).toLowerCase());
       });
 
-      final exported = <Map<String, String>>[];
+      // ── 3. Reset student passwords & fetch + reset parent passwords ─────
       var resetOk = 0;
       var resetFailed = 0;
 
-      for (final s in students) {
-        final fullName = (s['fullName'] ?? '').trim();
-        final userId = (s['userId'] ?? '').trim().toLowerCase();
+      // exported row: {fullName, userId, password, parents:[{fullName,userId,password}]}
+      final exported = <Map<String, dynamic>>[];
 
+      for (final s in studentDocs) {
+        final fullName = (s['fullName'] as String).trim();
+        final userId = (s['userId'] as String).trim().toLowerCase();
+        final parentUids = s['parentUids'] as List<dynamic>;
+
+        String studentPassword;
         if (userId.isEmpty) {
           resetFailed++;
-          exported.add({
-            'fullName': fullName,
-            'userId': userId,
-            'password': 'RESETARE EȘUATĂ: lipsă ID utilizator',
-          });
-          continue;
+          studentPassword = 'RESETARE EȘUATĂ: lipsă ID';
+        } else {
+          final newPass = _randPassword(10);
+          try {
+            await api.resetPassword(username: userId, newPassword: newPass);
+            resetOk++;
+            studentPassword = newPass;
+          } catch (_) {
+            resetFailed++;
+            studentPassword = 'RESETARE EȘUATĂ';
+          }
         }
 
-        final newPassword = _randPassword(10);
-
-        try {
-          await api.resetPassword(username: userId, newPassword: newPassword);
-          resetOk++;
-          exported.add({
-            'fullName': fullName,
-            'userId': userId,
-            'password': newPassword,
-          });
-        } catch (_) {
-          resetFailed++;
-          exported.add({
-            'fullName': fullName,
-            'userId': userId,
-            'password': 'RESETARE EȘUATĂ',
-          });
+        // Fetch & reset parents
+        final parentEntries = <Map<String, String>>[];
+        for (final pUid in parentUids) {
+          try {
+            final pDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(pUid.toString())
+                .get();
+            if (!pDoc.exists) continue;
+            final pd = pDoc.data()!;
+            final pUsername = (pd['username'] ?? pUid).toString().trim().toLowerCase();
+            final pName = (pd['fullName'] ?? pUsername).toString();
+            if (pUsername.isEmpty) {
+              parentEntries.add({
+                'fullName': pName,
+                'userId': '',
+                'password': 'RESETARE EȘUATĂ: lipsă ID',
+              });
+              resetFailed++;
+              continue;
+            }
+            final newParentPass = _randPassword(10);
+            try {
+              await api.resetPassword(username: pUsername, newPassword: newParentPass);
+              resetOk++;
+              parentEntries.add({
+                'fullName': pName,
+                'userId': pUsername,
+                'password': newParentPass,
+              });
+            } catch (_) {
+              resetFailed++;
+              parentEntries.add({
+                'fullName': pName,
+                'userId': pUsername,
+                'password': 'RESETARE EȘUATĂ',
+              });
+            }
+          } catch (_) {
+            resetFailed++;
+          }
         }
+
+        exported.add({
+          'fullName': fullName,
+          'userId': userId,
+          'password': studentPassword,
+          'parents': parentEntries,
+        });
       }
 
+      // ── 4. Build styled Excel ───────────────────────────────────────────
       final excel = xls.Excel.createExcel();
       final defaultSheet = excel.getDefaultSheet();
-      final sheet = excel[defaultSheet ?? 'Elevi'];
+      final sheetName = defaultSheet ?? 'Date Clasa';
+      final sheet = excel[sheetName];
 
-      sheet.appendRow([
-        xls.TextCellValue('Clasa'),
-        xls.TextCellValue('Nume'),
-        xls.TextCellValue('ID utilizator'),
-        xls.TextCellValue('Parola'),
-      ]);
+      // Column widths
+      sheet.setColumnWidth(0, 5);   // Nr.
+      sheet.setColumnWidth(1, 28);  // Elev Nume
+      sheet.setColumnWidth(2, 22);  // Elev Username
+      sheet.setColumnWidth(3, 16);  // Elev Parolă
+      sheet.setColumnWidth(4, 28);  // P1 Nume
+      sheet.setColumnWidth(5, 22);  // P1 Username
+      sheet.setColumnWidth(6, 16);  // P1 Parolă
+      sheet.setColumnWidth(7, 28);  // P2 Nume
+      sheet.setColumnWidth(8, 22);  // P2 Username
+      sheet.setColumnWidth(9, 16);  // P2 Parolă
 
-      for (final s in exported) {
-        sheet.appendRow([
-          xls.TextCellValue(classId),
-          xls.TextCellValue(s['fullName'] ?? ''),
-          xls.TextCellValue(s['userId'] ?? ''),
-          xls.TextCellValue(s['password'] ?? ''),
-        ]);
+      void setCell(int row, int col, String text, xls.CellStyle style) {
+        final cell = sheet.cell(
+          xls.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row),
+        );
+        cell.value = xls.TextCellValue(text);
+        cell.cellStyle = style;
       }
 
-      final fileName = 'StudentData_$classId';
+      // Styles
+      final styleTitleBg = xls.CellStyle(
+        backgroundColorHex: xls.ExcelColor.fromHexString('FF0F7422'),
+        fontColorHex: xls.ExcelColor.white,
+        bold: true,
+        fontSize: 13,
+        horizontalAlign: xls.HorizontalAlign.Center,
+      );
+      final styleTeacherHeader = xls.CellStyle(
+        backgroundColorHex: xls.ExcelColor.fromHexString('FF1565C0'),
+        fontColorHex: xls.ExcelColor.white,
+        bold: true,
+        fontSize: 11,
+      );
+      final styleTeacherColHeader = xls.CellStyle(
+        backgroundColorHex: xls.ExcelColor.fromHexString('FFBBDEFB'),
+        fontColorHex: xls.ExcelColor.fromHexString('FF0D2E6E'),
+        bold: true,
+      );
+      final styleTeacherData = xls.CellStyle(
+        backgroundColorHex: xls.ExcelColor.fromHexString('FFE3F2FD'),
+        fontColorHex: xls.ExcelColor.fromHexString('FF0D2E6E'),
+      );
+      final styleEleviHeader = xls.CellStyle(
+        backgroundColorHex: xls.ExcelColor.fromHexString('FF1B5E20'),
+        fontColorHex: xls.ExcelColor.white,
+        bold: true,
+        fontSize: 11,
+      );
+      final styleEleviColHeader = xls.CellStyle(
+        backgroundColorHex: xls.ExcelColor.fromHexString('FFC8E6C9'),
+        fontColorHex: xls.ExcelColor.fromHexString('FF1B4020'),
+        bold: true,
+      );
+      final styleEleviDataEven = xls.CellStyle(
+        backgroundColorHex: xls.ExcelColor.fromHexString('FFF1F8F1'),
+        fontColorHex: xls.ExcelColor.black,
+      );
+      final styleEleviDataOdd = xls.CellStyle(
+        backgroundColorHex: xls.ExcelColor.fromHexString('FFE8F5E9'),
+        fontColorHex: xls.ExcelColor.black,
+      );
+      final styleParentColHeader = xls.CellStyle(
+        backgroundColorHex: xls.ExcelColor.fromHexString('FFFFE082'),
+        fontColorHex: xls.ExcelColor.fromHexString('FF3E2800'),
+        bold: true,
+      );
+      final styleParentDataEven = xls.CellStyle(
+        backgroundColorHex: xls.ExcelColor.fromHexString('FFFFFDE7'),
+        fontColorHex: xls.ExcelColor.fromHexString('FF3E2800'),
+      );
+      final styleParentDataOdd = xls.CellStyle(
+        backgroundColorHex: xls.ExcelColor.fromHexString('FFFFF9C4'),
+        fontColorHex: xls.ExcelColor.fromHexString('FF3E2800'),
+      );
+      final styleEmpty = xls.CellStyle(
+        backgroundColorHex: xls.ExcelColor.none,
+      );
+
+      int row = 0;
+
+      // ── Title row ──────────────────────────────────────────────────────
+      sheet.setRowHeight(row, 28);
+      for (int c = 0; c < 10; c++) {
+        setCell(row, c, c == 0 ? 'DATE CLASA $classId' : '', styleTitleBg);
+      }
+      row++;
+
+      // ── Empty row ──────────────────────────────────────────────────────
+      for (int c = 0; c < 10; c++) {
+        setCell(row, c, '', styleEmpty);
+      }
+      row++;
+
+      // ── DIRIGINTE section ──────────────────────────────────────────────
+      setCell(row, 0, 'DIRIGINTE', styleTeacherHeader);
+      for (int c = 1; c < 10; c++) {
+        setCell(row, c, '', styleTeacherHeader);
+      }
+      row++;
+
+      setCell(row, 0, 'Rol', styleTeacherColHeader);
+      setCell(row, 1, 'Nume Complet', styleTeacherColHeader);
+      setCell(row, 2, 'Username', styleTeacherColHeader);
+      setCell(row, 3, 'Parolă Nouă', styleTeacherColHeader);
+      for (int c = 4; c < 10; c++) {
+        setCell(row, c, '', styleTeacherColHeader);
+      }
+      row++;
+
+      if (teacherEntry != null) {
+        setCell(row, 0, 'Diriginte', styleTeacherData);
+        setCell(row, 1, teacherEntry['fullName'] ?? '', styleTeacherData);
+        setCell(row, 2, teacherEntry['userId'] ?? '', styleTeacherData);
+        setCell(row, 3, teacherEntry['password'] ?? '', styleTeacherData);
+        for (int c = 4; c < 10; c++) {
+          setCell(row, c, '', styleTeacherData);
+        }
+      } else {
+        setCell(row, 0, '-', styleTeacherData);
+        setCell(row, 1, 'Clasa nu are diriginte', styleTeacherData);
+        for (int c = 2; c < 10; c++) {
+          setCell(row, c, '', styleTeacherData);
+        }
+      }
+      row++;
+
+      // ── Empty row ──────────────────────────────────────────────────────
+      for (int c = 0; c < 10; c++) {
+        setCell(row, c, '', styleEmpty);
+      }
+      row++;
+
+      // ── ELEVI section ──────────────────────────────────────────────────
+      setCell(row, 0, 'ELEVI', styleEleviHeader);
+      for (int c = 1; c < 10; c++) {
+        setCell(row, c, '', styleEleviHeader);
+      }
+      row++;
+
+      // Column headers
+      setCell(row, 0, 'Nr.', styleEleviColHeader);
+      setCell(row, 1, 'Elev - Nume', styleEleviColHeader);
+      setCell(row, 2, 'Elev - Username', styleEleviColHeader);
+      setCell(row, 3, 'Elev - Parolă Nouă', styleEleviColHeader);
+      setCell(row, 4, 'Parinte 1 - Nume', styleParentColHeader);
+      setCell(row, 5, 'Parinte 1 - Username', styleParentColHeader);
+      setCell(row, 6, 'Parinte 1 - Parolă Nouă', styleParentColHeader);
+      setCell(row, 7, 'Parinte 2 - Nume', styleParentColHeader);
+      setCell(row, 8, 'Parinte 2 - Username', styleParentColHeader);
+      setCell(row, 9, 'Parinte 2 - Parolă Nouă', styleParentColHeader);
+      row++;
+
+      // Student rows
+      for (int i = 0; i < exported.length; i++) {
+        final s = exported[i];
+        final parents = s['parents'] as List<Map<String, String>>;
+        final isEven = i % 2 == 0;
+        final sStyle = isEven ? styleEleviDataEven : styleEleviDataOdd;
+        final pStyle = isEven ? styleParentDataEven : styleParentDataOdd;
+
+        setCell(row, 0, '${i + 1}', sStyle);
+        setCell(row, 1, s['fullName'] as String, sStyle);
+        setCell(row, 2, s['userId'] as String, sStyle);
+        setCell(row, 3, s['password'] as String, sStyle);
+
+        for (int slot = 0; slot < 2; slot++) {
+          final colBase = 4 + slot * 3;
+          if (slot < parents.length) {
+            final p = parents[slot];
+            setCell(row, colBase, p['fullName'] ?? '', pStyle);
+            setCell(row, colBase + 1, p['userId'] ?? '', pStyle);
+            setCell(row, colBase + 2, p['password'] ?? '', pStyle);
+          } else {
+            setCell(row, colBase, '-', pStyle);
+            setCell(row, colBase + 1, '-', pStyle);
+            setCell(row, colBase + 2, '-', pStyle);
+          }
+        }
+        row++;
+      }
+
+      // ── 5. Save file ───────────────────────────────────────────────────
+      final fileName = 'Date_Clasa_$classId';
 
       if (kIsWeb) {
-        // On web, excel.save(fileName:) handles the browser download directly.
-        // Using FileSaver on top would cause a second download.
         excel.save(fileName: '$fileName.xlsx');
       } else {
         final bytes = excel.save();
@@ -1057,7 +1305,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Raport pentru clasa $classId descarcat. Resetate: $resetOk, esuate: $resetFailed.',
+            'Date clasa $classId exportate. Resetate: $resetOk, esuate: $resetFailed.',
           ),
         ),
       );
@@ -2436,15 +2684,15 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                                 await _showDeleteUserConfirmationDialog(
                                                   context: ctx,
                                                   barrierLabel:
-                                                      'Confirmare stergere elev',
-                                                  title: 'Sterge elev',
+                                                      'Confirmare ștergere elev',
+                                                  title: 'Șterge elev',
                                                   description:
-                                                      'Confirmarea este permanenta si va sterge contul elevului si datele asociate acestuia.',
+                                                      'Confirmarea este permanentă și va șterge contul elevului și datele asociate acestuia.',
                                                   selectedLabel:
                                                       'Elev selectat',
                                                   selectedName: currentFullName,
                                                   selectedSubtitle: username,
-                                                  confirmLabel: 'Sterge elev',
+                                                  confirmLabel: 'Șterge elev',
                                                 );
                                             if (ok != true) {
                                               return;
@@ -3257,7 +3505,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                           Icons.delete_outline,
                                           size: 22,
                                         ),
-                                  label: const Text('Sterge Utilizator'),
+                                  label: const Text('Șterge Utilizator'),
                                   style: ButtonStyle(
                                     foregroundColor:
                                         WidgetStateProperty.resolveWith((
@@ -3325,14 +3573,14 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                           final ok = await _showDeleteUserConfirmationDialog(
                                             context: ctx,
                                             barrierLabel:
-                                                'Confirmare stergere diriginte',
-                                            title: 'Sterge diriginte',
+                                                'Confirmare ștergere diriginte',
+                                            title: 'Șterge diriginte',
                                             description:
-                                                'Confirmarea este permanenta si va sterge contul dirigintelui si datele asociate acestuia.',
+                                                'Confirmarea este permanentă și va șterge contul dirigintelui și datele asociate acestuia.',
                                             selectedLabel: 'Diriginte selectat',
                                             selectedName: currentFullName,
                                             selectedSubtitle: username,
-                                            confirmLabel: 'Sterge diriginte',
+                                            confirmLabel: 'Șterge diriginte',
                                           );
                                           if (ok != true) return;
                                           setS(() {
@@ -3424,7 +3672,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Sterge clasa',
+                            'Șterge clasa',
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.w800,
@@ -3433,7 +3681,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                           ),
                           SizedBox(height: 6),
                           Text(
-                            'Confirmarea este permanenta si va sterge si datele asociate clasei.',
+                            'Confirmarea este permanentă și va șterge și datele asociate clasei.',
                             style: TextStyle(
                               fontSize: 13,
                               height: 1.4,
@@ -3458,7 +3706,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Clasa selectata',
+                        'Clasa selectată',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -3487,7 +3735,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        'Actiunea va elimina clasa din lista si va sterge datele asociate acesteia.',
+                        'Acțiunea va elimina clasa din lista și va șterge datele asociate acesteia.',
                         style: TextStyle(
                           fontSize: 12,
                           color: Color(0xFF667466),
@@ -3510,7 +3758,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text('Anuleaza'),
+                        child: const Text('Anulează'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -3525,7 +3773,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                           ),
                         ),
                         onPressed: () => Navigator.of(ctx).pop(true),
-                        child: const Text('Sterge clasa'),
+                        child: const Text('Șterge clasa'),
                       ),
                     ),
                   ],
@@ -3559,7 +3807,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
       await api.deleteClassCascade(classId: classId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Clasa $className a fost stearsa.')),
+        SnackBar(content: Text('Clasa $className a fost ștearsă.')),
       );
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
@@ -3570,7 +3818,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.message ?? 'Nu am putut sterge clasa selectata.'),
+          content: Text(e.message ?? 'Nu am putut șterge clasa selectată.'),
         ),
       );
     } catch (e) {
@@ -3582,7 +3830,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
       });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Nu am putut sterge clasa: $e')));
+      ).showSnackBar(SnackBar(content: Text('Nu am putut șterge clasa: $e')));
     }
   }
 
@@ -3675,7 +3923,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Text(
-                          'Nu exista clase configurate.',
+                          'Nu există clase configurate.',
                           style: TextStyle(
                             fontSize: 16,
                             color: Color(0xFF5B6B58),
@@ -3717,7 +3965,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                         children: [
                           if (vertical) ...[
                             const Text(
-                              'Gestiune Clase',
+                              'Gestionare Clase',
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.w800,
@@ -3727,7 +3975,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                             ),
                             const SizedBox(height: 6),
                             const Text(
-                              'Administrarea elevilor si configurarea programului operational.',
+                              'Administrarea elevilor și configurarea programului operațional.',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Color(0xFF5A8040),
@@ -3745,7 +3993,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       const Text(
-                                        'Gestiune Clase',
+                                        'Gestionare Clase',
                                         style: TextStyle(
                                           fontSize: 28,
                                           fontWeight: FontWeight.w800,
@@ -3755,7 +4003,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                       ),
                                       const SizedBox(height: 6),
                                       const Text(
-                                        'Administrarea elevilor si configurarea programului operational.',
+                                        'Administrarea elevilor și configurarea programului operațional.',
                                         style: TextStyle(
                                           fontSize: 13,
                                           color: Color(0xFF5A8040),
@@ -4377,7 +4625,7 @@ class _ClassSelectorCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'SELECTEAZA CLASA',
+            'SELECTEAZĂ CLASA',
             style: TextStyle(
               fontSize: 10,
               color: Color(0xFF6D7B6A),
@@ -4389,7 +4637,7 @@ class _ClassSelectorCard extends StatelessWidget {
           Row(
             children: [
               IconButton.filled(
-                tooltip: 'Sterge clasa selectata',
+                tooltip: 'Șterge clasa selectată',
                 onPressed: onDelete == null ? null : () => onDelete!(),
                 style: IconButton.styleFrom(
                   backgroundColor: const Color(0xFFFFE3E3),
@@ -4748,7 +4996,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Interval invalid pentru ${widget.dayNames[key]}. Ora de iesire trebuie sa fie dupa ora de intrare.',
+              'Interval invalid pentru ${widget.dayNames[key]}. Ora de ieșire trebuie să fie după ora de intrare.',
             ),
           ),
         );
@@ -4759,7 +5007,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
 
     if (schedule.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecteaza cel putin o zi pentru orar.')),
+        const SnackBar(content: Text('Selectează cel puțin o zi pentru orar.')),
       );
       return;
     }
@@ -4804,7 +5052,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-              'Interval Operational',
+              'Interval Operațional',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
@@ -4818,8 +5066,8 @@ class _ScheduleCardState extends State<_ScheduleCard> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 hasSchedule
-                    ? 'Poti modifica zilele si intervalele orare, apoi salvezi.'
-                    : 'Clasa nu are orar. Creeaza unul pentru a-l putea modifica.',
+                    ? 'Poți modifica zilele și intervalele orare, apoi salvezi.'
+                    : 'Clasa nu are orar. Creează unul pentru a-l putea modifica.',
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF6B7868),
@@ -4844,7 +5092,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
                 child: FilledButton.icon(
                   onPressed: () => setState(() => _editing = true),
                   icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                  label: const Text('Creeaza orar'),
+                  label: const Text('Creează orar'),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF0F7422),
                     foregroundColor: Colors.white,
@@ -4866,7 +5114,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
                 children: [
                   Expanded(
                     child: Text(
-                      _editing ? 'Selecteaza zilele si orele' : 'Orarul clasei',
+                      _editing ? 'Selectează zilele și orele' : 'Orarul clasei',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF6D7B6A),
@@ -4879,7 +5127,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
                     OutlinedButton.icon(
                       onPressed: () => setState(() => _editing = true),
                       icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: const Text('Modifica'),
+                      label: const Text('Modifică'),
                     ),
                 ],
               ),
@@ -4916,7 +5164,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Text(
-                  'Selecteaza cel putin o zi pentru orar.',
+                  'Selectează cel puțin o zi pentru orar.',
                   style: TextStyle(
                     color: Color(0xFF667466),
                     fontWeight: FontWeight.w500,
@@ -5079,7 +5327,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
                       onPressed: _saving
                           ? null
                           : () => setState(() => _resetDraft()),
-                      child: const Text('Anuleaza'),
+                      child: const Text('Anulează'),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -5102,10 +5350,10 @@ class _ScheduleCardState extends State<_ScheduleCard> {
                               ),
                         label: Text(
                           _saving
-                              ? 'Se salveaza...'
+                              ? 'Se salvează...'
                               : hasSchedule
-                              ? 'Salveaza orarul'
-                              : 'Creeaza orar',
+                              ? 'Salvează orarul'
+                              : 'Creează orar',
                         ),
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFF0F7422),
@@ -5186,7 +5434,7 @@ class _ClassTeacherCard extends StatelessWidget {
           const SizedBox(height: 10),
           if (classId == null)
             const Text(
-              'Selecteaza o clasa pentru a vedea dirigintele.',
+              'Selectează o clasă pentru a vedea dirigintele.',
               style: _emptyStateTextStyle,
             )
           else if (teacherUsername.isEmpty)
@@ -5425,7 +5673,7 @@ class _ClassStudentsList extends StatelessWidget {
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(
           child: Text(
-            'Selecteaza o clasa pentru a vedea elevii.',
+            'Selectează o clasă pentru a vedea elevii.',
             style: _ClassTeacherCard._emptyStateTextStyle,
           ),
         ),
@@ -5457,7 +5705,7 @@ class _ClassStudentsList extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: 26),
             child: Center(
               child: Text(
-                'Nu exista elevi in aceasta clasa.',
+                'Nu există elevi în această clasă.',
                 style: _ClassTeacherCard._emptyStateTextStyle,
               ),
             ),
@@ -5673,7 +5921,7 @@ class _ExportBar extends StatelessWidget {
                   ),
                 )
               : const Icon(Icons.description_outlined, size: 18),
-          label: Text(busy ? 'Export...' : 'Exportă conturi elevi'),
+          label: Text(busy ? 'Export...' : 'Exportă date clasă'),
           style: FilledButton.styleFrom(
             backgroundColor: const Color(0xFF0F7422),
             foregroundColor: Colors.white,
@@ -5691,7 +5939,7 @@ class _ExportBar extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         const Text(
-          'Exportă lista completă a elevilor, inclusiv username-urile și parolele generate pentru accesul în aplicație.',
+          'Exportă datele complete ale clasei: diriginte, elevi și părinții asociați — inclusiv username-urile și parolele noi generate.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 11, color: Color(0xFF7A8F77)),
         ),

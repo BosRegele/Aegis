@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firster/Auth/login_page_firestore.dart';
 import 'package:firster/Auth/two_factor_verify_page.dart';
 import 'package:firster/student/mainnavigation.dart';
@@ -220,6 +221,9 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Aegis',
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      supportedLocales: const [Locale('ro'), Locale('en')],
+      locale: const Locale('ro'),
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF7AAF5B)),

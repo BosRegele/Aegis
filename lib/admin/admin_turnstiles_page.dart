@@ -396,7 +396,7 @@ class _TurnstileBody extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Control Turnicheți',
+                            'Control Turnichete',
                             style: TextStyle(
                               fontSize: 26,
                               fontWeight: FontWeight.w800,
@@ -815,7 +815,7 @@ class _GateCardState extends State<_GateCard> {
       final confirmed = await _showBlurDialog<bool>(
         context: dialogContext,
         barrierDismissible: true,
-        barrierLabel: 'Confirmare stergere turnicheta',
+        barrierLabel: 'Confirmare ștergere turnichet',
         builder: (confirmContext) => SafeArea(
           child: Center(
             child: Padding(
@@ -863,7 +863,7 @@ class _GateCardState extends State<_GateCard> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Sterge turnicheta',
+                                    'Șterge turnichetul',
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.w800,
@@ -872,7 +872,7 @@ class _GateCardState extends State<_GateCard> {
                                   ),
                                   SizedBox(height: 6),
                                   Text(
-                                    'Confirmarea este permanenta si va sterge contul turnichetei si datele asociate acesteia.',
+                                    'Confirmarea este permanentă și va șterge turnichetul și datele asociate acestuia.',
                                     style: TextStyle(
                                       fontSize: 13,
                                       height: 1.4,
@@ -972,7 +972,7 @@ class _GateCardState extends State<_GateCard> {
                                 ),
                                 onPressed: () =>
                                     Navigator.of(confirmContext).pop(true),
-                                child: const Text('Sterge turnicheta'),
+                                child: const Text('Șterge turnichetul'),
                               ),
                             ),
                           ],

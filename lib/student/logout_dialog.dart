@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 Future<bool> showStudentLogoutDialog(
@@ -9,10 +10,33 @@ Future<bool> showStudentLogoutDialog(
   required Color messageColor,
   Color dangerColor = const Color(0xFFB3261E),
 }) async {
-  final result = await showDialog<bool>(
+  final result = await showGeneralDialog<bool>(
     context: context,
     barrierDismissible: true,
-    builder: (dialogContext) {
+    barrierLabel: '',
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 220),
+    transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
+      return BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: 10 * animation.value,
+          sigmaY: 10 * animation.value,
+        ),
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.48 * animation.value),
+          child: FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.92, end: 1.0).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
+              child: child,
+            ),
+          ),
+        ),
+      );
+    },
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 24),
