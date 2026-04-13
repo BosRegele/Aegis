@@ -19,7 +19,7 @@ class AdminStore {
       throw Exception("Câmpuri lipsă");
     }
     if (!["student", "teacher", "admin", "gate", "parent"].contains(role)) {
-      throw Exception("Role invalid");
+      throw Exception("Rol invalid");
     }
     if ((role == "student" || role == "teacher") &&
         (classId == null || classId.trim().isEmpty)) {
@@ -290,7 +290,7 @@ class AdminStore {
         .get();
 
     if (snap.docs.isEmpty) {
-      throw Exception("User inexistent");
+      throw Exception("Utilizator inexistent");
     }
 
     final userRef = snap.docs.first.reference;
@@ -350,7 +350,7 @@ class AdminStore {
 
     if (userRef == null) {
       throw Exception(
-        "User inexistent (verifică uid/username): $userIdentifier",
+        "Utilizator inexistent (verifică uid/username): $userIdentifier",
       );
     }
     final resolvedUserRef = userRef;
@@ -359,7 +359,7 @@ class AdminStore {
 
     await _db.runTransaction((tx) async {
       final userSnap = await tx.get(resolvedUserRef);
-      if (!userSnap.exists) throw Exception("User inexistent");
+      if (!userSnap.exists) throw Exception("Utilizator inexistent");
 
       final userData = userSnap.data() as Map<String, dynamic>;
       final role = (userData["role"] ?? "").toString();
@@ -521,7 +521,7 @@ class AdminStore {
         final newData = newSnap.data() as Map<String, dynamic>;
         final newRole = (newData["role"] ?? "").toString();
         if (newRole != "teacher") {
-          throw Exception("User '$teacherUsername' nu are role=teacher");
+          throw Exception("Utilizatorul '$teacherUsername' nu are rolul de diriginte");
         }
 
         // teacher already assigned to another class?

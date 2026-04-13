@@ -331,7 +331,7 @@ class _AdminAdminsPageState extends State<AdminAdminsPage> {
                           "Status Cont",
                           status == 'disabled'
                               ? 'Dezactivat'
-                              : 'Activ (Enabled)',
+                              : 'Activ',
                         ),
                       ],
                     ),

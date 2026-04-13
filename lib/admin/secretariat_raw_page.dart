@@ -707,9 +707,9 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                     ),
                                     _buildSidebarItem(
                                       icon: Icons.code_rounded,
-                                      label: "Development",
+                                      label: "Dezvoltare",
                                       onTap: () => setState(() {
-                                        activeSidebarLabel = 'Development';
+                                        activeSidebarLabel = 'Dezvoltare';
                                       }),
                                     ),
                                   ],
@@ -791,7 +791,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                 Expanded(
                   child:
                       activeSidebarLabel != 'Meniu' &&
-                          activeSidebarLabel != 'Development'
+                          activeSidebarLabel != 'Dezvoltare'
                       ? _buildEmbeddedPage(activeSidebarLabel)
                       : Container(
                           color: surfaceColor,
@@ -837,7 +837,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                   ),
                                   const SizedBox(height: 24),
                                 ],
-                                if (activeSidebarLabel == 'Development')
+                                if (activeSidebarLabel == 'Dezvoltare')
                                   Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -2001,7 +2001,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                                                     ),
                                                                   )
                                                                 : const Text(
-                                                                    'Assign parent',
+                                                                    'Atribuie părinte',
                                                                   ),
                                                           ),
                                                         ),
@@ -2013,7 +2013,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                                             ),
                                             // Log Section (moved here)
                                             _buildCard(
-                                              title: "Log",
+                                              title: "Jurnal",
                                               primaryGreen: primaryGreen,
                                               hasBorder: false,
                                               child: Container(
@@ -3532,7 +3532,7 @@ class _SecretariatRawPageState extends State<SecretariatRawPage> {
                           value: 'parent',
                           child: Text('Părinte'),
                         ),
-                        DropdownMenuItem(value: 'gate', child: Text('Gate')),
+                        DropdownMenuItem(value: 'gate', child: Text('Turnichet')),
                       ],
                       onChanged: (v) => setState(() {
                         role = v ?? 'student';

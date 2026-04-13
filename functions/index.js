@@ -505,15 +505,26 @@ exports.authRequestPasswordReset = onCall(async (request) => {
     await transporter.sendMail({
         from: smtpFrom,
         to: toEmail,
-        subject: "Resetare parola Firster",
+        subject: "Resetare parola · Aegis",
         text: `Codul tau pentru resetarea parolei este ${code}. Codul expira in 30 de minute.`,
         html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;">
-            <h2 style="margin: 0 0 12px;">Resetare parola Firster</h2>
-            <p>Codul tau de resetare este:</p>
-            <p style="font-size: 28px; font-weight: 700; letter-spacing: 4px; margin: 8px 0 16px; color: #16a34a;">${code}</p>
-            <p>Codul expira in <strong>30 de minute</strong>.</p>
-            <p style="color: #6b7280; font-size: 12px; margin-top: 16px;">Daca nu ai solicitat resetarea, ignora acest email.</p>
+          <div style="font-family:'Helvetica Neue',Arial,sans-serif;background-color:#f3f4f6;padding:32px 16px;">
+            <div style="text-align:center;margin-bottom:24px;">
+              <div style="display:inline-block;background-color:#16a34a;border-radius:10px;padding:10px 28px;">
+                <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:3px;">AEGIS</span>
+              </div>
+            </div>
+            <div style="background-color:#ffffff;border-radius:12px;padding:32px;max-width:480px;margin:0 auto;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+              <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Resetare parola</h2>
+              <p style="color:#6b7280;font-size:14px;margin:0 0 24px;">Ai solicitat resetarea parolei contului tau Aegis.</p>
+              <p style="color:#374151;font-size:14px;margin:0 0 8px;">Foloseste codul de mai jos pentru a-ti reseta parola:</p>
+              <div style="background-color:#f0fdf4;border:2px solid #16a34a;border-radius:8px;text-align:center;padding:20px;margin:8px 0 24px;">
+                <span style="font-size:34px;font-weight:800;letter-spacing:8px;color:#16a34a;">${code}</span>
+              </div>
+              <p style="color:#374151;font-size:14px;margin:0 0 16px;">Codul expira in <strong>30 de minute</strong>.</p>
+              <p style="color:#9ca3af;font-size:12px;margin:0;">Daca nu ai solicitat resetarea parolei, ignora acest email. Contul tau este in siguranta.</p>
+            </div>
+            <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:24px;">&copy; 2026 Aegis &middot; Platforma educationala</p>
           </div>
         `,
     });
@@ -1995,14 +2006,26 @@ exports.sendVerificationEmail = onCall(async (request) => {
     await transporter.sendMail({
         from: smtpFrom,
         to: email,
-        subject: "Cod verificare cont Firster",
+        subject: "Verificare cont · Aegis",
         text: `Codul tau de verificare este ${code}. Codul expira in 60 de minute.`,
         html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;">
-            <h2 style="margin: 0 0 12px;">Verificare email Firster</h2>
-            <p>Codul tau de verificare este:</p>
-            <p style="font-size: 28px; font-weight: 700; letter-spacing: 4px; margin: 8px 0 16px;">${code}</p>
-            <p>Codul expira in 60 de minute.</p>
+          <div style="font-family:'Helvetica Neue',Arial,sans-serif;background-color:#f3f4f6;padding:32px 16px;">
+            <div style="text-align:center;margin-bottom:24px;">
+              <div style="display:inline-block;background-color:#16a34a;border-radius:10px;padding:10px 28px;">
+                <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:3px;">AEGIS</span>
+              </div>
+            </div>
+            <div style="background-color:#ffffff;border-radius:12px;padding:32px;max-width:480px;margin:0 auto;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+              <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Verificare email</h2>
+              <p style="color:#6b7280;font-size:14px;margin:0 0 24px;">Bun venit pe Aegis! Confirma adresa de email pentru a-ti activa contul.</p>
+              <p style="color:#374151;font-size:14px;margin:0 0 8px;">Codul tau de verificare:</p>
+              <div style="background-color:#f0fdf4;border:2px solid #16a34a;border-radius:8px;text-align:center;padding:20px;margin:8px 0 24px;">
+                <span style="font-size:34px;font-weight:800;letter-spacing:8px;color:#16a34a;">${code}</span>
+              </div>
+              <p style="color:#374151;font-size:14px;margin:0 0 16px;">Codul expira in <strong>60 de minute</strong>.</p>
+              <p style="color:#9ca3af;font-size:12px;margin:0;">Daca nu ai creat un cont Aegis, ignora acest email.</p>
+            </div>
+            <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:24px;">&copy; 2026 Aegis &middot; Platforma educationala</p>
           </div>
         `,
     });
@@ -2186,15 +2209,26 @@ async function sendTwoFactorEmail(to, code) {
     await transporter.sendMail({
         from: smtpFrom,
         to,
-        subject: "Cod autentificare in doi pasi Firster",
+        subject: "Cod autentificare 2FA · Aegis",
         text: `Codul tau de autentificare este ${code}. Codul expira in 10 minute.`,
         html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;">
-            <h2 style="margin: 0 0 12px;">Autentificare in doi pasi Firster</h2>
-            <p>Codul tau de autentificare este:</p>
-            <p style="font-size: 32px; font-weight: 700; letter-spacing: 6px; margin: 8px 0 16px; color: #16a34a;">${code}</p>
-            <p>Codul expira in <strong>10 minute</strong>.</p>
-            <p style="color: #6b7280; font-size: 12px; margin-top: 16px;">Daca nu ai solicitat acest cod, ignora acest email.</p>
+          <div style="font-family:'Helvetica Neue',Arial,sans-serif;background-color:#f3f4f6;padding:32px 16px;">
+            <div style="text-align:center;margin-bottom:24px;">
+              <div style="display:inline-block;background-color:#16a34a;border-radius:10px;padding:10px 28px;">
+                <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:3px;">AEGIS</span>
+              </div>
+            </div>
+            <div style="background-color:#ffffff;border-radius:12px;padding:32px;max-width:480px;margin:0 auto;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+              <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Autentificare in doi pasi</h2>
+              <p style="color:#6b7280;font-size:14px;margin:0 0 24px;">Cineva (probabil tu) incearca sa se autentifice in contul Aegis.</p>
+              <p style="color:#374151;font-size:14px;margin:0 0 8px;">Codul tau de autentificare:</p>
+              <div style="background-color:#f0fdf4;border:2px solid #16a34a;border-radius:8px;text-align:center;padding:20px;margin:8px 0 24px;">
+                <span style="font-size:34px;font-weight:800;letter-spacing:8px;color:#16a34a;">${code}</span>
+              </div>
+              <p style="color:#374151;font-size:14px;margin:0 0 16px;">Codul expira in <strong>10 minute</strong>.</p>
+              <p style="color:#9ca3af;font-size:12px;margin:0;">Daca nu ai solicitat acest cod, ignora acest email si contul tau ramane protejat.</p>
+            </div>
+            <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:24px;">&copy; 2026 Aegis &middot; Platforma educationala</p>
           </div>
         `,
     });

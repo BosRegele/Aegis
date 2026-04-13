@@ -57,18 +57,18 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Schedule'),
+        title: const Text('Șterge Orar'),
         content: Text(
-          'Are you sure you want to delete the schedule for $classId?',
+          'Ești sigur că vrei să ștergi orarul pentru $classId?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: const Text('Anulează'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Șterge', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -85,7 +85,7 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
             selectedClassId = null;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Schedule deleted for $classId')),
+            SnackBar(content: Text('Orar șters pentru $classId')),
           );
         }
       } catch (e) {
@@ -114,7 +114,7 @@ class _AdminSchedulesPageState extends State<AdminSchedulesPage> {
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Center(child: Text('Eroare: ${snapshot.error}'));
         }
 
         final allDocs = snapshot.data?.docs ?? [];
