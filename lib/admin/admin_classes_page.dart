@@ -559,7 +559,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                               ),
                               SizedBox(height: 10),
                               Text(
-                                'Esti sigur ca vrei sa te deloghezi?',
+                                'Ești sigur că vrei să te deloghezi?',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -1700,7 +1700,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                                       CrossAxisAlignment.start,
                                                   children: [
                                                     const Text(
-                                                      'USERNAME',
+                                                      'UTILIZATOR',
                                                       style: TextStyle(
                                                         fontSize: 11,
                                                         fontWeight:
@@ -1944,7 +1944,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                                             parents.add(newUid);
                                                           }
                                                           msg =
-                                                              'Parentele a fost actualizat.';
+                                                              'Părintele a fost actualizat.';
                                                           msgIsError = false;
                                                         });
                                                       } catch (e) {
@@ -3090,7 +3090,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                                   CrossAxisAlignment.start,
                                               children: [
                                                 const Text(
-                                                  'USERNAME',
+                                                  'UTILIZATOR',
                                                   style: TextStyle(
                                                     fontSize: 11,
                                                     fontWeight: FontWeight.w700,
@@ -3394,7 +3394,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                           size: 18,
                                         ),
                                   label: const Text(
-                                    'Extrage Date / Reseteaza Parola',
+                                    'Extrage Date / Resetează Parola',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 17,
@@ -3468,7 +3468,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                                             setS(() {
                                               busy = false;
                                               msg =
-                                                  'Date exportate si parola a fost resetata automat.';
+                                                  'Date exportate și parola a fost resetată automat.';
                                               msgIsError = false;
                                             });
                                           } catch (e) {
@@ -4397,7 +4397,7 @@ class _ClassesSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayName = (AppSession.fullName?.isNotEmpty ?? false)
         ? AppSession.fullName!
-        : (AppSession.username ?? 'Admin');
+        : (AppSession.username ?? 'Administrator');
 
     return Container(
       width: 240,

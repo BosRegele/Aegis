@@ -108,7 +108,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Deconectare'),
-        content: const Text('Esti sigur ca vrei sa te deloghezi?'),
+        content: const Text('Ești sigur că vrei să te deloghezi?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -782,7 +782,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                 ),
-                                child: const Text('Anuleaza'),
+                                child: const Text('Anulează'),
                               ),
                             ),
                             const SizedBox(width: 12),

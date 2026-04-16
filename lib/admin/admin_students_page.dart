@@ -197,7 +197,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                           ),
                           Expanded(
                             flex: 2,
-                            child: Center(child: _colHeader('STATUS')),
+                            child: Center(child: _colHeader('STARE')),
                           ),
                           Expanded(
                             flex: 1,
@@ -1237,7 +1237,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                       CrossAxisAlignment.start,
                                                   children: [
                                                     const Text(
-                                                      'USERNAME',
+                                                      'UTILIZATOR',
                                                       style: TextStyle(
                                                         fontSize: 11,
                                                         fontWeight:
@@ -1485,7 +1485,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                             parents.add(newUid);
                                                           }
                                                           msg =
-                                                              'Parentele a fost actualizat.';
+                                                              'Părintele a fost actualizat.';
                                                           msgIsError = false;
                                                         });
                                                       } catch (e) {
@@ -2513,7 +2513,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                                                                           ),
                                                                         ),
                                                                         child: const Text(
-                                                                          'Anuleaza',
+                                                                          'Anulează',
                                                                         ),
                                                                       ),
                                                                     ),

@@ -1078,7 +1078,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                                   CrossAxisAlignment.start,
                                               children: [
                                                 const Text(
-                                                  'USERNAME',
+                                                  'UTILIZATOR',
                                                   style: TextStyle(
                                                     fontSize: 11,
                                                     fontWeight: FontWeight.w700,
@@ -1382,7 +1382,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                           size: 18,
                                         ),
                                   label: const Text(
-                                    'Extrage Date / Reseteaza Parola',
+                                    'Extrage Date / Resetează Parola',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 17,
@@ -1456,7 +1456,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                             setS(() {
                                               busy = false;
                                               msg =
-                                                  'Date exportate si parola a fost resetata automat.';
+                                                  'Date exportate și parola a fost resetată automat.';
                                               msgIsError = false;
                                             });
                                           } catch (e) {
@@ -1847,7 +1847,7 @@ class _AdminTeachersPageState extends State<AdminTeachersPage> {
                                                                             ),
                                                                           ),
                                                                           child: const Text(
-                                                                            'Anuleaza',
+                                                                            'Anulează',
                                                                           ),
                                                                         ),
                                                                       ),

@@ -1056,7 +1056,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                                       CrossAxisAlignment.start,
                                                   children: [
                                                     const Text(
-                                                      'USERNAME',
+                                                      'UTILIZATOR',
                                                       style: TextStyle(
                                                         fontSize: 11,
                                                         fontWeight:
@@ -1647,7 +1647,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                             size: 18,
                                           ),
                                     label: const Text(
-                                      'Extrage Date / Reseteaza Parola',
+                                      'Extrage Date / Resetează Parola',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 17,
@@ -1684,10 +1684,10 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                                 xls.TextCellValue('Username'),
                                                 xls.TextCellValue('Email'),
                                                 xls.TextCellValue(
-                                                  'Copii Atribuiti',
+                                                  'Copii Atribuiți',
                                                 ),
                                                 xls.TextCellValue(
-                                                  'Parola Noua',
+                                                  'Parolă Nouă',
                                                 ),
                                               ]);
                                               sheet.appendRow([
@@ -1721,7 +1721,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                               setS(() {
                                                 busy = false;
                                                 msg =
-                                                    'Date exportate si parola a fost resetata automat.';
+                                                    'Date exportate și parola a fost resetată automat.';
                                                 msgIsError = false;
                                               });
                                             } catch (e) {
@@ -2036,7 +2036,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                                                             CrossAxisAlignment.start,
                                                                         children: [
                                                                           const Text(
-                                                                            'Parinte selectat',
+                                                                            'Părinte selectat',
                                                                             style: TextStyle(
                                                                               fontSize: 11,
                                                                               fontWeight: FontWeight.w700,
@@ -2121,7 +2121,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                                                               ),
                                                                             ),
                                                                             child: const Text(
-                                                                              'Anuleaza',
+                                                                              'Anulează',
                                                                             ),
                                                                           ),
                                                                         ),
