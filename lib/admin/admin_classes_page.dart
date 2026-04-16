@@ -960,8 +960,10 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
 
     try {
       // ── 1. Fetch teacher/diriginte ──────────────────────────────────────
-      final teacherUsername =
-          (selectedClassData?['teacherUsername'] ?? '').toString().trim().toLowerCase();
+      final teacherUsername = (selectedClassData?['teacherUsername'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
 
       Map<String, String>? teacherEntry; // {fullName, userId, password}
       if (teacherUsername.isNotEmpty) {
@@ -975,7 +977,10 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
           final fullName = (td['fullName'] ?? teacherUsername).toString();
           final newPass = _randPassword(10);
           try {
-            await api.resetPassword(username: teacherUsername, newPassword: newPass);
+            await api.resetPassword(
+              username: teacherUsername,
+              newPassword: newPass,
+            );
             teacherEntry = {
               'fullName': fullName,
               'userId': teacherUsername,
@@ -1011,9 +1016,9 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
       }).toList();
 
       studentDocs.sort((a, b) {
-        return (a['fullName'] as String)
-            .toLowerCase()
-            .compareTo((b['fullName'] as String).toLowerCase());
+        return (a['fullName'] as String).toLowerCase().compareTo(
+          (b['fullName'] as String).toLowerCase(),
+        );
       });
 
       // ── 3. Reset student passwords & fetch + reset parent passwords ─────
@@ -1054,7 +1059,10 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
                 .get();
             if (!pDoc.exists) continue;
             final pd = pDoc.data()!;
-            final pUsername = (pd['username'] ?? pUid).toString().trim().toLowerCase();
+            final pUsername = (pd['username'] ?? pUid)
+                .toString()
+                .trim()
+                .toLowerCase();
             final pName = (pd['fullName'] ?? pUsername).toString();
             if (pUsername.isEmpty) {
               parentEntries.add({
@@ -1067,7 +1075,10 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
             }
             final newParentPass = _randPassword(10);
             try {
-              await api.resetPassword(username: pUsername, newPassword: newParentPass);
+              await api.resetPassword(
+                username: pUsername,
+                newPassword: newParentPass,
+              );
               resetOk++;
               parentEntries.add({
                 'fullName': pName,
@@ -1102,16 +1113,16 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
       final sheet = excel[sheetName];
 
       // Column widths
-      sheet.setColumnWidth(0, 5);   // Nr.
-      sheet.setColumnWidth(1, 28);  // Elev Nume
-      sheet.setColumnWidth(2, 22);  // Elev Username
-      sheet.setColumnWidth(3, 16);  // Elev Parolă
-      sheet.setColumnWidth(4, 28);  // P1 Nume
-      sheet.setColumnWidth(5, 22);  // P1 Username
-      sheet.setColumnWidth(6, 16);  // P1 Parolă
-      sheet.setColumnWidth(7, 28);  // P2 Nume
-      sheet.setColumnWidth(8, 22);  // P2 Username
-      sheet.setColumnWidth(9, 16);  // P2 Parolă
+      sheet.setColumnWidth(0, 5); // Nr.
+      sheet.setColumnWidth(1, 28); // Elev Nume
+      sheet.setColumnWidth(2, 22); // Elev Username
+      sheet.setColumnWidth(3, 16); // Elev Parolă
+      sheet.setColumnWidth(4, 28); // P1 Nume
+      sheet.setColumnWidth(5, 22); // P1 Username
+      sheet.setColumnWidth(6, 16); // P1 Parolă
+      sheet.setColumnWidth(7, 28); // P2 Nume
+      sheet.setColumnWidth(8, 22); // P2 Username
+      sheet.setColumnWidth(9, 16); // P2 Parolă
 
       void setCell(int row, int col, String text, xls.CellStyle style) {
         final cell = sheet.cell(
@@ -1176,9 +1187,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
         backgroundColorHex: xls.ExcelColor.fromHexString('FFFFF9C4'),
         fontColorHex: xls.ExcelColor.fromHexString('FF3E2800'),
       );
-      final styleEmpty = xls.CellStyle(
-        backgroundColorHex: xls.ExcelColor.none,
-      );
+      final styleEmpty = xls.CellStyle(backgroundColorHex: xls.ExcelColor.none);
 
       int row = 0;
 
@@ -5080,7 +5089,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 8, 16, 10),
               child: Text(
-                'Alege mai intai o clasa din lista din stanga.',
+                'Alege mai întâi o clasă din lista din stânga.',
                 style: _ClassTeacherCard._emptyStateTextStyle,
               ),
             )
