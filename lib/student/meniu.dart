@@ -111,7 +111,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
   String _formatClassLabel(String rawValue) {
     final trimmed = rawValue.trim();
     if (trimmed.isEmpty) {
-      return 'Clasa nealocata';
+      return 'Clasă nealocată';
     }
 
     final normalized = trimmed
@@ -199,7 +199,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
                     ? className
                     : (classDocName.isNotEmpty
                           ? classDocName
-                          : (classId.isNotEmpty ? classId : 'Clasa nealocata'));
+                          : (classId.isNotEmpty ? classId : 'Clasă nealocată'));
                 final resolvedClassName = _formatClassLabel(rawClassName);
 
                 return Stack(

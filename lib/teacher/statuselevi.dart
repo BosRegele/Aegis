@@ -61,7 +61,7 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
                   if (classId.isEmpty) {
                     return const Center(
                       child: Text(
-                        'Nu ai clasa asignata.\nCere secretariatului sa-ti seteze classId.',
+                        'Nu ai clasa asignată.\nCere secretariatului să-ți seteze classId.',
                         textAlign: TextAlign.center,
                       ),
                     );
@@ -95,7 +95,7 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
                       final students = stuSnap.data!.docs;
                       if (students.isEmpty) {
                         return const Center(
-                          child: Text('Nu exista elevi in clasa.'),
+                          child: Text('Nu există elevi în clasă.'),
                         );
                       }
 
@@ -279,8 +279,8 @@ class _StatusEleviPageState extends State<StatusEleviPage> {
                                             .trim();
                                     final inSchool = ud['inSchool'] == true;
                                     final statusText = inSchool
-                                        ? 'in incinta'
-                                        : 'in afara incintei';
+                                        ? 'în incintă'
+                                        : 'în afara incintei';
 
                                     String lastScanDate = '';
                                     String lastScanTime = '';

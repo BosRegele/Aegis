@@ -88,7 +88,7 @@ Future<bool> showStudentLogoutDialog(
               ),
               const SizedBox(height: 10),
               Text(
-                'Esti sigur ca doresti sa te deconectezi?',
+                'Ești sigur că dorești să te deconectezi?',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: messageColor,
@@ -118,7 +118,7 @@ Future<bool> showStudentLogoutDialog(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      child: const Text('Anuleaza'),
+                      child: const Text('Anulează'),
                     ),
                   ),
                   const SizedBox(width: 12),

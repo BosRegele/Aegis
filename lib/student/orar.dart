@@ -1793,7 +1793,7 @@ class _ParentInfoBox extends StatelessWidget {
 
     if (uid == null || uid.isEmpty) {
       return const _ProfileDetailRow(
-        label: 'PÂRINTE / TUTORE',
+        label: 'PĂRINTE / TUTORE',
         value: 'Nedefinit',
         icon: Icons.family_restroom,
       );
@@ -1819,7 +1819,7 @@ class _ParentInfoBox extends StatelessWidget {
 
         if (parentId.isEmpty) {
           return const _ProfileDetailRow(
-            label: 'PÂRINTE / TUTORE',
+            label: 'PĂRINTE / TUTORE',
             value: 'Nedefinit',
             icon: Icons.family_restroom,
           );
@@ -1840,7 +1840,7 @@ class _ParentInfoBox extends StatelessWidget {
             );
 
             return _ProfileDetailRow(
-              label: 'PÂRINTE / TUTORE',
+              label: 'PĂRINTE / TUTORE',
               value: displayName,
               icon: Icons.family_restroom,
             );

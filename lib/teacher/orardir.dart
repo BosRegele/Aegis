@@ -44,7 +44,7 @@ class OrarDirPage extends StatefulWidget {
 class _OrarDirPageState extends State<OrarDirPage> {
   static const _dayMap = {
     1: 'Luni',
-    2: 'Marti',
+    2: 'Marți',
     3: 'Miercuri',
     4: 'Joi',
     5: 'Vineri',
@@ -207,7 +207,7 @@ class _OrarDirPageState extends State<OrarDirPage> {
                                           Text(
                                             classRoman.isNotEmpty
                                                 ? 'Orar Clasa $classRoman'
-                                                : 'Orar Săptămanal',
+                                                : 'Orar Săptămânal',
                                             style: const TextStyle(
                                               color: Color(0xFF151A14),
                                               fontSize: 22,

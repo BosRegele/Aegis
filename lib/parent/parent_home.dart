@@ -16,13 +16,17 @@ class _ParentHomePageState extends State<ParentHomePage> {
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginPageFirestore()),
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const LoginPageFirestore(),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
       (route) => false,
     );
   }
 
   Future<void> _handleRequest(String docId, bool approved) async {
-    final parentName = AppSession.username ?? "Parinte";
+    final parentName = AppSession.username ?? "Părinte";
     try {
       await FirebaseFirestore.instance
           .collection('leaveRequests')
