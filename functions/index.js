@@ -1598,8 +1598,7 @@ exports.redeemQrToken = onCall(async (request) => {
         let isAfterSchedule = false;
         let isBeforeSchedule = false;
 
-        
-
+        if (!isWeekend) {
             const dayKey = String(dayIdx);
             const daySchedule = schedule[dayKey];
             if (!daySchedule || !daySchedule.start || !daySchedule.end) {
@@ -1648,6 +1647,7 @@ exports.redeemQrToken = onCall(async (request) => {
             const nowMinutes = now.getHours() * 60 + now.getMinutes();
             isAfterSchedule = nowMinutes > endMinutes;
             isBeforeSchedule = nowMinutes < startMinutes;
+        }
         
 
         // approvedLeaveExit was determined before the transaction via a plain query.
