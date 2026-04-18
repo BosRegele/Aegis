@@ -172,9 +172,9 @@ class _MeniuScreenState extends State<MeniuScreen> {
     final veryCompact = usableHeight < 680 || screenWidth < 340;
     final compact = !veryCompact && usableHeight < 820;
 
-    final headerHeight = veryCompact ? 170.0 : (compact ? 190.0 : 220.0);
+    final headerHeight = veryCompact ? 164.0 : (compact ? 180.0 : 220.0);
     final contentTop = headerHeight - 30.0;
-    final spacing = veryCompact ? 10.0 : (compact ? 12.0 : 14.0);
+    final spacing = veryCompact ? 8.0 : (compact ? 10.0 : 14.0);
     final horizontalPad = veryCompact ? 14.0 : (compact ? 18.0 : 20.0);
 
     return MediaQuery(
@@ -336,9 +336,9 @@ class _TopHeroHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
-    final titleSize = compact ? 28.0 : 34.0;
-    final subSize = compact ? 14.0 : 15.0;
-    final hPad = compact ? 24.0 : 28.0;
+    final titleSize = compact ? 26.0 : 34.0;
+    final subSize = compact ? 13.5 : 15.0;
+    final hPad = compact ? 22.0 : 28.0;
     return ClipRRect(
       borderRadius: const BorderRadius.only(
         bottomLeft: Radius.circular(52),
@@ -541,21 +541,21 @@ class _AccessHubCardState extends State<_AccessHubCard> {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final compact = widget.compact;
     final veryCompact = widget.veryCompact;
-    final titleSize = veryCompact ? 22.0 : (compact ? 27.0 : 31.0);
+    final titleSize = veryCompact ? 21.0 : (compact ? 25.0 : 31.0);
     final qrSize = veryCompact
-        ? (screenWidth * 0.36).clamp(118.0, 140.0)
+        ? (screenWidth * 0.34).clamp(112.0, 130.0)
         : (compact
-              ? (screenWidth * 0.40).clamp(135.0, 160.0)
+              ? (screenWidth * 0.38).clamp(128.0, 150.0)
               : (screenWidth * 0.44).clamp(150.0, 186.0));
     final cardPad = veryCompact
-        ? const EdgeInsets.fromLTRB(12, 10, 12, 12)
+        ? const EdgeInsets.fromLTRB(12, 9, 12, 11)
         : (compact
-              ? const EdgeInsets.fromLTRB(14, 12, 14, 14)
+              ? const EdgeInsets.fromLTRB(14, 11, 14, 12)
               : const EdgeInsets.fromLTRB(16, 14, 16, 16));
-    final qrInnerPad = veryCompact ? 8.0 : (compact ? 9.0 : 10.0);
-    final qrOuterPad = veryCompact ? 10.0 : (compact ? 11.0 : 12.0);
-    final topGap = veryCompact ? 8.0 : (compact ? 10.0 : 12.0);
-    final bottomGap = veryCompact ? 18.0 : (compact ? 22.0 : 28.0);
+    final qrInnerPad = veryCompact ? 7.0 : (compact ? 8.0 : 10.0);
+    final qrOuterPad = veryCompact ? 9.0 : (compact ? 10.0 : 12.0);
+    final topGap = veryCompact ? 6.0 : (compact ? 8.0 : 12.0);
+    final bottomGap = veryCompact ? 15.0 : (compact ? 19.0 : 28.0);
 
     return Container(
       padding: cardPad,
@@ -822,12 +822,12 @@ class _CereriCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardHeight = veryCompact ? 138.0 : (compact ? 156.0 : 184.0);
-    final iconBox = veryCompact ? 40.0 : (compact ? 46.0 : 52.0);
-    final iconSize = veryCompact ? 20.0 : (compact ? 22.0 : 24.0);
-    final titleSize = veryCompact ? 17.0 : (compact ? 19.0 : 22.0);
+    final cardHeight = veryCompact ? 130.0 : (compact ? 148.0 : 184.0);
+    final iconBox = veryCompact ? 38.0 : (compact ? 44.0 : 52.0);
+    final iconSize = veryCompact ? 19.0 : (compact ? 21.0 : 24.0);
+    final titleSize = veryCompact ? 16.0 : (compact ? 18.0 : 22.0);
     final subSize = veryCompact ? 11.0 : (compact ? 11.5 : 12.0);
-    final pad = veryCompact ? 13.0 : (compact ? 14.0 : 16.0);
+    final pad = veryCompact ? 12.0 : (compact ? 13.0 : 16.0);
 
     return GestureDetector(
       onTap: onTap,
@@ -1005,16 +1005,16 @@ class _MesajeCard extends StatelessWidget {
                       ]);
 
                   final cardHeight =
-                      veryCompact ? 138.0 : (compact ? 156.0 : 184.0);
+                      veryCompact ? 130.0 : (compact ? 148.0 : 184.0);
                   final iconBox =
-                      veryCompact ? 40.0 : (compact ? 46.0 : 52.0);
+                      veryCompact ? 38.0 : (compact ? 44.0 : 52.0);
                   final iconSize =
-                      veryCompact ? 20.0 : (compact ? 22.0 : 24.0);
+                      veryCompact ? 19.0 : (compact ? 21.0 : 24.0);
                   final titleSize =
-                      veryCompact ? 17.0 : (compact ? 19.0 : 22.0);
+                      veryCompact ? 16.0 : (compact ? 18.0 : 22.0);
                   final subSize =
                       veryCompact ? 11.0 : (compact ? 11.5 : 12.0);
-                  final pad = veryCompact ? 13.0 : (compact ? 14.0 : 16.0);
+                  final pad = veryCompact ? 12.0 : (compact ? 13.0 : 16.0);
 
                   return Container(
                     height: cardHeight,
