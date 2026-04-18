@@ -123,7 +123,7 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
   bool _sendingCode = false;
   bool _codeSent = false;
   bool _emailVerified = false;
-  bool _obscurePassword = true;
+  final bool _obscurePassword = true;
 
 
   @override
@@ -389,8 +389,11 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
                       icon: Icon(_editingPassword ? Icons.close : Icons.edit_outlined, size: 20),
                       onPressed: () => setState(() {
                         _editingPassword = !_editingPassword;
-                        if (!_editingPassword) _passwordC.text = '••••••••••••';
-                        else _passwordC.clear();
+                        if (!_editingPassword) {
+                          _passwordC.text = '••••••••••••';
+                        } else {
+                          _passwordC.clear();
+                        }
                       }),
                     ),
                   ],

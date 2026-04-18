@@ -144,16 +144,18 @@ class _OnboardingPageState extends State<OnboardingPage> {
         uid: widget.user.uid,
         code: code,
       );
-      if (result['verified'] != true)
+      if (result['verified'] != true) {
         throw Exception('Cod de verificare invalid');
+      }
       _newPasswordC.clear();
       _confirmPasswordC.clear();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _step = _stepPassword;
           _loading = false;
           _errorMsg = null;
         });
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {

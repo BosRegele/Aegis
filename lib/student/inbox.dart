@@ -523,10 +523,11 @@ class _InboxRequestTileState extends State<_InboxRequestTile>
     );
     if (widget.highlighted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted)
+        if (mounted) {
           _bounceCtrl.forward().then((_) {
             if (mounted) _bounceCtrl.reverse();
           });
+        }
       });
     }
   }

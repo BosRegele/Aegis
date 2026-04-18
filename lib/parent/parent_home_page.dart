@@ -117,6 +117,17 @@ class _ParentHomePageState extends State<ParentHomePage> {
     final uid = AppSession.uid;
     if (uid == null || uid.isEmpty) return const SizedBox();
 
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final topPadding = MediaQuery.paddingOf(context).top;
+
+    // hScale: Reference 850px, but clamp growth to 1.0 to prevent bloating on big screens.
+    final hScale = (screenHeight / 850.0).clamp(0.70, 1.0);
+
+    final headerVisualHeight = 190.0 * hScale;
+    final scrollStart = headerVisualHeight - (28.0 * hScale);
+    final activityCardHeight = 330.0 * hScale;
+    final gridCardHeight = 160.0 * hScale;
+
     return Scaffold(
       backgroundColor: _surface,
       body: SafeArea(
@@ -128,7 +139,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
             final fullName = (data['fullName'] ?? '').toString().trim();
             final displayName = fullName.isNotEmpty
                 ? fullName
-                : (AppSession.username ?? 'Părinte');
+                : (AppSession.username ?? 'Parinte');
             final rawChildren = data['children'];
             final directChildrenUids = rawChildren is List
                 ? rawChildren
@@ -167,19 +178,17 @@ class _ParentHomePageState extends State<ParentHomePage> {
                       right: 0,
                       child: _TopHeroHeader(
                         displayName: displayName,
+                        hScale: hScale,
                         onSettings: () => Navigator.push(
                           context,
-                          PageRouteBuilder(
-                            pageBuilder: (_, __, ___) =>
-                                const ParentProfilePage(),
-                            transitionDuration: Duration.zero,
-                            reverseTransitionDuration: Duration.zero,
+                          MaterialPageRoute(
+                            builder: (_) => const ParentProfilePage(),
                           ),
                         ),
                       ),
                     ),
                     Positioned(
-                      top: 190,
+                      top: scrollStart,
                       left: 0,
                       right: 0,
                       bottom: 0,
@@ -190,29 +199,28 @@ class _ParentHomePageState extends State<ParentHomePage> {
                           children: [
                             _ActivityCard(
                               childrenUids: childrenUids,
-                              height: 390,
+                              height: activityCardHeight,
+                              hScale: hScale,
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: 14 * hScale),
                             _CopiiMeiCard(
                               onTap: () => Navigator.push(
                                 context,
-                                PageRouteBuilder(
-                                  pageBuilder: (_, __, ___) =>
-                                      const ParentStudentsPage(),
-                                  transitionDuration: Duration.zero,
-                                  reverseTransitionDuration: Duration.zero,
+                                MaterialPageRoute(
+                                  builder: (_) => const ParentStudentsPage(),
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12 * hScale),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: SizedBox(
-                                    height: 184,
+                                    height: gridCardHeight,
                                     child: _CereriCard(
                                       childrenUids: childrenUids,
+                                      hScale: hScale,
                                       onTap: () {
                                         _markOpened(
                                           uid,
@@ -220,12 +228,9 @@ class _ParentHomePageState extends State<ParentHomePage> {
                                         );
                                         Navigator.push(
                                           context,
-                                          PageRouteBuilder(
-                                            pageBuilder: (_, __, ___) =>
+                                          MaterialPageRoute(
+                                            builder: (_) =>
                                                 const ParentRequestsPage(),
-                                            transitionDuration: Duration.zero,
-                                            reverseTransitionDuration:
-                                                Duration.zero,
                                           ),
                                         );
                                       },
@@ -235,9 +240,10 @@ class _ParentHomePageState extends State<ParentHomePage> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: SizedBox(
-                                    height: 184,
+                                    height: gridCardHeight,
                                     child: _MesajeCard(
                                       childrenUids: childrenUids,
+                                      hScale: hScale,
                                       inboxLastOpened: inboxLastOpened,
                                       onTap: () async {
                                         await _openInbox(context, uid);
@@ -279,11 +285,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
 
     await Navigator.push(
       context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const ParentInboxPage(),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
-      ),
+      MaterialPageRoute(builder: (_) => const ParentInboxPage()),
     );
 
     final returnedAt = DateTime.now();
@@ -312,8 +314,13 @@ class _ParentHomePageState extends State<ParentHomePage> {
 class _TopHeroHeader extends StatefulWidget {
   final String displayName;
   final VoidCallback onSettings;
+  final double hScale;
 
-  const _TopHeroHeader({required this.displayName, required this.onSettings});
+  const _TopHeroHeader({
+    required this.displayName,
+    required this.onSettings,
+    required this.hScale,
+  });
 
   @override
   State<_TopHeroHeader> createState() => _TopHeroHeaderState();
@@ -331,7 +338,7 @@ class _TopHeroHeaderState extends State<_TopHeroHeader> {
         bottomRight: Radius.circular(52),
       ),
       child: Container(
-        height: 220 + topPadding,
+        height: (190.0 * widget.hScale) + topPadding,
         color: _primary,
         child: Stack(
           clipBehavior: Clip.none,
@@ -359,10 +366,10 @@ class _TopHeroHeaderState extends State<_TopHeroHeader> {
                   Expanded(
                     child: Text(
                       'Bine ai venit,\n${widget.displayName}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 34,
-                        height: 1.20,
+                        fontSize: 32 * widget.hScale,
+                        height: 1.15,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -434,8 +441,13 @@ class _Circle extends StatelessWidget {
 class _ActivityCard extends StatelessWidget {
   final List<String> childrenUids;
   final double height;
+  final double hScale;
 
-  const _ActivityCard({required this.childrenUids, required this.height});
+  const _ActivityCard({
+    required this.childrenUids,
+    required this.height,
+    required this.hScale,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -455,17 +467,17 @@ class _ActivityCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            const SizedBox(height: 12),
-            const Text(
+            SizedBox(height: 10 * hScale),
+            Text(
               'Activitate Recentă',
               style: TextStyle(
-                fontSize: 31,
+                fontSize: 28 * hScale,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.7,
                 color: Color(0xFF1A2E1D),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 6 * hScale),
             Container(
               width: 40,
               height: 4,
@@ -474,7 +486,7 @@ class _ActivityCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 8 * hScale),
             Expanded(
               child: childrenUids.isEmpty
                   ? const Padding(
@@ -484,21 +496,21 @@ class _ActivityCard extends StatelessWidget {
                       ),
                       child: Center(
                         child: Text(
-                          'Nu sunt copii adăugați.',
+                          'Nu sunt copii adaugati.',
                           style: TextStyle(color: _outline),
                         ),
                       ),
                     )
-                  : _ActivityFeed(childrenUids: childrenUids),
+                  : _ActivityFeed(childrenUids: childrenUids, hScale: hScale),
             ),
             if (childrenUids.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 10 * hScale),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _ParentStatsRow(childrenUids: childrenUids),
+                child: _ParentStatsRow(childrenUids: childrenUids, hScale: hScale),
               ),
             ],
-            const SizedBox(height: 14),
+            SizedBox(height: 12 * hScale),
           ],
         ),
       ),
@@ -527,8 +539,9 @@ class _ActivityItem {
 
 class _ActivityFeed extends StatefulWidget {
   final List<String> childrenUids;
+  final double hScale;
 
-  const _ActivityFeed({required this.childrenUids});
+  const _ActivityFeed({required this.childrenUids, required this.hScale});
 
   @override
   State<_ActivityFeed> createState() => _ActivityFeedState();
@@ -539,8 +552,6 @@ class _ActivityFeedState extends State<_ActivityFeed> {
 
   late Stream<QuerySnapshot<Map<String, dynamic>>> _accessStream;
   late Stream<QuerySnapshot<Map<String, dynamic>>> _requestStream;
-  late Stream<QuerySnapshot<Map<String, dynamic>>> _messagesGlobalStream;
-  late Stream<QuerySnapshot<Map<String, dynamic>>> _messagesChildrenStream;
 
   @override
   void initState() {
@@ -562,31 +573,20 @@ class _ActivityFeedState extends State<_ActivityFeed> {
     if (uids.isEmpty) {
       _accessStream = const Stream.empty();
       _requestStream = const Stream.empty();
-      _messagesGlobalStream = const Stream.empty();
-      _messagesChildrenStream = const Stream.empty();
       return;
     }
     _accessStream = FirebaseFirestore.instance
         .collection('accessEvents')
         .where('userId', whereIn: uids)
         .orderBy('timestamp', descending: true)
-        .limit(20)
+        .limit(5)
         .snapshots();
     _requestStream = FirebaseFirestore.instance
         .collection('leaveRequests')
         .where('studentUid', whereIn: uids)
-        .where('status', isEqualTo: 'pending')
-        .snapshots();
-    final messages = FirebaseFirestore.instance.collection(
-      'secretariatMessages',
-    );
-    _messagesGlobalStream = messages
-        .where('recipientRole', isEqualTo: 'parent')
-        .where('studentUid', isEqualTo: '')
-        .snapshots();
-    _messagesChildrenStream = messages
-        .where('recipientRole', isEqualTo: 'parent')
-        .where('studentUid', whereIn: uids)
+        .where('status', whereIn: ['approved', 'rejected'])
+        .orderBy('reviewedAt', descending: true)
+        .limit(5)
         .snapshots();
   }
 
@@ -651,139 +651,88 @@ class _ActivityFeedState extends State<_ActivityFeed> {
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: _requestStream,
           builder: (context, reqSnap) {
-            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _messagesGlobalStream,
-              builder: (context, msgGlobalSnap) {
-                return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: _messagesChildrenStream,
-                  builder: (context, msgChildrenSnap) {
-                    final msgDocsById =
-                        <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
-                    for (final doc
-                        in msgGlobalSnap.data?.docs ?? const []) {
-                      msgDocsById[doc.id] = doc;
-                    }
-                    for (final doc
-                        in msgChildrenSnap.data?.docs ?? const []) {
-                      msgDocsById[doc.id] = doc;
-                    }
+            final List<_ActivityItem> items = [];
 
-                    final List<_ActivityItem> items = [];
+            for (final doc in accessSnap.data?.docs ?? []) {
+              final d = doc.data();
+              final typStr = (d['type'] ?? '').toString().trim();
+              final isExit = typStr == 'exit';
+              final uid = (d['userId'] ?? '').toString();
+              final name = _resolveName(uid, d);
+              final ts = (d['timestamp'] as Timestamp?)?.toDate();
+              items.add(
+                _ActivityItem(
+                  title: isExit ? '$name a iesit' : '$name a intrat',
+                  time: ts,
+                  icon: isExit
+                      ? Icons.arrow_forward_rounded
+                      : Icons.arrow_back_rounded,
+                  iconBg: isExit
+                      ? const Color(0xFFFFF0F5)
+                      : const Color(0xFFF0F4EA),
+                  iconColor: isExit ? _danger : _primary,
+                ),
+              );
+            }
 
-                    for (final doc in accessSnap.data?.docs ?? []) {
-                      final d = doc.data();
-                      final typStr = (d['type'] ?? '').toString().trim();
-                      final isExit = typStr == 'exit';
-                      final uid = (d['userId'] ?? '').toString();
-                      final name = _resolveName(uid, d);
-                      final ts = (d['timestamp'] as Timestamp?)?.toDate();
-                      items.add(
-                        _ActivityItem(
-                          title: isExit ? '$name a iesit' : '$name a intrat',
-                          time: ts,
-                          icon: isExit
-                              ? Icons.arrow_forward_rounded
-                              : Icons.arrow_back_rounded,
-                          iconBg: isExit
-                              ? const Color(0xFFFFF0F5)
-                              : const Color(0xFFF0F4EA),
-                          iconColor: isExit ? _danger : _primary,
-                        ),
-                      );
-                    }
+            for (final doc in reqSnap.data?.docs ?? []) {
+              final d = doc.data();
+              final status = (d['status'] ?? '').toString();
+              final ts =
+                  ((d['reviewedAt'] ?? d['updatedAt'] ?? d['createdAt'])
+                          as Timestamp?)
+                      ?.toDate();
+              final approved = status == 'approved';
+              items.add(
+                _ActivityItem(
+                  title: approved ? 'Cerere aprobata' : 'Cerere respinsa',
+                  time: ts,
+                  icon: approved
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.cancel_outlined,
+                  iconBg: approved
+                      ? const Color(0xFFF0F4EA)
+                      : const Color(0xFFFFF0F5),
+                  iconColor: approved ? _primary : _danger,
+                ),
+              );
+            }
 
-                    for (final doc in reqSnap.data?.docs ?? []) {
-                      final d = doc.data();
-                      final status = (d['status'] ?? '').toString();
-                      if (status != 'pending') continue;
-                      final ts =
-                          ((d['requestedAt'] ?? d['createdAt'])
-                                  as Timestamp?)
-                              ?.toDate();
-                      final uid = (d['studentUid'] ?? '').toString();
-                      final name = _resolveName(uid, d);
-                      items.add(
-                        _ActivityItem(
-                          title: 'Cerere în așteptare - $name',
-                          time: ts,
-                          icon: Icons.warning_amber_rounded,
-                          iconBg: const Color(0xFFFFF1E0),
-                          iconColor: const Color(0xFFE65100),
-                        ),
-                      );
-                    }
+            items.sort((a, b) {
+              if (a.time == null && b.time == null) return 0;
+              if (a.time == null) return 1;
+              if (b.time == null) return -1;
+              return b.time!.compareTo(a.time!);
+            });
 
-                    for (final doc in msgDocsById.values) {
-                      final d = doc.data();
-                      final ts = (d['createdAt'] as Timestamp?)?.toDate();
-                      final title = (d['title'] ?? '').toString();
-                      final msg = (d['message'] ?? '').toString();
-                      final display = title.isNotEmpty
-                          ? title
-                          : (msg.length > 40
-                              ? '${msg.substring(0, 40)}…'
-                              : msg);
-                      items.add(
-                        _ActivityItem(
-                          title: display,
-                          time: ts,
-                          icon: Icons.mail_outline_rounded,
-                          iconBg: const Color(0xFFE8F0FE),
-                          iconColor: const Color(0xFF1A73E8),
-                        ),
-                      );
-                    }
+            // More aggressive reduction of items for small screens
+            final shown = items.take(widget.hScale < 0.90 ? 2 : 3).toList();
 
-                    items.sort((a, b) {
-                      if (a.time == null && b.time == null) return 0;
-                      if (a.time == null) return 1;
-                      if (b.time == null) return -1;
-                      return b.time!.compareTo(a.time!);
-                    });
+            if (shown.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+                child: Center(
+                  child: Text(
+                    'Nicio activitate recenta.',
+                    style: TextStyle(color: _outline, fontSize: 14),
+                  ),
+                ),
+              );
+            }
 
-                    final now = DateTime.now();
-                    final todayStart =
-                        DateTime(now.year, now.month, now.day);
-                    final shown = items
-                        .where(
-                          (item) =>
-                              item.time != null &&
-                              !item.time!.isBefore(todayStart),
-                        )
-                        .toList();
-
-                    if (shown.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: 20,
-                          horizontal: 20,
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Nicio activitate recentă.',
-                            style: TextStyle(color: _outline, fontSize: 14),
-                          ),
-                        ),
-                      );
-                    }
-
-                    return SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: shown
-                            .map(
-                              (item) => _ActivityTile(
-                                item: item,
-                                formattedTime: _formatTime(item.time),
-                              ),
-                            )
-                            .toList(),
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: shown
+                    .map(
+                      (item) => _ActivityTile(
+                        item: item,
+                        formattedTime: _formatTime(item.time),
                       ),
-                    );
-                  },
-                );
-              },
+                    )
+                    .toList(),
+              ),
             );
           },
         );
@@ -931,8 +880,13 @@ class _CopiiMeiCard extends StatelessWidget {
 class _CereriCard extends StatefulWidget {
   final List<String> childrenUids;
   final VoidCallback onTap;
+  final double hScale;
 
-  const _CereriCard({required this.childrenUids, required this.onTap});
+  const _CereriCard({
+    required this.childrenUids,
+    required this.onTap,
+    required this.hScale,
+  });
 
   @override
   State<_CereriCard> createState() => _CereriCardState();
@@ -1012,11 +966,11 @@ class _CereriCardState extends State<_CereriCard> {
               ],
             ),
             const Spacer(),
-            const Text(
-              'Cereri de\nînvoire',
+            Text(
+              'Cereri de\ninvoire',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 22,
+                fontSize: 20 * widget.hScale,
                 fontWeight: FontWeight.w800,
                 height: 1.18,
               ),
@@ -1043,11 +997,13 @@ class _CereriCardState extends State<_CereriCard> {
 class _MesajeCard extends StatefulWidget {
   final List<String> childrenUids;
   final DateTime? inboxLastOpened;
+  final double hScale;
   final VoidCallback onTap;
 
   const _MesajeCard({
     required this.childrenUids,
     required this.inboxLastOpened,
+    required this.hScale,
     required this.onTap,
   });
 
@@ -1273,11 +1229,11 @@ class _MesajeCardState extends State<_MesajeCard> {
                         ],
                       ),
                       const Spacer(),
-                      const Text(
+                      Text(
                         'Mesaje',
                         style: TextStyle(
                           color: _onSurface,
-                          fontSize: 22,
+                          fontSize: 20 * widget.hScale,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -1320,8 +1276,9 @@ class _MesajeCardState extends State<_MesajeCard> {
 // ─────────────────────────────────────────────────────────────────────────────
 class _ParentStatsRow extends StatefulWidget {
   final List<String> childrenUids;
+  final double hScale;
 
-  const _ParentStatsRow({required this.childrenUids});
+  const _ParentStatsRow({required this.childrenUids, required this.hScale});
 
   @override
   State<_ParentStatsRow> createState() => _ParentStatsRowState();
@@ -1394,6 +1351,7 @@ class _ParentStatsRowState extends State<_ParentStatsRow> {
                     label: 'PREZENȚI',
                     value: '$present/$total',
                     valueColor: present > 0 ? _primary : _outline,
+                    hScale: widget.hScale,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -1402,6 +1360,7 @@ class _ParentStatsRowState extends State<_ParentStatsRow> {
                     label: 'CERERI',
                     value: '$pending',
                     valueColor: pending > 0 ? _danger : _outline,
+                    hScale: widget.hScale,
                   ),
                 ),
               ],
@@ -1417,17 +1376,19 @@ class _StatBox extends StatelessWidget {
   final String label;
   final String value;
   final Color valueColor;
+  final double hScale;
 
   const _StatBox({
     required this.label,
     required this.value,
     required this.valueColor,
+    required this.hScale,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: EdgeInsets.fromLTRB(14, 10 * hScale, 14, 10 * hScale),
       decoration: BoxDecoration(
         color: const Color(0xFFF0F4E9),
         borderRadius: BorderRadius.circular(18),
@@ -1444,11 +1405,11 @@ class _StatBox extends StatelessWidget {
               letterSpacing: 1.0,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 6 * hScale),
           Text(
             value,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 14 * hScale,
               fontWeight: FontWeight.w800,
               color: valueColor,
             ),
@@ -1497,7 +1458,7 @@ class ParentProfilePage extends StatelessWidget {
                     child: _ParentProfileCard(
                       displayName: fullName.isNotEmpty
                           ? fullName
-                          : (AppSession.username ?? 'Părinte'),
+                          : (AppSession.username ?? 'Parinte'),
                       username: username,
                       email: email,
                       childCount: snap.hasData ? childCount : null,
@@ -1840,11 +1801,7 @@ class _SettingsSheet extends StatelessWidget {
     AppSession.clear();
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const LoginPageFirestore(),
-          transitionDuration: Duration.zero,
-          reverseTransitionDuration: Duration.zero,
-        ),
+        MaterialPageRoute(builder: (_) => const LoginPageFirestore()),
         (_) => false,
       );
     }
@@ -1876,7 +1833,7 @@ class _ParentAccountSettingsDialogState
   bool _sendingCode = false;
   bool _codeSent = false;
   bool _emailVerified = false;
-  bool _obscurePassword = true;
+  final bool _obscurePassword = true;
   String? _passwordError;
   String? _emailError;
 

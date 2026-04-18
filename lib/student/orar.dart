@@ -385,7 +385,7 @@ class _ProfileIdentityCard extends StatelessWidget {
                                   width: 64,
                                   height: 64,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
+                                  errorBuilder: (_, _, _) => Container(
                                     width: 64,
                                     height: 64,
                                     color: _surfaceContainerHigh,
@@ -494,8 +494,8 @@ void _openFullScreenImage(BuildContext context, String url) {
       opaque: false,
       barrierColor: Colors.black.withValues(alpha: 0.92),
       barrierDismissible: true,
-      pageBuilder: (_, __, ___) => _FullScreenImageView(url: url),
-      transitionsBuilder: (_, animation, __, child) {
+      pageBuilder: (_, _, _) => _FullScreenImageView(url: url),
+      transitionsBuilder: (_, animation, _, child) {
         return FadeTransition(opacity: animation, child: child);
       },
     ),
@@ -521,7 +521,7 @@ class _FullScreenImageView extends StatelessWidget {
                 child: Image.network(
                   url,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, _, _) => const Icon(
                     Icons.broken_image_rounded,
                     color: Colors.white54,
                     size: 64,
@@ -648,7 +648,7 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
   bool _codeSent = false;
   bool _emailVerified = false;
   String? _profilePictureUrl;
-  bool _obscurePassword = true;
+  final bool _obscurePassword = true;
   String? _passwordError;
   String? _emailError;
 
@@ -1020,18 +1020,20 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
                                           uid: uid,
                                           email: email,
                                         );
-                                        if (mounted)
+                                        if (mounted) {
                                           setState(() {
                                             _codeSent = true;
                                             _sendingCode = false;
                                           });
+                                        }
                                       } catch (e) {
-                                        if (mounted)
+                                        if (mounted) {
                                           setState(() {
                                             _emailError =
                                                 'Nu am putut trimite codul.';
                                             _sendingCode = false;
                                           });
+                                        }
                                       }
                                     },
                               icon: _sendingCode
@@ -1139,17 +1141,20 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
                                   code: code,
                                 );
                                 if (result['verified'] == true) {
-                                  if (mounted)
+                                  if (mounted) {
                                     setState(() => _emailVerified = true);
+                                  }
                                 } else {
-                                  if (mounted)
+                                  if (mounted) {
                                     setState(
                                       () => _emailError = 'Cod invalid.',
                                     );
+                                  }
                                 }
                               } catch (e) {
-                                if (mounted)
+                                if (mounted) {
                                   setState(() => _emailError = 'Cod invalid.');
+                                }
                               }
                             },
                             child: Container(
@@ -1370,7 +1375,7 @@ class _AccountSettingsDialogState extends State<_AccountSettingsDialog> {
                                           width: 56,
                                           height: 56,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) =>
+                                          errorBuilder: (_, _, _) =>
                                               Container(
                                                 width: 56,
                                                 height: 56,
@@ -1793,7 +1798,7 @@ class _ParentInfoBox extends StatelessWidget {
 
     if (uid == null || uid.isEmpty) {
       return const _ProfileDetailRow(
-        label: 'PĂRINTE / TUTORE',
+        label: 'PÂRINTE / TUTORE',
         value: 'Nedefinit',
         icon: Icons.family_restroom,
       );
@@ -1819,7 +1824,7 @@ class _ParentInfoBox extends StatelessWidget {
 
         if (parentId.isEmpty) {
           return const _ProfileDetailRow(
-            label: 'PĂRINTE / TUTORE',
+            label: 'PÂRINTE / TUTORE',
             value: 'Nedefinit',
             icon: Icons.family_restroom,
           );
@@ -1840,7 +1845,7 @@ class _ParentInfoBox extends StatelessWidget {
             );
 
             return _ProfileDetailRow(
-              label: 'PĂRINTE / TUTORE',
+              label: 'PÂRINTE / TUTORE',
               value: displayName,
               icon: Icons.family_restroom,
             );

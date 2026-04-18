@@ -32,9 +32,6 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
   Stream<DocumentSnapshot<Map<String, dynamic>>>? _teacherStream;
   Stream<QuerySnapshot<Map<String, dynamic>>>? _pendingStream;
   Stream<QuerySnapshot<Map<String, dynamic>>>? _studentsStream;
-  Stream<QuerySnapshot<Map<String, dynamic>>>? _allRequestsStream;
-  Stream<QuerySnapshot<Map<String, dynamic>>>? _messagesTargetedStream;
-  Stream<QuerySnapshot<Map<String, dynamic>>>? _messagesGlobalStream;
   String _classId = '';
   bool _profilePressed = false;
 
@@ -65,22 +62,6 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 .collection('users')
                 .where('classId', isEqualTo: classId)
                 .where('role', isEqualTo: 'student')
-                .snapshots();
-            _allRequestsStream = FirebaseFirestore.instance
-                .collection('leaveRequests')
-                .where('classId', isEqualTo: classId)
-                .orderBy('requestedAt', descending: true)
-                .limit(5)
-                .snapshots();
-            _messagesTargetedStream = FirebaseFirestore.instance
-                .collection('secretariatMessages')
-                .where('recipientRole', isEqualTo: 'teacher')
-                .where('recipientUid', isEqualTo: uid)
-                .snapshots();
-            _messagesGlobalStream = FirebaseFirestore.instance
-                .collection('secretariatMessages')
-                .where('recipientRole', isEqualTo: 'teacher')
-                .where('recipientUid', isEqualTo: '')
                 .snapshots();
           });
         }
@@ -121,6 +102,14 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
     }
 
     final topPadding = MediaQuery.of(context).padding.top;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+
+    // Dynamic Scaling logic: Capped at 1.0 to ensure fit on tall phones.
+    final hScale = (screenHeight / 850.0).clamp(0.70, 1.0);
+
+    final headerVisualHeight = 190.0 * hScale;
+    final scrollStart = headerVisualHeight - (32.0 * hScale);
+    final activityCardHeight = 330.0 * hScale;
 
     return Scaffold(
       backgroundColor: _kBg,
@@ -137,8 +126,6 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                     ? fullName
                     : (AppSession.username ?? 'Diriginte');
 
-                final scrollStart = 190.0;
-
                 return Stack(
                   fit: StackFit.expand,
                   children: [
@@ -147,7 +134,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                       top: 0,
                       left: 0,
                       right: 0,
-                      child: _buildHeader(displayName),
+                      child: _buildHeader(displayName, hScale),
                     ),
                     Positioned(
                       top: scrollStart,
@@ -159,9 +146,9 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                         child: Column(
                           children: [
-                            _buildActivityCard(),
-                            const SizedBox(height: 16),
-                            _buildGrid(context),
+                            _buildActivityCard(hScale),
+                            SizedBox(height: 14 * hScale),
+                            _buildGrid(context, hScale),
                           ],
                         ),
                       ),
@@ -181,7 +168,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 Navigator.push(
                   context,
                   PageRouteBuilder(
-                    pageBuilder: (_, __, ___) => const OrarDirPage(),
+                    pageBuilder: (_, _, _) => const OrarDirPage(),
                     transitionDuration: Duration.zero,
                     reverseTransitionDuration: Duration.zero,
                   ),
@@ -219,7 +206,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
   }
 
   // ─── Header verde cu cercuri + salut + buton profil ─────────────────────────
-  Widget _buildHeader(String name) {
+  Widget _buildHeader(String name, double hScale) {
     final topPadding = MediaQuery.of(context).padding.top;
     return ClipRRect(
       borderRadius: const BorderRadius.only(
@@ -227,7 +214,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         bottomRight: Radius.circular(52),
       ),
       child: Container(
-        height: 220 + topPadding,
+        height: (190.0 * hScale) + topPadding,
         color: _kGreen,
         child: Stack(
           clipBehavior: Clip.none,
@@ -245,8 +232,8 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 'Bine ai venit,\n$name',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 36,
-                  height: 1.08,
+                  fontSize: 32,
+                  height: 1.15,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -271,198 +258,148 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
   }
 
   // ─── Card "Activitate Recentă" ──────────────────────────────────────────────
-  Widget _buildActivityCard() {
+  Widget _buildActivityCard(double hScale) {
     return StreamBuilder<QuerySnapshot>(
-      stream: _allRequestsStream,
-      builder: (context, reqSnap) {
-        return StreamBuilder<QuerySnapshot>(
-          stream: _messagesTargetedStream,
-          builder: (context, msgTargetedSnap) {
-            return StreamBuilder<QuerySnapshot>(
-              stream: _messagesGlobalStream,
-              builder: (context, msgGlobalSnap) {
-                final msgDocsById = <String, QueryDocumentSnapshot>{};
-                for (final doc in msgTargetedSnap.data?.docs ?? const []) {
-                  msgDocsById[doc.id] = doc;
-                }
-                for (final doc in msgGlobalSnap.data?.docs ?? const []) {
-                  msgDocsById[doc.id] = doc;
-                }
+      stream: _pendingStream,
+      builder: (context, snap) {
+        final pendingDocs = snap.data?.docs ?? [];
 
-                final items = <_ActivityData>[];
+        final items = <_ActivityData>[];
 
-                for (final doc in reqSnap.data?.docs ?? []) {
-              final d = doc.data() as Map<String, dynamic>;
-              final status = (d['status'] ?? 'pending').toString();
-              final studentName = (d['studentName'] ?? '').toString().trim();
-              final name = studentName.isEmpty ? 'Elev' : studentName;
-              final ts = ((d['reviewedAt'] ?? d['requestedAt']) as Timestamp?)
-                  ?.toDate();
+        // Cereri în așteptare reale (max 1 pentru a lăsa loc celorlalte)
+        for (final doc in pendingDocs.take(1)) {
+          final d = doc.data() as Map<String, dynamic>;
+          final classId = (d['classId'] ?? '').toString();
+          items.add(
+            _ActivityData(
+              icon: Icons.warning_amber_rounded,
+              iconColor: const Color(0xFF9D1F5F),
+              title: 'Cerere în așteptare - $classId',
+              time: 'ACUM',
+            ),
+          );
+        }
 
-              if (status != 'approved' && status != 'rejected') {
-                items.add(
-                  _ActivityData(
-                    icon: Icons.warning_amber_rounded,
-                    iconColor: const Color(0xFFE65100),
-                    title: 'Cerere în așteptare - $name',
-                    time: ts,
-                  ),
-                );
-              }
-            }
+        items.add(
+          const _ActivityData(
+            icon: Icons.campaign_rounded,
+            iconColor: _kGreen,
+            title: 'Anunț școlar nou',
+            time: 'ASTĂZI',
+          ),
+        );
 
-                for (final doc in msgDocsById.values) {
-                  final d = doc.data() as Map<String, dynamic>;
-                  final ts = (d['createdAt'] as Timestamp?)?.toDate();
-                  final title = (d['title'] ?? '').toString();
-                  final msg = (d['message'] ?? '').toString();
-                  final display = title.isNotEmpty
-                      ? title
-                      : (msg.length > 40 ? '${msg.substring(0, 40)}…' : msg);
-                  items.add(
-                    _ActivityData(
-                      icon: Icons.mail_outline_rounded,
-                      iconColor: const Color(0xFF1A73E8),
-                      title: display,
-                      time: ts,
-                    ),
-                  );
-                }
+        if (pendingDocs.length > 1) {
+          final d = pendingDocs[1].data() as Map<String, dynamic>;
+          final studentName = (d['studentName'] ?? '').toString();
+          items.add(
+            _ActivityData(
+              icon: Icons.cancel_rounded,
+              iconColor: _kGreen,
+              title: 'Cerere respinsă - $studentName',
+              time: 'ASTĂZI',
+            ),
+          );
+        }
 
-                items.sort((a, b) {
-                  if (a.time == null && b.time == null) return 0;
-                  if (a.time == null) return 1;
-                  if (b.time == null) return -1;
-                  return b.time!.compareTo(a.time!);
-                });
-
-                final now = DateTime.now();
-                final todayStart = DateTime(now.year, now.month, now.day);
-                final shown = items
-                    .where(
-                      (item) =>
-                          item.time != null && !item.time!.isBefore(todayStart),
-                    )
-                    .toList();
-
-                return Container(
-              width: double.infinity,
-              height: 390,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(34),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+        return Container(
+          width: double.infinity,
+          height: 330 * hScale,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(34),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 8,
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 10 * hScale, horizontal: 8),
+            child: Column(
+              children: [
+                SizedBox(height: 4 * hScale),
+                Text(
+                  'Activitate Recentă',
+                  style: TextStyle(
+                    fontSize: 28 * hScale,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.7,
+                    color: Color(0xFF1A2E1D),
+                  ),
                 ),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Activitate Recentă',
-                      style: TextStyle(
-                        fontSize: 31,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.7,
-                        color: Color(0xFF1A2E1D),
-                      ),
+                SizedBox(height: 6 * hScale),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDDDDDD),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(height: 8 * hScale),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      children: items
+                          .map((item) => _ActivityItemWidget(data: item))
+                          .toList(),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDDDDDD),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: shown.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'Nicio activitate recentă.',
-                                style: TextStyle(
-                                  color: Color(0xFF717B6E),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            )
-                          : SingleChildScrollView(
-                              physics: const BouncingScrollPhysics(),
-                              child: Column(
-                                children: shown
-                                    .map(
-                                      (item) => _ActivityItemWidget(data: item),
-                                    )
-                                    .toList(),
-                              ),
+                  ),
+                ),
+                SizedBox(height: 10 * hScale),
+                StreamBuilder<QuerySnapshot>(
+                  stream: _studentsStream,
+                  builder: (context, stuSnap) {
+                    final students = stuSnap.data?.docs ?? [];
+                    final inSchool = students
+                        .where(
+                          (d) =>
+                              (d.data() as Map<String, dynamic>)['inSchool'] ==
+                              true,
+                        )
+                        .length;
+                    final absent = students.length - inSchool;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _StatBox(
+                              label: 'PREZENȚI',
+                              value: students.isEmpty ? '--' : '$inSchool',
+                              valueColor: _kGreen,
                             ),
-                    ),
-                    const SizedBox(height: 12),
-                    StreamBuilder<QuerySnapshot>(
-                      stream: _studentsStream,
-                      builder: (context, stuSnap) {
-                        final students = stuSnap.data?.docs ?? [];
-                        final inSchool = students
-                            .where(
-                              (d) =>
-                                  (d.data()
-                                      as Map<String, dynamic>)['inSchool'] ==
-                                  true,
-                            )
-                            .length;
-                        final absent = students.length - inSchool;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _StatBox(
-                                  label: 'PREZENȚI',
-                                  value: students.isEmpty ? '--' : '$inSchool',
-                                  valueColor: _kGreen,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _StatBox(
-                                  label: 'ABSENȚI',
-                                  value: students.isEmpty ? '--' : '$absent',
-                                  valueColor: absent > 0
-                                      ? const Color(0xFF8E3557)
-                                      : const Color(0xFF717B6E),
-                                ),
-                              ),
-                            ],
                           ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 6),
-                  ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _StatBox(
+                              label: 'ABSENȚI',
+                              value: students.isEmpty ? '--' : '$absent',
+                              valueColor: absent > 0
+                                  ? const Color(0xFF8E3557)
+                                  : const Color(0xFF717B6E),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-              ),
-            );
-              },
-            );
-          },
+                const SizedBox(height: 6),
+              ],
+            ),
+          ),
         );
       },
     );
   }
 
   // ─── Grid 2×2 ───────────────────────────────────────────────────────────────
-  Widget _buildGrid(BuildContext context) {
+  Widget _buildGrid(BuildContext context, double hScale) {
     return StreamBuilder<QuerySnapshot>(
       stream: _pendingStream,
       builder: (context, snap) {
@@ -482,7 +419,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
               onTap: () => Navigator.push(
                 context,
                 PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => const StatusEleviPage(),
+                  pageBuilder: (_, _, _) => const StatusEleviPage(),
                   transitionDuration: Duration.zero,
                   reverseTransitionDuration: Duration.zero,
                 ),
@@ -498,10 +435,11 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                     title: 'Cereri',
                     subtitle: cereriSub,
                     isDark: true,
+                    hScale: hScale,
                     onTap: () => Navigator.push(
                       context,
                       PageRouteBuilder(
-                        pageBuilder: (_, __, ___) =>
+                        pageBuilder: (_, _, _) =>
                             const CereriAsteptarePage(),
                         transitionDuration: Duration.zero,
                         reverseTransitionDuration: Duration.zero,
@@ -516,10 +454,11 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                     title: 'Mesaje',
                     subtitle: 'Istoric cereri',
                     isDark: false,
+                    hScale: hScale,
                     onTap: () => Navigator.push(
                       context,
                       PageRouteBuilder(
-                        pageBuilder: (_, __, ___) => const MesajeDirPage(),
+                        pageBuilder: (_, _, _) => const MesajeDirPage(),
                         transitionDuration: Duration.zero,
                         reverseTransitionDuration: Duration.zero,
                       ),
@@ -541,7 +480,7 @@ class _ActivityData {
   final IconData icon;
   final Color iconColor;
   final String title;
-  final DateTime? time;
+  final String time;
 
   const _ActivityData({
     required this.icon,
@@ -604,58 +543,52 @@ class _ActivityItemWidget extends StatelessWidget {
 
   const _ActivityItemWidget({required this.data});
 
-  static String _formatTime(DateTime? dt) {
-    if (dt == null) return '--';
-    final day = dt.day.toString().padLeft(2, '0');
-    const months = [
-      'IAN',
-      'FEB',
-      'MAR',
-      'APR',
-      'MAI',
-      'IUN',
-      'IUL',
-      'AUG',
-      'SEP',
-      'OCT',
-      'NOV',
-      'DEC',
-    ];
-    final month = months[dt.month - 1];
-    return '$day $month';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFFF4FBF6),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   color: data.iconColor.withOpacity(1.0),
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(data.icon, color: Colors.white, size: 23),
+                child: Icon(data.icon, color: Colors.white, size: 26),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  data.title,
-                  style: const TextStyle(
-                    color: Color(0xFF1A2E1D),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.title,
+                      style: const TextStyle(
+                        color: Color(0xFF1A2E1D),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      data.time,
+                      style: const TextStyle(
+                        color: Color(0xFF8A9E8C),
+                        fontSize: 12,
+                        letterSpacing: 0.6,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -674,6 +607,7 @@ class _GridCard extends StatelessWidget {
   final String subtitle;
   final bool isDark;
   final bool wide;
+  final double? hScale;
   final VoidCallback? onTap;
 
   const _GridCard({
@@ -681,6 +615,7 @@ class _GridCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.isDark,
+    this.hScale,
     this.wide = false,
     this.onTap,
   });
@@ -700,7 +635,7 @@ class _GridCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        height: wide ? null : 184,
+        height: wide ? null : (180 * (hScale ?? 1.0)),
         padding: wide
             ? const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
             : const EdgeInsets.all(16),

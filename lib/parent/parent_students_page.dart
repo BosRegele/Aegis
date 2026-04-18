@@ -59,7 +59,7 @@ class ParentStudentsPage extends StatelessWidget {
 
                         final parentData = snapshot.data!.data();
                         if (parentData == null) {
-                          return const Center(child: Text('Nu există date.'));
+                          return const Center(child: Text('Nu exista date.'));
                         }
 
                         final childIds = _extractChildUids(
@@ -68,7 +68,7 @@ class ParentStudentsPage extends StatelessWidget {
                         );
                         if (childIds.isEmpty) {
                           return const Center(
-                            child: Text('Nu există copii asignați.'),
+                            child: Text('Nu exista copii asignati.'),
                           );
                         }
 
@@ -116,16 +116,15 @@ class ParentStudentsPage extends StatelessWidget {
                                     Navigator.push(
                                       context,
                                       PageRouteBuilder(
-                                        pageBuilder: (_, __, ___) =>
+                                        pageBuilder: (_, _, _) =>
                                             _StudentDetailPage(
                                               avatarSeed: viewData.uid,
                                               name: name,
                                               username: viewData.username,
                                               classId: viewData.classId,
-                                              photoUrl: viewData.photoUrl,
                                               status: viewData.inSchool
-                                                  ? 'ÎN INCINTĂ'
-                                                  : 'ÎN AFARA INCINTEI',
+                                                  ? 'IN INCINTA'
+                                                  : 'IN AFARA INCINTEI',
                                             ),
                                         transitionDuration: Duration.zero,
                                         reverseTransitionDuration:
@@ -499,7 +498,6 @@ class _StudentDetailPage extends StatelessWidget {
   final String username;
   final String classId;
   final String status;
-  final String photoUrl;
 
   const _StudentDetailPage({
     required this.avatarSeed,
@@ -507,12 +505,11 @@ class _StudentDetailPage extends StatelessWidget {
     required this.username,
     required this.classId,
     required this.status,
-    this.photoUrl = '',
   });
 
   static const _dayMap = {
     1: 'Luni',
-    2: 'Marți',
+    2: 'Marti',
     3: 'Miercuri',
     4: 'Joi',
     5: 'Vineri',
@@ -673,26 +670,9 @@ class _StudentDetailPage extends StatelessWidget {
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(18),
-                                    child: SizedBox(
-                                      width: 64,
-                                      height: 64,
-                                      child: photoUrl.isNotEmpty
-                                          ? Image.network(
-                                              photoUrl,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) =>
-                                                  _DetailAvatarFallback(
-                                                    avatarSeed: avatarSeed,
-                                                    name: name,
-                                                  ),
-                                            )
-                                          : _DetailAvatarFallback(
-                                              avatarSeed: avatarSeed,
-                                              name: name,
-                                            ),
-                                    ),
+                                  _DetailAvatarFallback(
+                                    avatarSeed: avatarSeed,
+                                    name: name,
                                   ),
                                   const SizedBox(width: 14),
                                   Expanded(

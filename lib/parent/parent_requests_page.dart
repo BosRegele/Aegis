@@ -33,7 +33,7 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
     final parentName =
         (AppSession.fullName != null && AppSession.fullName!.isNotEmpty)
         ? AppSession.fullName!
-        : (AppSession.username ?? 'Părinte');
+        : (AppSession.username ?? 'Parinte');
     try {
       await FirebaseFirestore.instance
           .collection('leaveRequests')
@@ -48,7 +48,7 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(approved ? 'Cerere aprobată!' : 'Cerere respinsă.'),
+          content: Text(approved ? 'Cerere aprobata!' : 'Cerere respinsa.'),
           backgroundColor: approved ? Colors.green : const Color(0xFFAD3765),
         ),
       );
@@ -100,31 +100,28 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
         ];
 
         return _buildMergedRequestStream(streams, (mergedDocs) {
-          final docs =
-              mergedDocs.where((doc) {
-                final data = doc.data();
-                final status = (data['status'] ?? '').toString().trim();
-                final source = (data['source'] ?? '').toString().trim();
-                final studentUid = (data['studentUid'] ?? '').toString().trim();
-                final isLegacyLinkedRequest = linkedChildIds.contains(
-                  studentUid,
-                );
+          final docs = mergedDocs.where((doc) {
+            final data = doc.data();
+            final status = (data['status'] ?? '').toString().trim();
+            final source = (data['source'] ?? '').toString().trim();
+            final studentUid = (data['studentUid'] ?? '').toString().trim();
+            final isLegacyLinkedRequest = linkedChildIds.contains(studentUid);
 
-                return status == 'pending' &&
-                    source != 'secretariat' &&
-                    isLegacyLinkedRequest;
-              }).toList()..sort((a, b) {
-                final aTs = a.data()['requestedAt'] as Timestamp?;
-                final bTs = b.data()['requestedAt'] as Timestamp?;
-                return (bTs?.millisecondsSinceEpoch ?? 0).compareTo(
-                  aTs?.millisecondsSinceEpoch ?? 0,
-                );
-              });
+            return status == 'pending' &&
+                source != 'secretariat' &&
+              isLegacyLinkedRequest;
+          }).toList()..sort((a, b) {
+            final aTs = a.data()['requestedAt'] as Timestamp?;
+            final bTs = b.data()['requestedAt'] as Timestamp?;
+            return (bTs?.millisecondsSinceEpoch ?? 0).compareTo(
+              aTs?.millisecondsSinceEpoch ?? 0,
+            );
+          });
 
           if (docs.isEmpty) {
             return const Center(
               child: Text(
-                'Nu există cereri noi.',
+                'Nu exista cereri noi.',
                 style: TextStyle(color: Color(0xFF7A8077), fontSize: 16),
               ),
             );
@@ -134,7 +131,7 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.only(top: 2, bottom: 24),
             itemCount: docs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 14),
+            separatorBuilder: (_, _) => const SizedBox(height: 14),
             itemBuilder: (context, index) {
               final doc = docs[index];
               final data = doc.data();
@@ -191,8 +188,9 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
     return sorted;
   }
 
-  List<Stream<QuerySnapshot<Map<String, dynamic>>>>
-  _buildLegacyChildRequestStreams(List<String> studentIds) {
+  List<Stream<QuerySnapshot<Map<String, dynamic>>>> _buildLegacyChildRequestStreams(
+    List<String> studentIds,
+  ) {
     if (studentIds.isEmpty) {
       return const <Stream<QuerySnapshot<Map<String, dynamic>>>>[];
     }
@@ -300,7 +298,7 @@ class _TopHeader extends StatelessWidget {
                     const SizedBox(width: 14),
                     const Expanded(
                       child: Text(
-                        'Cereri de învoire',
+                        'Cereri de invoire',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -350,7 +348,7 @@ class _RequestCard extends StatelessWidget {
     final classId = (data['classId'] ?? '').toString().trim();
     final dateText = (data['dateText'] ?? '-').toString();
     final timeText = (data['timeText'] ?? '-').toString();
-    final reason = (data['message'] ?? 'Fără motiv').toString().trim();
+    final reason = (data['message'] ?? 'Fara motiv').toString().trim();
 
     final initials = _initials(studentName);
     final classLabel = classId.isEmpty
@@ -380,9 +378,23 @@ class _RequestCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _StudentAvatar(
-                    studentUid: (data['studentUid'] ?? '').toString(),
-                    initials: initials,
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFD0DFD0),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF07731F),
+                        height: 1,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -429,8 +441,12 @@ class _RequestCard extends StatelessWidget {
               const SizedBox(height: 16),
               _InfoLine(
                 icon: Icons.calendar_today_rounded,
-                text:
-                    '${dateText.isEmpty ? '-' : dateText}  •  ${timeText.isEmpty ? '-' : timeText}',
+                text: dateText.isEmpty ? '-' : dateText,
+              ),
+              const SizedBox(height: 10),
+              _InfoLine(
+                icon: Icons.access_time_filled_rounded,
+                text: timeText.isEmpty ? '-' : timeText,
               ),
               const SizedBox(height: 14),
               Container(
@@ -578,66 +594,6 @@ class _InfoLine extends StatelessWidget {
       ],
     );
   }
-}
-
-class _StudentAvatar extends StatelessWidget {
-  final String studentUid;
-  final String initials;
-
-  const _StudentAvatar({required this.studentUid, required this.initials});
-
-  @override
-  Widget build(BuildContext context) {
-    if (studentUid.isEmpty) return _initialsWidget();
-
-    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      future: FirebaseFirestore.instance
-          .collection('users')
-          .doc(studentUid)
-          .get(),
-      builder: (context, snap) {
-        final data = snap.data?.data();
-        final photoUrl =
-            (data?['profilePictureUrl'] ??
-                    data?['photoUrl'] ??
-                    data?['avatarUrl'] ??
-                    '')
-                .toString()
-                .trim();
-        if (photoUrl.isEmpty) return _initialsWidget();
-        return ClipOval(
-          child: SizedBox(
-            width: 64,
-            height: 64,
-            child: Image.network(
-              photoUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _initialsWidget(),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _initialsWidget() => Container(
-    width: 64,
-    height: 64,
-    decoration: const BoxDecoration(
-      color: Color(0xFFD0DFD0),
-      shape: BoxShape.circle,
-    ),
-    alignment: Alignment.center,
-    child: Text(
-      initials,
-      style: const TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.w800,
-        color: Color(0xFF07731F),
-        height: 1,
-      ),
-    ),
-  );
 }
 
 class _BouncingButton extends StatefulWidget {
