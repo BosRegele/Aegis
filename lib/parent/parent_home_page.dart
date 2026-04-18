@@ -117,145 +117,180 @@ class _ParentHomePageState extends State<ParentHomePage> {
     final uid = AppSession.uid;
     if (uid == null || uid.isEmpty) return const SizedBox();
 
-    return Scaffold(
-      backgroundColor: _surface,
-      body: SafeArea(
-        top: false,
-        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: _getUserDocStream(uid),
-          builder: (context, snap) {
-            final data = snap.data?.data() ?? <String, dynamic>{};
-            final fullName = (data['fullName'] ?? '').toString().trim();
-            final displayName = fullName.isNotEmpty
-                ? fullName
-                : (AppSession.username ?? 'Părinte');
-            final rawChildren = data['children'];
-            final directChildrenUids = rawChildren is List
-                ? rawChildren
-                      .map((e) {
-                        if (e is String) return e.trim();
-                        if (e is Map) {
-                          return ((e['uid'] ?? e['studentUid'] ?? e['id']) ??
-                                  '')
-                              .toString()
-                              .trim();
-                        }
-                        return '';
-                      })
-                      .where((s) => s.isNotEmpty)
-                      .toList()
-                : <String>[];
-            final serverInboxLastOpened =
-                (data['inboxLastOpenedAt'] as Timestamp?)?.toDate();
-            final inboxLastOpened = _effectiveLastOpened(
-              serverInboxLastOpened,
-              _localInboxLastOpened,
-            );
+    final media = MediaQuery.of(context);
+    final screenHeight = media.size.height;
+    final screenWidth = media.size.width;
+    final veryCompact = screenHeight < 640 || screenWidth < 340;
+    final compact = !veryCompact && screenHeight < 740;
 
-            return FutureBuilder<List<String>>(
-              future: _getOrCreateChildrenFuture(uid, directChildrenUids),
-              builder: (context, childrenSnapshot) {
-                final childrenUids =
-                    childrenSnapshot.data ?? directChildrenUids;
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Container(color: _surface),
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: _TopHeroHeader(
-                        displayName: displayName,
-                        onSettings: () => Navigator.push(
-                          context,
-                          PageRouteBuilder(
-                            pageBuilder: (_, __, ___) =>
-                                const ParentProfilePage(),
-                            transitionDuration: Duration.zero,
-                            reverseTransitionDuration: Duration.zero,
+    final headerHeight = veryCompact ? 180.0 : (compact ? 200.0 : 220.0);
+    final contentTop = headerHeight - 30.0;
+    final spacing = veryCompact ? 10.0 : (compact ? 12.0 : 14.0);
+    final horizontalPad = veryCompact ? 12.0 : (compact ? 14.0 : 16.0);
+    final activityHeight = veryCompact ? 320.0 : (compact ? 350.0 : 390.0);
+    final cardsHeight = veryCompact ? 148.0 : (compact ? 164.0 : 184.0);
+
+    return MediaQuery(
+      data: media.copyWith(
+        textScaler: media.textScaler.clamp(
+          minScaleFactor: 0.85,
+          maxScaleFactor: 1.1,
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: _surface,
+        body: SafeArea(
+          top: false,
+          child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: _getUserDocStream(uid),
+            builder: (context, snap) {
+              final data = snap.data?.data() ?? <String, dynamic>{};
+              final fullName = (data['fullName'] ?? '').toString().trim();
+              final displayName = fullName.isNotEmpty
+                  ? fullName
+                  : (AppSession.username ?? 'Părinte');
+              final rawChildren = data['children'];
+              final directChildrenUids = rawChildren is List
+                  ? rawChildren
+                        .map((e) {
+                          if (e is String) return e.trim();
+                          if (e is Map) {
+                            return ((e['uid'] ??
+                                        e['studentUid'] ??
+                                        e['id']) ??
+                                    '')
+                                .toString()
+                                .trim();
+                          }
+                          return '';
+                        })
+                        .where((s) => s.isNotEmpty)
+                        .toList()
+                  : <String>[];
+              final serverInboxLastOpened =
+                  (data['inboxLastOpenedAt'] as Timestamp?)?.toDate();
+              final inboxLastOpened = _effectiveLastOpened(
+                serverInboxLastOpened,
+                _localInboxLastOpened,
+              );
+
+              return FutureBuilder<List<String>>(
+                future: _getOrCreateChildrenFuture(uid, directChildrenUids),
+                builder: (context, childrenSnapshot) {
+                  final childrenUids =
+                      childrenSnapshot.data ?? directChildrenUids;
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Container(color: _surface),
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: _TopHeroHeader(
+                          displayName: displayName,
+                          height: headerHeight,
+                          compact: compact || veryCompact,
+                          onSettings: () => Navigator.push(
+                            context,
+                            PageRouteBuilder(
+                              pageBuilder: (_, __, ___) =>
+                                  const ParentProfilePage(),
+                              transitionDuration: Duration.zero,
+                              reverseTransitionDuration: Duration.zero,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      top: 190,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: SingleChildScrollView(
-                        physics: const _DampedScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                        child: Column(
-                          children: [
-                            _ActivityCard(
-                              childrenUids: childrenUids,
-                              height: 390,
-                            ),
-                            const SizedBox(height: 16),
-                            _CopiiMeiCard(
-                              onTap: () => Navigator.push(
-                                context,
-                                PageRouteBuilder(
-                                  pageBuilder: (_, __, ___) =>
-                                      const ParentStudentsPage(),
-                                  transitionDuration: Duration.zero,
-                                  reverseTransitionDuration: Duration.zero,
+                      Positioned(
+                        top: contentTop,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: SingleChildScrollView(
+                          physics: const _DampedScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(
+                            horizontalPad,
+                            0,
+                            horizontalPad,
+                            24,
+                          ),
+                          child: Column(
+                            children: [
+                              _ActivityCard(
+                                childrenUids: childrenUids,
+                                height: activityHeight,
+                              ),
+                              SizedBox(height: spacing + 2),
+                              _CopiiMeiCard(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  PageRouteBuilder(
+                                    pageBuilder: (_, __, ___) =>
+                                        const ParentStudentsPage(),
+                                    transitionDuration: Duration.zero,
+                                    reverseTransitionDuration: Duration.zero,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: SizedBox(
-                                    height: 184,
-                                    child: _CereriCard(
-                                      childrenUids: childrenUids,
-                                      onTap: () {
-                                        _markOpened(
-                                          uid,
-                                          'requestsLastOpenedAt',
-                                        );
-                                        Navigator.push(
-                                          context,
-                                          PageRouteBuilder(
-                                            pageBuilder: (_, __, ___) =>
-                                                const ParentRequestsPage(),
-                                            transitionDuration: Duration.zero,
-                                            reverseTransitionDuration:
-                                                Duration.zero,
-                                          ),
-                                        );
-                                      },
+                              SizedBox(height: spacing),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: cardsHeight,
+                                      child: _CereriCard(
+                                        childrenUids: childrenUids,
+                                        compact: compact,
+                                        veryCompact: veryCompact,
+                                        onTap: () {
+                                          _markOpened(
+                                            uid,
+                                            'requestsLastOpenedAt',
+                                          );
+                                          Navigator.push(
+                                            context,
+                                            PageRouteBuilder(
+                                              pageBuilder: (_, __, ___) =>
+                                                  const ParentRequestsPage(),
+                                              transitionDuration:
+                                                  Duration.zero,
+                                              reverseTransitionDuration:
+                                                  Duration.zero,
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: SizedBox(
-                                    height: 184,
-                                    child: _MesajeCard(
-                                      childrenUids: childrenUids,
-                                      inboxLastOpened: inboxLastOpened,
-                                      onTap: () async {
-                                        await _openInbox(context, uid);
-                                      },
+                                  SizedBox(width: spacing),
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: cardsHeight,
+                                      child: _MesajeCard(
+                                        childrenUids: childrenUids,
+                                        inboxLastOpened: inboxLastOpened,
+                                        compact: compact,
+                                        veryCompact: veryCompact,
+                                        onTap: () async {
+                                          await _openInbox(context, uid);
+                                        },
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
+                    ],
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -312,8 +347,15 @@ class _ParentHomePageState extends State<ParentHomePage> {
 class _TopHeroHeader extends StatefulWidget {
   final String displayName;
   final VoidCallback onSettings;
+  final double height;
+  final bool compact;
 
-  const _TopHeroHeader({required this.displayName, required this.onSettings});
+  const _TopHeroHeader({
+    required this.displayName,
+    required this.onSettings,
+    this.height = 220,
+    this.compact = false,
+  });
 
   @override
   State<_TopHeroHeader> createState() => _TopHeroHeaderState();
@@ -325,13 +367,15 @@ class _TopHeroHeaderState extends State<_TopHeroHeader> {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final titleSize = widget.compact ? 28.0 : 34.0;
+    final hPad = widget.compact ? 22.0 : 28.0;
     return ClipRRect(
       borderRadius: const BorderRadius.only(
         bottomLeft: Radius.circular(52),
         bottomRight: Radius.circular(52),
       ),
       child: Container(
-        height: 220 + topPadding,
+        height: widget.height + topPadding,
         color: _primary,
         child: Stack(
           clipBehavior: Clip.none,
@@ -352,16 +396,18 @@ class _TopHeroHeaderState extends State<_TopHeroHeader> {
               child: _Circle(size: 186, opacity: 0.08),
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(28, 4 + topPadding, 18, 0),
+              padding: EdgeInsets.fromLTRB(hPad, 4 + topPadding, 18, 0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Text(
                       'Bine ai venit,\n${widget.displayName}',
-                      style: const TextStyle(
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 34,
+                        fontSize: titleSize,
                         height: 1.20,
                         fontWeight: FontWeight.w900,
                       ),
@@ -931,8 +977,15 @@ class _CopiiMeiCard extends StatelessWidget {
 class _CereriCard extends StatefulWidget {
   final List<String> childrenUids;
   final VoidCallback onTap;
+  final bool compact;
+  final bool veryCompact;
 
-  const _CereriCard({required this.childrenUids, required this.onTap});
+  const _CereriCard({
+    required this.childrenUids,
+    required this.onTap,
+    this.compact = false,
+    this.veryCompact = false,
+  });
 
   @override
   State<_CereriCard> createState() => _CereriCardState();
@@ -968,12 +1021,19 @@ class _CereriCardState extends State<_CereriCard> {
   @override
   Widget build(BuildContext context) {
     final badgeStream = _badgeStream;
+    final compact = widget.compact;
+    final veryCompact = widget.veryCompact;
+    final iconBox = veryCompact ? 42.0 : (compact ? 46.0 : 52.0);
+    final iconSize = veryCompact ? 20.0 : (compact ? 22.0 : 24.0);
+    final titleSize = veryCompact ? 18.0 : (compact ? 20.0 : 22.0);
+    final subSize = veryCompact ? 11.0 : 12.0;
+    final pad = veryCompact ? 12.0 : (compact ? 14.0 : 16.0);
 
     return GestureDetector(
       onTap: widget.onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(pad),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -996,27 +1056,29 @@ class _CereriCardState extends State<_CereriCard> {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
+                  width: iconBox,
+                  height: iconBox,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.description_outlined,
                     color: Colors.white,
-                    size: 24,
+                    size: iconSize,
                   ),
                 ),
                 if (badgeStream != null) const SizedBox.shrink(),
               ],
             ),
             const Spacer(),
-            const Text(
+            Text(
               'Cereri de\nînvoire',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 22,
+                fontSize: titleSize,
                 fontWeight: FontWeight.w800,
                 height: 1.18,
               ),
@@ -1024,9 +1086,11 @@ class _CereriCardState extends State<_CereriCard> {
             const SizedBox(height: 4),
             Text(
               'Vezi rapid',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.74),
-                fontSize: 12,
+                fontSize: subSize,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1044,11 +1108,15 @@ class _MesajeCard extends StatefulWidget {
   final List<String> childrenUids;
   final DateTime? inboxLastOpened;
   final VoidCallback onTap;
+  final bool compact;
+  final bool veryCompact;
 
   const _MesajeCard({
     required this.childrenUids,
     required this.inboxLastOpened,
     required this.onTap,
+    this.compact = false,
+    this.veryCompact = false,
   });
 
   @override
@@ -1237,11 +1305,23 @@ class _MesajeCardState extends State<_MesajeCard> {
                   _countUnreadDecisions(decisionSnap.data?.docs ?? const []) +
                   _countUnreadSecretariat(secretariatDocs);
 
+              final compact = widget.compact;
+              final veryCompact = widget.veryCompact;
+              final iconBox =
+                  veryCompact ? 42.0 : (compact ? 46.0 : 52.0);
+              final iconSize =
+                  veryCompact ? 20.0 : (compact ? 22.0 : 24.0);
+              final titleSize =
+                  veryCompact ? 18.0 : (compact ? 20.0 : 22.0);
+              final subSize = veryCompact ? 11.0 : 12.0;
+              final pad =
+                  veryCompact ? 12.0 : (compact ? 14.0 : 16.0);
+
               return GestureDetector(
                 onTap: widget.onTap,
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(pad),
                   decoration: BoxDecoration(
                     color: const Color(0xFFE7EDE1),
                     borderRadius: BorderRadius.circular(22),
@@ -1257,27 +1337,29 @@ class _MesajeCardState extends State<_MesajeCard> {
                         clipBehavior: Clip.none,
                         children: [
                           Container(
-                            width: 52,
-                            height: 52,
+                            width: iconBox,
+                            height: iconBox,
                             decoration: BoxDecoration(
                               color: _primary.withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.chat_bubble_outline_rounded,
                               color: _primary,
-                              size: 24,
+                              size: iconSize,
                             ),
                           ),
                           if (unread > 0) const SizedBox.shrink(),
                         ],
                       ),
                       const Spacer(),
-                      const Text(
+                      Text(
                         'Mesaje',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: _onSurface,
-                          fontSize: 22,
+                          fontSize: titleSize,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -1293,12 +1375,18 @@ class _MesajeCardState extends State<_MesajeCard> {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            unread > 0 ? '$unread mesaje noi' : 'Vezi rapid',
-                            style: TextStyle(
-                              color: unread > 0 ? _primary : _outline,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                          Expanded(
+                            child: Text(
+                              unread > 0
+                                  ? '$unread mesaje noi'
+                                  : 'Vezi rapid',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: unread > 0 ? _primary : _outline,
+                                fontSize: subSize,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],

@@ -120,57 +120,90 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
       return const Scaffold(body: Center(child: Text('No session')));
     }
 
-    final topPadding = MediaQuery.of(context).padding.top;
+    final media = MediaQuery.of(context);
+    final topPadding = media.padding.top;
+    final screenHeight = media.size.height;
+    final screenWidth = media.size.width;
+    final veryCompact = screenHeight < 640 || screenWidth < 340;
+    final compact = !veryCompact && screenHeight < 740;
 
-    return Scaffold(
-      backgroundColor: _kBg,
-      body: Stack(
-        children: [
-          SafeArea(
-            top: false,
-            child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-              stream: _teacherStream,
-              builder: (context, snap) {
-                final data = snap.data?.data() ?? const <String, dynamic>{};
-                final fullName = (data['fullName'] ?? '').toString().trim();
-                final displayName = fullName.isNotEmpty
-                    ? fullName
-                    : (AppSession.username ?? 'Diriginte');
+    final headerHeight = veryCompact ? 180.0 : (compact ? 200.0 : 220.0);
+    final scrollStart = headerHeight - 30.0;
+    final activityHeight = veryCompact ? 320.0 : (compact ? 350.0 : 390.0);
+    final gridSpacing = veryCompact ? 10.0 : 12.0;
+    final horizontalPad = veryCompact ? 12.0 : (compact ? 14.0 : 16.0);
 
-                final scrollStart = 190.0;
+    return MediaQuery(
+      data: media.copyWith(
+        textScaler: media.textScaler.clamp(
+          minScaleFactor: 0.85,
+          maxScaleFactor: 1.1,
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: _kBg,
+        body: Stack(
+          children: [
+            SafeArea(
+              top: false,
+              child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: _teacherStream,
+                builder: (context, snap) {
+                  final data = snap.data?.data() ?? const <String, dynamic>{};
+                  final fullName = (data['fullName'] ?? '').toString().trim();
+                  final displayName = fullName.isNotEmpty
+                      ? fullName
+                      : (AppSession.username ?? 'Diriginte');
 
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Container(color: _kBg),
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: _buildHeader(displayName),
-                    ),
-                    Positioned(
-                      top: scrollStart,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: SingleChildScrollView(
-                        physics: const _DampedScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                        child: Column(
-                          children: [
-                            _buildActivityCard(),
-                            const SizedBox(height: 16),
-                            _buildGrid(context),
-                          ],
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Container(color: _kBg),
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: _buildHeader(
+                          displayName,
+                          height: headerHeight,
+                          compact: compact || veryCompact,
                         ),
                       ),
-                    ),
-                  ],
-                );
-              },
+                      Positioned(
+                        top: scrollStart,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: SingleChildScrollView(
+                          physics: const _DampedScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(
+                            horizontalPad,
+                            0,
+                            horizontalPad,
+                            24,
+                          ),
+                          child: Column(
+                            children: [
+                              _buildActivityCard(
+                                height: activityHeight,
+                                compact: compact || veryCompact,
+                              ),
+                              SizedBox(height: gridSpacing + 4),
+                              _buildGrid(
+                                context,
+                                compact: compact,
+                                veryCompact: veryCompact,
+                                spacing: gridSpacing,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
           Positioned(
             top: topPadding + 5,
             right: 14,
@@ -213,21 +246,28 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   // ─── Header verde cu cercuri + salut + buton profil ─────────────────────────
-  Widget _buildHeader(String name) {
+  Widget _buildHeader(
+    String name, {
+    double height = 220,
+    bool compact = false,
+  }) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final titleSize = compact ? 30.0 : 36.0;
+    final hPad = compact ? 22.0 : 28.0;
     return ClipRRect(
       borderRadius: const BorderRadius.only(
         bottomLeft: Radius.circular(52),
         bottomRight: Radius.circular(52),
       ),
       child: Container(
-        height: 220 + topPadding,
+        height: height + topPadding,
         color: _kGreen,
         child: Stack(
           clipBehavior: Clip.none,
@@ -240,12 +280,14 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
             ),
             Positioned(left: -60, bottom: -44, child: _headerCircle(186, 0.08)),
             Padding(
-              padding: EdgeInsets.fromLTRB(28, 8 + topPadding, 18, 0),
+              padding: EdgeInsets.fromLTRB(hPad, 8 + topPadding, 18, 0),
               child: Text(
                 'Bine ai venit,\n$name',
-                style: const TextStyle(
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 36,
+                  fontSize: titleSize,
                   height: 1.08,
                   fontWeight: FontWeight.w900,
                 ),
@@ -271,7 +313,8 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
   }
 
   // ─── Card "Activitate Recentă" ──────────────────────────────────────────────
-  Widget _buildActivityCard() {
+  Widget _buildActivityCard({double height = 390, bool compact = false}) {
+    final titleSize = compact ? 26.0 : 31.0;
     return StreamBuilder<QuerySnapshot>(
       stream: _allRequestsStream,
       builder: (context, reqSnap) {
@@ -347,7 +390,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
 
                 return Container(
               width: double.infinity,
-              height: 390,
+              height: height,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(34),
@@ -367,13 +410,15 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 child: Column(
                   children: [
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       'Activitate Recentă',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 31,
+                        fontSize: titleSize,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.7,
-                        color: Color(0xFF1A2E1D),
+                        color: const Color(0xFF1A2E1D),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -462,7 +507,12 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
   }
 
   // ─── Grid 2×2 ───────────────────────────────────────────────────────────────
-  Widget _buildGrid(BuildContext context) {
+  Widget _buildGrid(
+    BuildContext context, {
+    bool compact = false,
+    bool veryCompact = false,
+    double spacing = 12,
+  }) {
     return StreamBuilder<QuerySnapshot>(
       stream: _pendingStream,
       builder: (context, snap) {
@@ -479,6 +529,8 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
               subtitle: 'Gestionare elevi',
               isDark: false,
               wide: true,
+              compact: compact,
+              veryCompact: veryCompact,
               onTap: () => Navigator.push(
                 context,
                 PageRouteBuilder(
@@ -488,7 +540,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: spacing),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -498,6 +550,8 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                     title: 'Cereri',
                     subtitle: cereriSub,
                     isDark: true,
+                    compact: compact,
+                    veryCompact: veryCompact,
                     onTap: () => Navigator.push(
                       context,
                       PageRouteBuilder(
@@ -509,13 +563,15 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: spacing),
                 Expanded(
                   child: _GridCard(
                     icon: Icons.chat_bubble_rounded,
                     title: 'Mesaje',
                     subtitle: 'Istoric cereri',
                     isDark: false,
+                    compact: compact,
+                    veryCompact: veryCompact,
                     onTap: () => Navigator.push(
                       context,
                       PageRouteBuilder(
@@ -674,6 +730,8 @@ class _GridCard extends StatelessWidget {
   final String subtitle;
   final bool isDark;
   final bool wide;
+  final bool compact;
+  final bool veryCompact;
   final VoidCallback? onTap;
 
   const _GridCard({
@@ -682,6 +740,8 @@ class _GridCard extends StatelessWidget {
     required this.subtitle,
     required this.isDark,
     this.wide = false,
+    this.compact = false,
+    this.veryCompact = false,
     this.onTap,
   });
 
@@ -696,14 +756,24 @@ class _GridCard extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.74)
         : const Color(0xFF6B7A6D);
 
+    final cardHeight = veryCompact ? 148.0 : (compact ? 164.0 : 184.0);
+    final iconBox = veryCompact ? 42.0 : (compact ? 46.0 : 52.0);
+    final iconSize = veryCompact ? 20.0 : (compact ? 22.0 : 24.0);
+    final wideIconSize = veryCompact ? 24.0 : (compact ? 26.0 : 28.0);
+    final titleSize = veryCompact ? 18.0 : (compact ? 20.0 : 22.0);
+    final subSize = veryCompact ? 11.0 : 12.0;
+    final pad = veryCompact ? 12.0 : (compact ? 14.0 : 16.0);
+    final widePadH = veryCompact ? 12.0 : (compact ? 14.0 : 16.0);
+    final widePadV = veryCompact ? 12.0 : 14.0;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        height: wide ? null : 184,
+        height: wide ? null : cardHeight,
         padding: wide
-            ? const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
-            : const EdgeInsets.all(16),
+            ? EdgeInsets.symmetric(horizontal: widePadH, vertical: widePadV)
+            : EdgeInsets.all(pad),
         decoration: BoxDecoration(
           gradient: isDark && !wide
               ? const LinearGradient(
@@ -746,13 +816,13 @@ class _GridCard extends StatelessWidget {
             ? Row(
                 children: [
                   Container(
-                    width: 52,
-                    height: 52,
+                    width: iconBox,
+                    height: iconBox,
                     decoration: BoxDecoration(
                       color: const Color(0xFFF0F4E9),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Icon(icon, color: _kGreen, size: 28),
+                    child: Icon(icon, color: _kGreen, size: wideIconSize),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -762,6 +832,8 @@ class _GridCard extends StatelessWidget {
                       children: [
                         Text(
                           title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: _kGreen,
                             fontSize: 16,
@@ -771,6 +843,8 @@ class _GridCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Color(0xFF717B6E),
                             fontSize: 13,
@@ -791,20 +865,22 @@ class _GridCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 52,
-                    height: 52,
+                    width: iconBox,
+                    height: iconBox,
                     decoration: BoxDecoration(
                       color: iconBg,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Icon(icon, color: iconColor, size: 24),
+                    child: Icon(icon, color: iconColor, size: iconSize),
                   ),
                   const Spacer(),
                   Text(
                     title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: titleColor,
-                      fontSize: 22,
+                      fontSize: titleSize,
                       height: 1.18,
                       fontWeight: FontWeight.w800,
                     ),
@@ -812,9 +888,11 @@ class _GridCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: subtitleColor,
-                      fontSize: 12,
+                      fontSize: subSize,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

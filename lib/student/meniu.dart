@@ -164,114 +164,149 @@ class _MeniuScreenState extends State<MeniuScreen> {
         ? AppSession.username!.trim()
         : 'Elev';
 
-    return Scaffold(
-      backgroundColor: _surface,
-      body: SafeArea(
-        top: false,
-        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: _userDocStream,
-          builder: (context, snapshot) {
-            final data = snapshot.data?.data() ?? const <String, dynamic>{};
-            final fullName = (data['fullName'] ?? '').toString().trim();
-            final resolvedName = fullName.isNotEmpty ? fullName : fallbackName;
-            final classId = (data['classId'] ?? AppSession.classId ?? '')
-                .toString()
-                .trim();
-            final className = (data['className'] ?? '').toString().trim();
-            final inboxLastOpenedAt = (data['inboxLastOpenedAt'] as Timestamp?)
-                ?.toDate();
-            final classStream = classId.isNotEmpty
-                ? FirebaseFirestore.instance
-                      .collection('classes')
-                      .doc(classId)
-                      .snapshots()
-                : _classDocStream;
+    final media = MediaQuery.of(context);
+    final screenHeight = media.size.height;
+    final screenWidth = media.size.width;
+    final veryCompact = screenHeight < 640 || screenWidth < 340;
+    final compact = !veryCompact && screenHeight < 740;
 
-            return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-              stream: classStream,
-              builder: (context, classSnapshot) {
-                final classData =
-                    classSnapshot.data?.data() ?? const <String, dynamic>{};
-                final classDocName = (classData['name'] ?? '')
-                    .toString()
-                    .trim();
-                final rawClassName = className.isNotEmpty
-                    ? className
-                    : (classDocName.isNotEmpty
-                          ? classDocName
-                          : (classId.isNotEmpty ? classId : 'Clasă nealocată'));
-                final resolvedClassName = _formatClassLabel(rawClassName);
+    final headerHeight = veryCompact ? 180.0 : (compact ? 200.0 : 220.0);
+    final contentTop = headerHeight - 30.0;
+    final spacing = veryCompact ? 10.0 : (compact ? 12.0 : 14.0);
+    final horizontalPad = veryCompact ? 14.0 : (compact ? 16.0 : 20.0);
 
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Container(color: _surface),
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: _TopHeroHeader(
-                        displayName: resolvedName,
-                        className: resolvedClassName,
-                      ),
-                    ),
-                    Positioned(
-                      top: 190.0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: SingleChildScrollView(
-                        physics: const _DampedScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                        child: Column(
-                          children: [
-                            _AccessHubCard(
-                              inSchool: (data['inSchool'] as bool?) ?? false,
-                              lastInAt: data['lastInAt'],
-                              lastScanStream: _lastScanStream,
-                            ),
-                            const SizedBox(height: 14),
-                            IntrinsicHeight(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    child: _CereriCard(
-                                      onTap: () => _openCereri(context),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: _MesajeCard(
-                                      studentUid:
-                                          FirebaseAuth
-                                              .instance
-                                              .currentUser
-                                              ?.uid ??
-                                          '',
-                                      inboxLastOpenedAt: inboxLastOpenedAt,
-                                      onTap: () => _openMesaje(context),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            _LeaveStatusCard(
-                              classDocStream: classStream,
-                              leaveActiveStream: _leaveActiveStream,
-                              isWithinSchedule: _isWithinSchedule,
-                              onActiveTap: widget.onNavigateToActiveLeave,
-                            ),
-                          ],
+    return MediaQuery(
+      data: media.copyWith(
+        textScaler: media.textScaler.clamp(
+          minScaleFactor: 0.85,
+          maxScaleFactor: 1.1,
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: _surface,
+        body: SafeArea(
+          top: false,
+          child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: _userDocStream,
+            builder: (context, snapshot) {
+              final data = snapshot.data?.data() ?? const <String, dynamic>{};
+              final fullName = (data['fullName'] ?? '').toString().trim();
+              final resolvedName = fullName.isNotEmpty ? fullName : fallbackName;
+              final classId = (data['classId'] ?? AppSession.classId ?? '')
+                  .toString()
+                  .trim();
+              final className = (data['className'] ?? '').toString().trim();
+              final inboxLastOpenedAt =
+                  (data['inboxLastOpenedAt'] as Timestamp?)?.toDate();
+              final classStream = classId.isNotEmpty
+                  ? FirebaseFirestore.instance
+                        .collection('classes')
+                        .doc(classId)
+                        .snapshots()
+                  : _classDocStream;
+
+              return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: classStream,
+                builder: (context, classSnapshot) {
+                  final classData =
+                      classSnapshot.data?.data() ?? const <String, dynamic>{};
+                  final classDocName = (classData['name'] ?? '')
+                      .toString()
+                      .trim();
+                  final rawClassName = className.isNotEmpty
+                      ? className
+                      : (classDocName.isNotEmpty
+                            ? classDocName
+                            : (classId.isNotEmpty
+                                  ? classId
+                                  : 'Clasă nealocată'));
+                  final resolvedClassName = _formatClassLabel(rawClassName);
+
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Container(color: _surface),
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: _TopHeroHeader(
+                          displayName: resolvedName,
+                          className: resolvedClassName,
+                          height: headerHeight,
+                          compact: compact || veryCompact,
                         ),
                       ),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
+                      Positioned(
+                        top: contentTop,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: SingleChildScrollView(
+                          physics: const _DampedScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(
+                            horizontalPad,
+                            0,
+                            horizontalPad,
+                            24,
+                          ),
+                          child: Column(
+                            children: [
+                              _AccessHubCard(
+                                inSchool: (data['inSchool'] as bool?) ?? false,
+                                lastInAt: data['lastInAt'],
+                                lastScanStream: _lastScanStream,
+                                compact: compact,
+                                veryCompact: veryCompact,
+                              ),
+                              SizedBox(height: spacing),
+                              IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      child: _CereriCard(
+                                        onTap: () => _openCereri(context),
+                                        compact: compact,
+                                        veryCompact: veryCompact,
+                                      ),
+                                    ),
+                                    SizedBox(width: spacing),
+                                    Expanded(
+                                      child: _MesajeCard(
+                                        studentUid:
+                                            FirebaseAuth
+                                                .instance
+                                                .currentUser
+                                                ?.uid ??
+                                            '',
+                                        inboxLastOpenedAt: inboxLastOpenedAt,
+                                        onTap: () => _openMesaje(context),
+                                        compact: compact,
+                                        veryCompact: veryCompact,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: spacing),
+                              _LeaveStatusCard(
+                                classDocStream: classStream,
+                                leaveActiveStream: _leaveActiveStream,
+                                isWithinSchedule: _isWithinSchedule,
+                                onActiveTap: widget.onNavigateToActiveLeave,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -284,19 +319,29 @@ class _MeniuScreenState extends State<MeniuScreen> {
 class _TopHeroHeader extends StatelessWidget {
   final String displayName;
   final String className;
+  final double height;
+  final bool compact;
 
-  const _TopHeroHeader({required this.displayName, required this.className});
+  const _TopHeroHeader({
+    required this.displayName,
+    required this.className,
+    this.height = 220,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final titleSize = compact ? 28.0 : 34.0;
+    final subSize = compact ? 14.0 : 15.0;
+    final hPad = compact ? 22.0 : 28.0;
     return ClipRRect(
       borderRadius: const BorderRadius.only(
         bottomLeft: Radius.circular(52),
         bottomRight: Radius.circular(52),
       ),
       child: Container(
-        height: 220 + topPadding,
+        height: height + topPadding,
         color: _primary,
         child: Stack(
           clipBehavior: Clip.none,
@@ -317,7 +362,7 @@ class _TopHeroHeader extends StatelessWidget {
               child: _Circle(size: 186, opacity: 0.08),
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(28, 8 + topPadding, 14, 0),
+              padding: EdgeInsets.fromLTRB(hPad, 8 + topPadding, 14, 0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -327,9 +372,11 @@ class _TopHeroHeader extends StatelessWidget {
                       children: [
                         Text(
                           'Bine ai venit,\n$displayName',
-                          style: const TextStyle(
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 34,
+                            fontSize: titleSize,
                             height: 1.20,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 0.0,
@@ -338,9 +385,11 @@ class _TopHeroHeader extends StatelessWidget {
                         const SizedBox(height: 0),
                         Text(
                           className,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.84),
-                            fontSize: 15,
+                            fontSize: subSize,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.2,
                           ),
@@ -383,11 +432,15 @@ class _AccessHubCard extends StatefulWidget {
   final bool inSchool;
   final dynamic lastInAt;
   final Stream<QuerySnapshot<Map<String, dynamic>>>? lastScanStream;
+  final bool compact;
+  final bool veryCompact;
 
   const _AccessHubCard({
     required this.inSchool,
     required this.lastInAt,
     required this.lastScanStream,
+    this.compact = false,
+    this.veryCompact = false,
   });
 
   @override
@@ -481,8 +534,23 @@ class _AccessHubCardState extends State<_AccessHubCard> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final compact = widget.compact;
+    final veryCompact = widget.veryCompact;
+    final titleSize = veryCompact ? 24.0 : (compact ? 27.0 : 31.0);
+    final qrSize = (screenWidth * 0.44).clamp(138.0, 186.0);
+    final cardPad = veryCompact
+        ? const EdgeInsets.fromLTRB(12, 10, 12, 12)
+        : (compact
+              ? const EdgeInsets.fromLTRB(14, 12, 14, 14)
+              : const EdgeInsets.fromLTRB(16, 14, 16, 16));
+    final qrInnerPad = veryCompact ? 8.0 : (compact ? 9.0 : 10.0);
+    final qrOuterPad = veryCompact ? 10.0 : 12.0;
+    final topGap = veryCompact ? 8.0 : (compact ? 10.0 : 12.0);
+    final bottomGap = veryCompact ? 20.0 : (compact ? 24.0 : 28.0);
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      padding: cardPad,
       decoration: BoxDecoration(
         color: _surfaceLowest,
         borderRadius: BorderRadius.circular(34),
@@ -496,16 +564,18 @@ class _AccessHubCardState extends State<_AccessHubCard> {
       ),
       child: Column(
         children: [
-          const Text(
+          Text(
             'Acces Campus',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 31,
+              fontSize: titleSize,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.7,
               color: _onSurface,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: topGap),
 
           // QR + timer badge
           Stack(
@@ -513,15 +583,15 @@ class _AccessHubCardState extends State<_AccessHubCard> {
             alignment: Alignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(qrOuterPad),
                 decoration: BoxDecoration(
                   color: _surfaceContainerLow,
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Container(
-                  width: 176,
-                  height: 176,
-                  padding: const EdgeInsets.all(10),
+                  width: qrSize,
+                  height: qrSize,
+                  padding: EdgeInsets.all(qrInnerPad),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -543,10 +613,10 @@ class _AccessHubCardState extends State<_AccessHubCard> {
                           ),
                         )
                       else
-                        const Icon(
+                        Icon(
                           Icons.qr_code_2_rounded,
                           color: _primary,
-                          size: 96,
+                          size: qrSize * 0.55,
                         ),
                       if (_loading)
                         Container(
@@ -611,7 +681,7 @@ class _AccessHubCardState extends State<_AccessHubCard> {
             ],
           ),
 
-          const SizedBox(height: 28),
+          SizedBox(height: bottomGap),
 
           // ── STATUS + INTRARE centrate ────────────────────────────
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -716,15 +786,28 @@ class _StatCard extends StatelessWidget {
 // ────────────────────────────────────────────────────────────────────────────
 class _CereriCard extends StatelessWidget {
   final VoidCallback onTap;
-  const _CereriCard({required this.onTap});
+  final bool compact;
+  final bool veryCompact;
+  const _CereriCard({
+    required this.onTap,
+    this.compact = false,
+    this.veryCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final cardHeight = veryCompact ? 148.0 : (compact ? 164.0 : 184.0);
+    final iconBox = veryCompact ? 42.0 : (compact ? 46.0 : 52.0);
+    final iconSize = veryCompact ? 20.0 : (compact ? 22.0 : 24.0);
+    final titleSize = veryCompact ? 18.0 : (compact ? 20.0 : 22.0);
+    final subSize = veryCompact ? 11.0 : 12.0;
+    final pad = veryCompact ? 12.0 : (compact ? 14.0 : 16.0);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 184,
-        padding: const EdgeInsets.all(16),
+        height: cardHeight,
+        padding: EdgeInsets.all(pad),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -744,24 +827,26 @@ class _CereriCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: iconBox,
+              height: iconBox,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.description_rounded,
                 color: Colors.white,
-                size: 24,
+                size: iconSize,
               ),
             ),
             const Spacer(),
-            const Text(
+            Text(
               'Cererile de\nînvoire',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 22,
+                fontSize: titleSize,
                 height: 1.18,
                 fontWeight: FontWeight.w800,
               ),
@@ -769,9 +854,11 @@ class _CereriCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Creează o cerere nouă',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.74),
-                fontSize: 12,
+                fontSize: subSize,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -789,10 +876,14 @@ class _MesajeCard extends StatelessWidget {
   final String studentUid;
   final DateTime? inboxLastOpenedAt;
   final VoidCallback onTap;
+  final bool compact;
+  final bool veryCompact;
   const _MesajeCard({
     required this.studentUid,
     required this.inboxLastOpenedAt,
     required this.onTap,
+    this.compact = false,
+    this.veryCompact = false,
   });
 
   DateTime? _readDateTime(dynamic value) {
@@ -887,9 +978,20 @@ class _MesajeCard extends StatelessWidget {
                         ...(globalSecretariatSnapshot.data?.docs ?? const []),
                       ]);
 
+                  final cardHeight =
+                      veryCompact ? 148.0 : (compact ? 164.0 : 184.0);
+                  final iconBox =
+                      veryCompact ? 42.0 : (compact ? 46.0 : 52.0);
+                  final iconSize =
+                      veryCompact ? 20.0 : (compact ? 22.0 : 24.0);
+                  final titleSize =
+                      veryCompact ? 18.0 : (compact ? 20.0 : 22.0);
+                  final subSize = veryCompact ? 11.0 : 12.0;
+                  final pad = veryCompact ? 12.0 : (compact ? 14.0 : 16.0);
+
                   return Container(
-                    height: 184,
-                    padding: const EdgeInsets.all(16),
+                    height: cardHeight,
+                    padding: EdgeInsets.all(pad),
                     decoration: BoxDecoration(
                       color: _surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(24),
@@ -902,24 +1004,26 @@ class _MesajeCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          width: 52,
-                          height: 52,
+                          width: iconBox,
+                          height: iconBox,
                           decoration: BoxDecoration(
                             color: _primary.withValues(alpha: 0.10),
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.forum_rounded,
                             color: _primary,
-                            size: 24,
+                            size: iconSize,
                           ),
                         ),
                         const Spacer(),
-                        const Text(
+                        Text(
                           'Mesaje',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: _onSurface,
-                            fontSize: 22,
+                            fontSize: titleSize,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -931,9 +1035,9 @@ class _MesajeCard extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 '$unreadCount mesaje noi',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: _outline,
-                                  fontSize: 12,
+                                  fontSize: subSize,
                                   fontWeight: FontWeight.w500,
                                 ),
                                 overflow: TextOverflow.ellipsis,
