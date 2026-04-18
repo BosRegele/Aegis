@@ -22,7 +22,7 @@ class FixedBottomNav extends StatelessWidget {
       items: [
         const BottomNavigationBarItem(
           icon: Icon(Icons.home_rounded),
-          label: 'Acasa',
+          label: 'Acasă',
         ),
         const BottomNavigationBarItem(
           icon: Icon(Icons.qr_code_2_rounded),

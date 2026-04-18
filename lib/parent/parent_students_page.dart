@@ -59,7 +59,7 @@ class ParentStudentsPage extends StatelessWidget {
 
                         final parentData = snapshot.data!.data();
                         if (parentData == null) {
-                          return const Center(child: Text('Nu exista date.'));
+                          return const Center(child: Text('Nu există date.'));
                         }
 
                         final childIds = _extractChildUids(
@@ -68,7 +68,7 @@ class ParentStudentsPage extends StatelessWidget {
                         );
                         if (childIds.isEmpty) {
                           return const Center(
-                            child: Text('Nu exista copii asignati.'),
+                            child: Text('Nu există copii asignați.'),
                           );
                         }
 
@@ -122,9 +122,10 @@ class ParentStudentsPage extends StatelessWidget {
                                               name: name,
                                               username: viewData.username,
                                               classId: viewData.classId,
+                                              photoUrl: viewData.photoUrl,
                                               status: viewData.inSchool
-                                                  ? 'IN INCINTA'
-                                                  : 'IN AFARA INCINTEI',
+                                                  ? 'ÎN INCINTĂ'
+                                                  : 'ÎN AFARA INCINTEI',
                                             ),
                                         transitionDuration: Duration.zero,
                                         reverseTransitionDuration:
@@ -498,6 +499,7 @@ class _StudentDetailPage extends StatelessWidget {
   final String username;
   final String classId;
   final String status;
+  final String photoUrl;
 
   const _StudentDetailPage({
     required this.avatarSeed,
@@ -505,11 +507,12 @@ class _StudentDetailPage extends StatelessWidget {
     required this.username,
     required this.classId,
     required this.status,
+    this.photoUrl = '',
   });
 
   static const _dayMap = {
     1: 'Luni',
-    2: 'Marti',
+    2: 'Marți',
     3: 'Miercuri',
     4: 'Joi',
     5: 'Vineri',
@@ -670,9 +673,26 @@ class _StudentDetailPage extends StatelessWidget {
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _DetailAvatarFallback(
-                                    avatarSeed: avatarSeed,
-                                    name: name,
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(18),
+                                    child: SizedBox(
+                                      width: 64,
+                                      height: 64,
+                                      child: photoUrl.isNotEmpty
+                                          ? Image.network(
+                                              photoUrl,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) =>
+                                                  _DetailAvatarFallback(
+                                                    avatarSeed: avatarSeed,
+                                                    name: name,
+                                                  ),
+                                            )
+                                          : _DetailAvatarFallback(
+                                              avatarSeed: avatarSeed,
+                                              name: name,
+                                            ),
+                                    ),
                                   ),
                                   const SizedBox(width: 14),
                                   Expanded(

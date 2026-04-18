@@ -2,9 +2,159 @@
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 
-const _kHeaderGreen = Color(0xFF0D631B);
-const _kPageBg = Color(0xFFF7F9F0);
+const _kHeaderGreen = Color(0xFF0D6F1C);
+const _kPageBg = Color(0xFFF1F5EC);
 const _kCardBg = Color(0xFFF8F8F8);
+const _kTextPrimary = Color(0xFF121512);
+const _kTextMuted = Color(0xFF616962);
+
+enum _MsgState { pending, approved, rejected, system }
+
+class _CardScheme {
+  final String badgeLabel;
+  final IconData badgeIcon;
+  final Color accent;
+  final Color pillBg;
+  final Color pillFg;
+
+  const _CardScheme({
+    required this.badgeLabel,
+    required this.badgeIcon,
+    required this.accent,
+    required this.pillBg,
+    required this.pillFg,
+  });
+}
+
+_CardScheme _cardScheme(_MsgState state) {
+  switch (state) {
+    case _MsgState.pending:
+      return const _CardScheme(
+        badgeLabel: 'În așteptare',
+        badgeIcon: Icons.watch_later_rounded,
+        accent: Color(0xFF6E6E6E),
+        pillBg: Color(0xFFF4F4F4),
+        pillFg: Color(0xFF6D6D6D),
+      );
+    case _MsgState.approved:
+      return const _CardScheme(
+        badgeLabel: 'Aprobată',
+        badgeIcon: Icons.check_circle_rounded,
+        accent: Color(0xFF10762A),
+        pillBg: Color(0xFFDCE9DC),
+        pillFg: Color(0xFF0F6D25),
+      );
+    case _MsgState.rejected:
+      return const _CardScheme(
+        badgeLabel: 'Respinsă',
+        badgeIcon: Icons.cancel_rounded,
+        accent: Color(0xFF9D1F5F),
+        pillBg: Color(0xFFF0E4EB),
+        pillFg: Color(0xFF8E2356),
+      );
+    case _MsgState.system:
+      return const _CardScheme(
+        badgeLabel: 'Sistem',
+        badgeIcon: Icons.campaign_rounded,
+        accent: Color(0xFF1565C0),
+        pillBg: Color(0xFFDCEEFB),
+        pillFg: Color(0xFF0B57A4),
+      );
+  }
+}
+
+class _MessageItem {
+  final _MsgState state;
+  final String title;
+  final String? subtitle;
+  final String message;
+  final String? metaText;
+  final DateTime createdAt;
+
+  const _MessageItem({
+    required this.state,
+    required this.title,
+    this.subtitle,
+    required this.message,
+    this.metaText,
+    required this.createdAt,
+  });
+}
+
+String _timeAgo(DateTime dateTime) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final msgDay = DateTime(dateTime.year, dateTime.month, dateTime.day);
+  final diff = today.difference(msgDay).inDays;
+  if (diff == 0) {
+    final hh = dateTime.hour.toString().padLeft(2, '0');
+    final mm = dateTime.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+  if (diff == 1) return 'Ieri';
+  final d = dateTime.day.toString().padLeft(2, '0');
+  final m = dateTime.month.toString().padLeft(2, '0');
+  return '$d/$m/${dateTime.year}';
+}
+
+_MessageItem _fromSecretariatMessage(Map<String, dynamic> d) {
+  final createdAt = (d['createdAt'] as Timestamp?)?.toDate();
+  final message = (d['message'] ?? '').toString().trim();
+  final senderName = (d['senderName'] ?? '').toString().trim();
+  final title = (d['title'] ?? '').toString().trim();
+  return _MessageItem(
+    state: _MsgState.system,
+    title: title.isEmpty ? 'Mesaj Secretariat' : title,
+    subtitle: senderName.isEmpty ? 'Secretariat' : senderName,
+    message: message,
+    createdAt: createdAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+  );
+}
+
+_MessageItem _fromLeaveRequest(Map<String, dynamic> d) {
+  final status = (d['status'] ?? 'pending').toString();
+  final studentName = (d['studentName'] ?? '').toString().trim();
+  final requestedAt = (d['requestedAt'] as Timestamp?)?.toDate();
+  final dateText = (d['dateText'] ?? '').toString();
+  final timeText = (d['timeText'] ?? '').toString();
+  final message = (d['message'] ?? '').toString();
+
+  _MsgState state;
+  String title;
+  switch (status) {
+    case 'approved':
+      state = _MsgState.approved;
+      title = 'Cerere Aprobată';
+      break;
+    case 'rejected':
+      state = _MsgState.rejected;
+      title = 'Cerere Respinsă';
+      break;
+    default:
+      state = _MsgState.pending;
+      title = 'Cerere în așteptare';
+  }
+
+  final name = studentName.isEmpty ? 'Elev' : studentName;
+  String? meta;
+  if (dateText.isNotEmpty || timeText.isNotEmpty) {
+    final parts = <String>[];
+    if (dateText.isNotEmpty) parts.add(dateText);
+    if (timeText.isNotEmpty) parts.add(timeText);
+    meta = parts.join(', ');
+  }
+
+  return _MessageItem(
+    state: state,
+    title: title,
+    subtitle: name,
+    message: message,
+    metaText: meta,
+    createdAt: requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 class MesajeDirPage extends StatefulWidget {
   const MesajeDirPage({super.key});
@@ -13,359 +163,160 @@ class MesajeDirPage extends StatefulWidget {
   State<MesajeDirPage> createState() => _MesajeDirPageState();
 }
 
-// utilities copied from StudentInterface/inbox.dart for styling and data conversion
-
-String _formatTimeAgo(DateTime dateTime) {
-  final diff = DateTime.now().difference(dateTime);
-  if (diff.inMinutes < 1) return 'ACUM';
-  if (diff.inMinutes < 60) return 'ACUM ${diff.inMinutes} MIN';
-  if (diff.inHours < 24) return 'ACUM ${diff.inHours} ORE';
-  if (diff.inDays == 1) return 'IERI';
-  return 'ACUM ${diff.inDays} ZILE';
-}
-
-_MessageCardData _fromLeaveRequest(Map<String, dynamic> d) {
-  final status = (d['status'] ?? 'pending').toString();
-  final studentName = (d['studentName'] ?? '').toString().trim();
-  final requestedAt = (d['requestedAt'] as Timestamp?)?.toDate();
-  final dateText = (d['dateText'] ?? '').toString();
-  final timeText = (d['timeText'] ?? '').toString();
-  final message = (d['message'] ?? '').toString();
-
-  String title = 'Mesaj';
-  String statusLabel = 'SISTEM';
-  _MessageItemType type = _MessageItemType.system;
-  String sourceLabel = 'Secretariat';
-
-  switch (status) {
-    case 'approved':
-      title = 'Cerere Aprobată - ${studentName.isEmpty ? 'Elev' : studentName}';
-      statusLabel = 'APROBATĂ';
-      type = _MessageItemType.success;
-      // show same footer as rejected in messages view
-      sourceLabel = 'Prof. Diriginte';
-      break;
-    case 'rejected':
-      title = 'Cerere Respinsă - ${studentName.isEmpty ? 'Elev' : studentName}';
-      statusLabel = 'RESPINSĂ';
-      type = _MessageItemType.error;
-      sourceLabel = 'Prof. Diriginte';
-      break;
-    default:
-      title =
-          'Cerere în așteptare - ${studentName.isEmpty ? 'Elev' : studentName}';
-      statusLabel = 'ÎN AȘTEPTARE';
-      // pending requests: detailed layout but neutral/gray styling and no footer
-      type = _MessageItemType.pending;
-      sourceLabel = '';
-  }
-
-  return _MessageCardData(
-    statusLabel: statusLabel,
-    title: title,
-    dateText: dateText,
-    timeText: timeText,
-    message: message,
-    relativeTime: requestedAt == null ? '-' : _formatTimeAgo(requestedAt),
-    sourceLabel: sourceLabel,
-    type: type,
-    createdAt: requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
-  );
-}
-
-class _MessageCardData {
-  final String statusLabel;
-  final String title;
-  final String dateText;
-  final String timeText;
-  final String message;
-  final String relativeTime;
-  final String sourceLabel;
-  final _MessageItemType type;
-  final DateTime createdAt;
-
-  const _MessageCardData({
-    required this.statusLabel,
-    required this.title,
-    required this.dateText,
-    required this.timeText,
-    required this.message,
-    required this.relativeTime,
-    required this.sourceLabel,
-    required this.type,
-    required this.createdAt,
-  });
-}
-
-enum _MessageItemType { success, error, system, pending }
-
 class _MessageCard extends StatelessWidget {
-  final _MessageCardData data;
-  final VoidCallback? onTap;
+  final _MessageItem item;
 
-  const _MessageCard({required this.data, this.onTap});
+  const _MessageCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
-    final bool isSystem = data.type == _MessageItemType.system;
-    final Color accentColor;
-    final Color tagBg;
-    final Color tagText;
-    final IconData sourceIcon;
-
-    switch (data.type) {
-      case _MessageItemType.success:
-        accentColor = const Color(0xFF10762A);
-        tagBg = const Color(0xFFDCE9DC);
-        tagText = const Color(0xFF0F6D25);
-        sourceIcon = Icons.check_circle_rounded;
-        break;
-      case _MessageItemType.error:
-        accentColor = const Color(0xFF9D1F5F);
-        tagBg = const Color(0xFFF0E4EB);
-        tagText = const Color(0xFF8E2356);
-        sourceIcon = Icons.cancel_rounded;
-        break;
-      case _MessageItemType.system:
-        accentColor = const Color(0xFF1565C0);
-        tagBg = const Color(0xFFDCEEFB);
-        tagText = const Color(0xFF0B57A4);
-        sourceIcon = Icons.info_rounded;
-        break;
-      case _MessageItemType.pending:
-        accentColor = const Color(0xFF6E6E6E);
-        tagBg = const Color(0xFFF4F4F4);
-        tagText = const Color(0xFF6D6D6D);
-        sourceIcon = Icons.hourglass_top_rounded;
-        break;
-    }
-
+    final scheme = _cardScheme(item.state);
     return Container(
       decoration: BoxDecoration(
-        color: _kCardBg,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE2E7DD)),
+        color: scheme.accent,
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 6,
-            decoration: BoxDecoration(
-              color: accentColor,
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(24),
+      padding: const EdgeInsets.only(left: 4),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.white, _kCardBg],
               ),
             ),
-          ),
-          Expanded(
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(22),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(22),
-                onTap: onTap,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: tagBg,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              data.statusLabel,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1,
-                                color: tagText,
-                                height: 1,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
                           Text(
-                            data.relativeTime,
+                            item.title,
                             style: const TextStyle(
-                              color: Color(0xFF616962),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                              color: _kTextPrimary,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.3,
+                              height: 1.2,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        data.title,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF121512),
-                          height: 1.15,
-                        ),
-                      ),
-                      if (!isSystem) ...[
-                        const SizedBox(height: 14),
-                        _MessageInfoLine(
-                          icon: Icons.calendar_today_rounded,
-                          text: data.dateText.isEmpty ? '-' : data.dateText,
-                          iconColor: accentColor,
-                        ),
-                        const SizedBox(height: 12),
-                        _MessageInfoLine(
-                          icon: Icons.access_time_filled_rounded,
-                          text: data.timeText.isEmpty ? '-' : data.timeText,
-                          iconColor: accentColor,
-                        ),
-                        const SizedBox(height: 14),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                          decoration: BoxDecoration(
-                            color: tagBg,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 1),
-                                child: Icon(
-                                  Icons.description_rounded,
-                                  size: 28,
-                                  color: accentColor,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'MOTIV SOLICITARE',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF2F3730),
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      data.message.isEmpty
-                                          ? '-'
-                                          : '"${data.message}"',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontStyle: FontStyle.italic,
-                                        color: Color(0xFF1A221A),
-                                        height: 1.2,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ] else ...[
-                        const SizedBox(height: 14),
-                        Text(
-                          data.message,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF283028),
-                            height: 1.55,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                      if (data.sourceLabel.isNotEmpty) ...[
-                        const SizedBox(height: 14),
-                        const Divider(color: Color(0xFFDFE3DC), height: 1),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFDCE3D8),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                sourceIcon,
-                                size: 28,
-                                color: accentColor,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                data.sourceLabel,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF646D63),
-                                  fontWeight: FontWeight.w500,
-                                ),
+                          if (item.subtitle != null &&
+                              item.subtitle!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              item.subtitle!,
+                              style: const TextStyle(
+                                color: _kTextMuted,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
-                        ),
-                      ] else ...[
-                        Container(
-                          width: double.infinity,
-                          height: 1,
-                          color: const Color(0xFFDFE3DC),
-                        ),
-                      ],
-                    ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _timeAgo(item.createdAt),
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: _kTextMuted,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                if (item.metaText != null && item.metaText!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    item.metaText!,
+                    style: const TextStyle(
+                      color: _kTextMuted,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Text(
+                  item.message.isEmpty ? 'Fără conținut.' : item.message,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _kTextMuted,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    height: 1.45,
                   ),
                 ),
-              ),
+                const SizedBox(height: 14),
+                _StatusPill(
+                  label: scheme.badgeLabel,
+                  icon: scheme.badgeIcon,
+                  bg: scheme.pillBg,
+                  fg: scheme.pillFg,
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _MessageInfoLine extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final Color iconColor;
+class _StatusPill extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final Color bg;
+  final Color fg;
 
-  const _MessageInfoLine({
-    required this.icon,
-    required this.text,
-    required this.iconColor,
+  const _StatusPill({
+    required this.label,
+    this.icon,
+    required this.bg,
+    required this.fg,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 30, color: iconColor),
-        const SizedBox(width: 12),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 17,
-            color: Color(0xFF313831),
-            fontWeight: FontWeight.w500,
-            height: 1,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: fg, size: 15),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: fg,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -412,18 +363,29 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
                   if (classId.isEmpty) {
                     return const Center(
                       child: Text(
-                        'Nu ai clasa asignata.\nCere secretariatului sa-ti seteze classId.',
+                        'Nu ai clasa asignată.\nCere secretariatului să-ți seteze classId.',
                       ),
                     );
                   }
 
-                  final stream = FirebaseFirestore.instance
+                  final messages = FirebaseFirestore.instance.collection(
+                    'secretariatMessages',
+                  );
+                  final leaveStream = FirebaseFirestore.instance
                       .collection('leaveRequests')
                       .where('classId', isEqualTo: classId)
                       .snapshots();
+                  final secretariatTargetedStream = messages
+                      .where('recipientRole', isEqualTo: 'teacher')
+                      .where('recipientUid', isEqualTo: teacherUid)
+                      .snapshots();
+                  final secretariatGlobalStream = messages
+                      .where('recipientRole', isEqualTo: 'teacher')
+                      .where('recipientUid', isEqualTo: '')
+                      .snapshots();
 
                   return StreamBuilder<QuerySnapshot>(
-                    stream: stream,
+                    stream: leaveStream,
                     builder: (context, reqSnap) {
                       if (reqSnap.hasError) {
                         return Center(child: Text('Eroare: ${reqSnap.error}'));
@@ -432,48 +394,86 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
                         return const Center(child: CircularProgressIndicator());
                       }
 
-                      final docs = reqSnap.data!.docs;
+                      return StreamBuilder<QuerySnapshot>(
+                        stream: secretariatTargetedStream,
+                        builder: (context, targetedSnap) {
+                          if (targetedSnap.hasError) {
+                            return Center(
+                              child: Text('Eroare: ${targetedSnap.error}'),
+                            );
+                          }
+                          return StreamBuilder<QuerySnapshot>(
+                            stream: secretariatGlobalStream,
+                            builder: (context, globalSnap) {
+                              if (globalSnap.hasError) {
+                                return Center(
+                                  child: Text('Eroare: ${globalSnap.error}'),
+                                );
+                              }
 
-                      final items =
-                          docs
-                              .map(
+                              final leaveItems = reqSnap.data!.docs.map(
                                 (doc) => _fromLeaveRequest(
                                   doc.data() as Map<String, dynamic>,
                                 ),
-                              )
-                              .toList()
-                            ..sort(
-                              (a, b) => b.createdAt.compareTo(a.createdAt),
-                            );
+                              );
 
-                      items.add(
-                        _MessageCardData(
-                          statusLabel: 'SISTEM',
-                          title: 'Update Vacanță',
-                          dateText: '',
-                          timeText: '',
-                          message:
-                              'Vă informăm că perioada vacanței de iarnă a fost modificată pentru a include zilele de 22 și 23 decembrie. Programul actualizat este disponibil în secțiunea Vacanțe.',
-                          relativeTime: 'IERI',
-                          sourceLabel: 'Secretariat',
-                          type: _MessageItemType.system,
-                          createdAt: DateTime.fromMillisecondsSinceEpoch(0),
-                        ),
-                      );
+                              final secretariatDocs =
+                                  <QueryDocumentSnapshot>[
+                                    ...(targetedSnap.data?.docs ??
+                                        const <QueryDocumentSnapshot>[]),
+                                    ...(globalSnap.data?.docs ??
+                                        const <QueryDocumentSnapshot>[]),
+                                  ].fold<
+                                    Map<String, QueryDocumentSnapshot>
+                                  >({}, (acc, doc) {
+                                    acc[doc.id] = doc;
+                                    return acc;
+                                  });
+                              final secretariatItems = secretariatDocs.values
+                                  .map(
+                                    (doc) => _fromSecretariatMessage(
+                                      doc.data() as Map<String, dynamic>,
+                                    ),
+                                  );
 
-                      return Stack(
-                        children: [
-                          ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
-                            itemBuilder: (context, index) {
-                              final message = items[index];
-                              return _MessageCard(data: message, onTap: null);
+                              final items =
+                                  <_MessageItem>[
+                                    ...leaveItems,
+                                    ...secretariatItems,
+                                  ]..sort(
+                                    (a, b) =>
+                                        b.createdAt.compareTo(a.createdAt),
+                                  );
+
+                              if (items.isEmpty) {
+                                return const Center(
+                                  child: Text(
+                                    'Niciun mesaj.',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: _kTextMuted,
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              return ListView.separated(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  18,
+                                  16,
+                                  22,
+                                ),
+                                itemCount: items.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 14),
+                                itemBuilder: (context, index) {
+                                  return _MessageCard(item: items[index]);
+                                },
+                              );
                             },
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(height: 14),
-                            itemCount: items.length,
-                          ),
-                        ],
+                          );
+                        },
                       );
                     },
                   );

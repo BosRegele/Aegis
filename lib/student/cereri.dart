@@ -60,10 +60,10 @@ class _CereriScreenState extends State<CereriScreen> {
       firstDate: DateTime(now.year, now.month, now.day),
       lastDate: DateTime(now.year + 2),
       initialEntryMode: DatePickerEntryMode.calendarOnly,
-      helpText: 'Selecteaza data',
+      helpText: 'Selectează data',
       fieldHintText: 'ZZ/LL/AAAA',
       fieldLabelText: 'Data',
-      cancelText: 'Anuleaza',
+      cancelText: 'Anulează',
       confirmText: 'OK',
       selectableDayPredicate: (day) =>
           day.weekday != DateTime.saturday && day.weekday != DateTime.sunday,
@@ -222,7 +222,7 @@ class _CereriScreenState extends State<CereriScreen> {
   Future<void> _pickTime() async {
     if (_selectedDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecteaza mai intai data invoirii.')),
+        const SnackBar(content: Text('Selectează mai întâi data învoirii.')),
       );
       return;
     }
@@ -250,8 +250,8 @@ class _CereriScreenState extends State<CereriScreen> {
       context: context,
       initialTime: _selectedTime ?? rangeStart,
       initialEntryMode: TimePickerEntryMode.input,
-      helpText: 'Selecteaza ora',
-      cancelText: 'Anuleaza',
+      helpText: 'Selectează ora',
+      cancelText: 'Anulează',
       confirmText: 'OK',
       hourLabelText: 'Ora',
       minuteLabelText: 'Minute',
@@ -323,7 +323,7 @@ class _CereriScreenState extends State<CereriScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Ora trebuie sa fie intre ${fmt(rangeStart)} si ${fmt(rangeEnd)} (orarul clasei tale).',
+            'Ora trebuie să fie între ${fmt(rangeStart)} și ${fmt(rangeEnd)} (orarul clasei tale).',
           ),
         ),
       );
@@ -401,7 +401,7 @@ class _CereriScreenState extends State<CereriScreen> {
     if (_selectedDate == null || _selectedTime == null || message.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Completeaza data, ora si mesajul cererii.'),
+          content: Text('Completează data, ora și mesajul cererii.'),
         ),
       );
       return;
@@ -409,7 +409,7 @@ class _CereriScreenState extends State<CereriScreen> {
 
     if (!_targetTeacher && !_targetParent) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecteaza cel putin un destinatar.')),
+        const SnackBar(content: Text('Selectează cel puțin un destinatar.')),
       );
       return;
     }
@@ -419,7 +419,7 @@ class _CereriScreenState extends State<CereriScreen> {
     final studentUid = AppSession.uid;
     if (studentUid == null || studentUid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sesiune invalida. Reautentifica-te.')),
+        const SnackBar(content: Text('Sesiune invalidă. Reautentifică-te.')),
       );
       return;
     }
@@ -439,7 +439,7 @@ class _CereriScreenState extends State<CereriScreen> {
               .trim();
 
       if (classId.isEmpty) {
-        throw Exception('Elevul nu are clasa setata in profil.');
+        throw Exception('Elevul nu are clasă setată în profil.');
       }
 
       final baseDoc = {
@@ -505,7 +505,7 @@ class _CereriScreenState extends State<CereriScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cererea a fost trimisa cu succes.')),
+        const SnackBar(content: Text('Cererea a fost trimisă cu succes.')),
       );
 
       setState(() {
@@ -748,7 +748,7 @@ class _CereriScreenState extends State<CereriScreen> {
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Text(
-                                      'Cereri de invoire',
+                                      'Cereri de învoire',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
@@ -791,7 +791,7 @@ class _CereriScreenState extends State<CereriScreen> {
                                 child: _RecipientCard(
                                   selected: _targetParent,
                                   icon: Icons.family_restroom,
-                                  title: 'Parinte',
+                                  title: 'Părinte',
                                   onTap: () => setState(
                                     () => _targetParent = !_targetParent,
                                   ),
@@ -818,7 +818,7 @@ class _CereriScreenState extends State<CereriScreen> {
                           ),
                           const SizedBox(height: 16),
                           const Text(
-                            'ORA DE INCEPUT',
+                            'ORA DE ÎNCEPUT',
                             style: TextStyle(
                               color: _primary,
                               fontSize: 14,
@@ -856,7 +856,7 @@ class _CereriScreenState extends State<CereriScreen> {
                             ),
                           const SizedBox(height: 16),
                           const Text(
-                            'MOTIVUL ABSENTEI',
+                            'MOTIVUL ABSENȚEI',
                             style: TextStyle(
                               color: _primary,
                               fontSize: 14,
@@ -926,7 +926,7 @@ class _CereriScreenState extends State<CereriScreen> {
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    'Cererile trimise expira automat dupa ora 00:00 in ziua respectiva.',
+                                    'Cererile trimise expiră automat după ora 00:00 în ziua respectivă.',
                                     style: TextStyle(
                                       color: Color(0xFF283028),
                                       fontSize: 17,
@@ -1149,7 +1149,7 @@ class _ReasonBox extends StatelessWidget {
       maxLines: 4,
       style: const TextStyle(fontSize: 18, color: _textDark, height: 1.2),
       decoration: InputDecoration(
-        hintText: 'Introduceti motivul cererii de invoire...',
+        hintText: 'Introduceți motivul cererii de învoire...',
         hintStyle: const TextStyle(fontSize: 18, color: Color(0xFFA2AAA0)),
         filled: true,
         fillColor: _cardMuted,

@@ -108,7 +108,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Deconectare'),
-        content: const Text('Esti sigur ca vrei sa te deloghezi?'),
+        content: const Text('Ești sigur că vrei să te deloghezi?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -131,7 +131,7 @@ class _AdminClassesPageState extends State<AdminClassesPage> {
   Widget build(BuildContext context) {
     if (!AppSession.isAdmin) {
       return const Scaffold(
-        body: Center(child: Text("Access denied (admin only)")),
+        body: Center(child: Text("Acces interzis (doar admin).")),
       );
     }
 
@@ -632,16 +632,16 @@ class _VacanciesContentState extends State<_VacanciesContent> {
         SnackBar(
           content: Text(
             isUpdating
-                ? 'Vacanta salvata cu succes'
-                : 'Vacanta adaugata cu succes',
+                ? 'Vacanță salvată cu succes'
+                : 'Vacanță adăugată cu succes',
           ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       final message = e is FirebaseException && e.code == 'permission-denied'
-          ? 'Nu ai permisiuni sa creezi vacante. Verifica rolul contului si regulile Firestore publicate.'
-          : 'Eroare la salvare vacanta';
+          ? 'Nu ai permisiuni să creezi vacanțe. Verifică rolul contului și regulile Firestore publicate.'
+          : 'Eroare la salvare vacanță';
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
@@ -651,7 +651,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
   Future<bool> _confirmDeleteVacancy({required String name}) async {
     final result = await _showBlurDialog<bool>(
       context: context,
-      barrierLabel: 'Confirmare stergere vacanta',
+      barrierLabel: 'Confirmare ștergere vacanță',
       transitionDuration: const Duration(milliseconds: 180),
       builder: (ctx) {
         return SafeArea(
@@ -701,7 +701,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Sterge vacanta',
+                                    'Șterge vacanța',
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.w800,
@@ -710,7 +710,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                                   ),
                                   SizedBox(height: 6),
                                   Text(
-                                    'Actiunea este permanenta si va elimina vacanta din lista salvata.',
+                                    'Acțiunea este permanentă și va elimina vacanța din lista salvată.',
                                     style: TextStyle(
                                       fontSize: 13,
                                       height: 1.4,
@@ -782,7 +782,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                 ),
-                                child: const Text('Anuleaza'),
+                                child: const Text('Anulează'),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -799,7 +799,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                 ),
-                                child: const Text('Sterge vacanta'),
+                                child: const Text('Șterge vacanța'),
                               ),
                             ),
                           ],
@@ -826,7 +826,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Setare Vacante Școlare',
+            'Setare Vacanțe Școlare',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w700,
@@ -835,7 +835,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Configureaza perioadele de repaus si gestioneaza vacantele scolare.',
+            'Configurează perioadele de repaus și gestionează vacanțele școlare.',
             style: TextStyle(fontSize: 13, color: Color(0xFF5A8040)),
           ),
           const SizedBox(height: 20),
@@ -860,7 +860,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
     final isCreatingVacancy = _editing && !hasSelectedVacancy;
     final displayedName = _nameController.text.trim().isNotEmpty
         ? _nameController.text.trim()
-        : (_selectedVacancyName ?? 'Nicio vacanta selectata');
+        : (_selectedVacancyName ?? 'Nicio vacanță selectată');
     final displayedStart = _editing ? _startDate : _selectedStartDate;
     final displayedEnd = _editing ? _endDate : _selectedEndDate;
 
@@ -898,11 +898,11 @@ class _VacanciesContentState extends State<_VacanciesContent> {
             child: Text(
               !_editing
                   ? hasSelectedVacancy
-                        ? 'Poti modifica vacanta selectata si salva rapid schimbarile.'
-                        : 'Creeaza o vacanta noua si configureaza intervalul din calendar.'
+                        ? 'Poți modifica vacanța selectată și salva rapid schimbările.'
+                        : 'Creează o vacanță nouă și configurează intervalul din calendar.'
                   : hasSelectedVacancy
-                  ? 'Actualizeaza numele si perioada, apoi salveaza vacanta.'
-                  : 'Completeaza campurile si salveaza vacanta noua.',
+                  ? 'Actualizează numele și perioada, apoi salvează vacanța.'
+                  : 'Completează câmpurile și salvează vacanța nouă.',
               style: const TextStyle(
                 fontSize: 12,
                 color: Color(0xFF6B7868),
@@ -923,7 +923,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                 child: FilledButton.icon(
                   onPressed: _startCreatingVacancy,
                   icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                  label: const Text('Creeaza vacanta'),
+                  label: const Text('Creează vacanță'),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF0F7422),
                     foregroundColor: Colors.white,
@@ -945,7 +945,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: const Center(
                   child: Text(
-                    'Selecteaza o vacanta din lista din dreapta sau apasa pe "Creeaza vacanta" pentru a adauga una noua.',
+                    'Selectează o vacanță din lista din dreapta sau apasă pe "Creează vacanță" pentru a adăuga una nouă.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
@@ -965,8 +965,8 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                   Expanded(
                     child: Text(
                       _editing
-                          ? 'Completeaza perioada vacantei'
-                          : 'Detalii vacanta selectata',
+                          ? 'Completează perioada vacanței'
+                          : 'Detalii vacanță selectată',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF6D7B6A),
@@ -985,7 +985,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                       child: OutlinedButton.icon(
                         onPressed: _startEditingSelectedVacancy,
                         icon: const Icon(Icons.edit_outlined, size: 16),
-                        label: const Text('Modifica'),
+                        label: const Text('Modifică'),
                       ),
                     ),
                   ),
@@ -1053,7 +1053,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
-                                      'DATA INCEPUT',
+                                      'DATĂ ÎNCEPUT',
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
@@ -1137,7 +1137,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
-                                      'DATA SFARSIT',
+                                      'DATĂ SFÂRȘIT',
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
@@ -1252,7 +1252,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                                 Text(
                                   displayedStart != null && displayedEnd != null
                                       ? '${_formatDateLong(displayedStart)} - ${_formatDateLong(displayedEnd)}'
-                                      : 'Selecteaza intervalul din calendar.',
+                                      : 'Selectează intervalul din calendar.',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF667466),
@@ -1277,7 +1277,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                                 children: [
                                   OutlinedButton(
                                     onPressed: _cancelEditing,
-                                    child: const Text('Anuleaza'),
+                                    child: const Text('Anulează'),
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
@@ -1291,8 +1291,8 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                                       ),
                                       label: Text(
                                         _editing
-                                            ? 'Salveaza vacanta'
-                                            : 'Creeaza vacanta',
+                                            ? 'Salvează vacanța'
+                                            : 'Creează vacanță',
                                       ),
                                       style: FilledButton.styleFrom(
                                         backgroundColor: const Color(
@@ -1618,7 +1618,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
           if (snapshot.hasError) {
             listWidget = const Center(
               child: Text(
-                'Nu exista vacante create',
+                'Nu există vacanțe create',
                 style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
               ),
             );
@@ -1632,7 +1632,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
           } else if (vacancies.isEmpty) {
             listWidget = const Center(
               child: Text(
-                'Nu exista vacante create',
+                'Nu există vacanțe create',
                 style: TextStyle(fontSize: 13, color: Color(0xFF999999)),
               ),
             );
@@ -1656,7 +1656,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Vacante Salvate',
+                'Vacanțe Salvate',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -1665,7 +1665,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${vacancies.length} vacante inregistrate',
+                '${vacancies.length} vacanțe înregistrate',
                 style: const TextStyle(fontSize: 13, color: Color(0xFF999999)),
               ),
               const SizedBox(height: 20),
@@ -1925,7 +1925,7 @@ class _VacanciesContentState extends State<_VacanciesContent> {
                 color: Color(0xFFD32F2F),
               ),
               splashRadius: 18,
-              tooltip: 'Sterge vacanta',
+              tooltip: 'Șterge vacanța',
             ),
           ],
         ),

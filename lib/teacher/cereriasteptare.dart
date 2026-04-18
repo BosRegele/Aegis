@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import '../core/session.dart';
 
-const _kHeaderGreen = Color(0xFF0D631B);
-const _kPageBg = Color(0xFFF7F9F0);
+const _kHeaderGreen = Color(0xFF0D6F1C);
+const _kPageBg = Color(0xFFF1F5EC);
 const _kCardBg = Color(0xFFFFFFFF);
 
 class CereriAsteptarePage extends StatefulWidget {
@@ -157,6 +157,8 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                                   dateText: dateText,
                                   timeText: timeText,
                                   message: message,
+                                  studentUid: (d['studentUid'] ?? '')
+                                      .toString(),
                                   onAccept: () => _reviewRequest(
                                     requestId: requestId,
                                     status: 'approved',
@@ -271,6 +273,7 @@ class _RequestCard extends StatelessWidget {
   final String dateText;
   final String timeText;
   final String message;
+  final String studentUid;
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
@@ -283,6 +286,7 @@ class _RequestCard extends StatelessWidget {
     required this.message,
     required this.onAccept,
     required this.onReject,
+    this.studentUid = '',
   });
 
   @override
@@ -310,24 +314,7 @@ class _RequestCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFD0DFD0),
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF07731F),
-                        height: 1,
-                      ),
-                    ),
-                  ),
+                  _StudentAvatar(studentUid: studentUid, initials: initials),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -373,12 +360,8 @@ class _RequestCard extends StatelessWidget {
               const SizedBox(height: 16),
               _InfoLine(
                 icon: Icons.calendar_today_rounded,
-                text: dateText.isEmpty ? '-' : dateText,
-              ),
-              const SizedBox(height: 10),
-              _InfoLine(
-                icon: Icons.access_time_filled_rounded,
-                text: timeText.isEmpty ? '-' : timeText,
+                text:
+                    '${dateText.isEmpty ? '-' : dateText}  •  ${timeText.isEmpty ? '-' : timeText}',
               ),
               const SizedBox(height: 14),
               Container(
@@ -515,4 +498,64 @@ class _InfoLine extends StatelessWidget {
       ],
     );
   }
+}
+
+class _StudentAvatar extends StatelessWidget {
+  final String studentUid;
+  final String initials;
+
+  const _StudentAvatar({required this.studentUid, required this.initials});
+
+  @override
+  Widget build(BuildContext context) {
+    if (studentUid.isEmpty) return _initialsWidget();
+
+    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      future: FirebaseFirestore.instance
+          .collection('users')
+          .doc(studentUid)
+          .get(),
+      builder: (context, snap) {
+        final data = snap.data?.data();
+        final photoUrl =
+            (data?['profilePictureUrl'] ??
+                    data?['photoUrl'] ??
+                    data?['avatarUrl'] ??
+                    '')
+                .toString()
+                .trim();
+        if (photoUrl.isEmpty) return _initialsWidget();
+        return ClipOval(
+          child: SizedBox(
+            width: 64,
+            height: 64,
+            child: Image.network(
+              photoUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _initialsWidget(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _initialsWidget() => Container(
+    width: 64,
+    height: 64,
+    decoration: const BoxDecoration(
+      color: Color(0xFFD0DFD0),
+      shape: BoxShape.circle,
+    ),
+    alignment: Alignment.center,
+    child: Text(
+      initials,
+      style: const TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+        color: Color(0xFF07731F),
+        height: 1,
+      ),
+    ),
+  );
 }

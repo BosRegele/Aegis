@@ -29,11 +29,9 @@ String _timeAgo(Timestamp ts) {
 
 String _hhmm(Timestamp ts) {
   final dt = ts.toDate();
-  final h = dt.hour;
+  final h = dt.hour.toString().padLeft(2, '0');
   final m = dt.minute.toString().padLeft(2, '0');
-  final ampm = h >= 12 ? 'PM' : 'AM';
-  final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
-  return '$h12:$m $ampm';
+  return '$h:$m';
 }
 
 final Random _passwordRng = Random.secure();
@@ -214,7 +212,7 @@ class _AdminTurnstilesPageState extends State<AdminTurnstilesPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Deconectare'),
-        content: const Text('Esti sigur ca vrei sa te deloghezi?'),
+        content: const Text('Ești sigur că vrei să te deloghezi?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -241,7 +239,7 @@ class _AdminTurnstilesPageState extends State<AdminTurnstilesPage> {
         children: [
           if (!widget.embedded)
             _TurnstilesTopBar(
-              displayName: AppSession.username ?? 'Admin',
+              displayName: AppSession.username ?? 'Administrator',
               searchController: _searchC,
               onSearch: (value) => setState(() => _searchQuery = value),
             ),
@@ -396,7 +394,7 @@ class _TurnstileBody extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Control Turnicheți',
+                            'Control Turnichete',
                             style: TextStyle(
                               fontSize: 26,
                               fontWeight: FontWeight.w800,
@@ -815,7 +813,7 @@ class _GateCardState extends State<_GateCard> {
       final confirmed = await _showBlurDialog<bool>(
         context: dialogContext,
         barrierDismissible: true,
-        barrierLabel: 'Confirmare stergere turnicheta',
+        barrierLabel: 'Confirmare ștergere turnichet',
         builder: (confirmContext) => SafeArea(
           child: Center(
             child: Padding(
@@ -863,7 +861,7 @@ class _GateCardState extends State<_GateCard> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Sterge turnicheta',
+                                    'Șterge turnichetul',
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.w800,
@@ -872,7 +870,7 @@ class _GateCardState extends State<_GateCard> {
                                   ),
                                   SizedBox(height: 6),
                                   Text(
-                                    'Confirmarea este permanenta si va sterge contul turnichetei si datele asociate acesteia.',
+                                    'Confirmarea este permanentă și va șterge turnichetul și datele asociate acestuia.',
                                     style: TextStyle(
                                       fontSize: 13,
                                       height: 1.4,
@@ -954,7 +952,7 @@ class _GateCardState extends State<_GateCard> {
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                 ),
-                                child: const Text('Anuleaza'),
+                                child: const Text('Anulează'),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -972,7 +970,7 @@ class _GateCardState extends State<_GateCard> {
                                 ),
                                 onPressed: () =>
                                     Navigator.of(confirmContext).pop(true),
-                                child: const Text('Sterge turnicheta'),
+                                child: const Text('Șterge turnichetul'),
                               ),
                             ),
                           ],
@@ -1376,7 +1374,7 @@ class _GateCardState extends State<_GateCard> {
                                                     CrossAxisAlignment.start,
                                                 children: [
                                                   const Text(
-                                                    'USERNAME',
+                                                    'UTILIZATOR',
                                                     style: TextStyle(
                                                       fontSize: 11,
                                                       fontWeight:
@@ -2535,7 +2533,7 @@ class _TurnstilesSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayName = (AppSession.fullName?.isNotEmpty ?? false)
         ? AppSession.fullName!
-        : (AppSession.username ?? 'Admin');
+        : (AppSession.username ?? 'Administrator');
 
     return Container(
       width: 240,

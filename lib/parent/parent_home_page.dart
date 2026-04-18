@@ -128,7 +128,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
             final fullName = (data['fullName'] ?? '').toString().trim();
             final displayName = fullName.isNotEmpty
                 ? fullName
-                : (AppSession.username ?? 'Parinte');
+                : (AppSession.username ?? 'Părinte');
             final rawChildren = data['children'];
             final directChildrenUids = rawChildren is List
                 ? rawChildren
@@ -169,8 +169,11 @@ class _ParentHomePageState extends State<ParentHomePage> {
                         displayName: displayName,
                         onSettings: () => Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => const ParentProfilePage(),
+                          PageRouteBuilder(
+                            pageBuilder: (_, __, ___) =>
+                                const ParentProfilePage(),
+                            transitionDuration: Duration.zero,
+                            reverseTransitionDuration: Duration.zero,
                           ),
                         ),
                       ),
@@ -193,8 +196,11 @@ class _ParentHomePageState extends State<ParentHomePage> {
                             _CopiiMeiCard(
                               onTap: () => Navigator.push(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (_) => const ParentStudentsPage(),
+                                PageRouteBuilder(
+                                  pageBuilder: (_, __, ___) =>
+                                      const ParentStudentsPage(),
+                                  transitionDuration: Duration.zero,
+                                  reverseTransitionDuration: Duration.zero,
                                 ),
                               ),
                             ),
@@ -214,9 +220,12 @@ class _ParentHomePageState extends State<ParentHomePage> {
                                         );
                                         Navigator.push(
                                           context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
+                                          PageRouteBuilder(
+                                            pageBuilder: (_, __, ___) =>
                                                 const ParentRequestsPage(),
+                                            transitionDuration: Duration.zero,
+                                            reverseTransitionDuration:
+                                                Duration.zero,
                                           ),
                                         );
                                       },
@@ -270,7 +279,11 @@ class _ParentHomePageState extends State<ParentHomePage> {
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ParentInboxPage()),
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const ParentInboxPage(),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
     );
 
     final returnedAt = DateTime.now();
@@ -471,7 +484,7 @@ class _ActivityCard extends StatelessWidget {
                       ),
                       child: Center(
                         child: Text(
-                          'Nu sunt copii adaugati.',
+                          'Nu sunt copii adăugați.',
                           style: TextStyle(color: _outline),
                         ),
                       ),
@@ -526,6 +539,8 @@ class _ActivityFeedState extends State<_ActivityFeed> {
 
   late Stream<QuerySnapshot<Map<String, dynamic>>> _accessStream;
   late Stream<QuerySnapshot<Map<String, dynamic>>> _requestStream;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _messagesGlobalStream;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _messagesChildrenStream;
 
   @override
   void initState() {
@@ -547,20 +562,31 @@ class _ActivityFeedState extends State<_ActivityFeed> {
     if (uids.isEmpty) {
       _accessStream = const Stream.empty();
       _requestStream = const Stream.empty();
+      _messagesGlobalStream = const Stream.empty();
+      _messagesChildrenStream = const Stream.empty();
       return;
     }
     _accessStream = FirebaseFirestore.instance
         .collection('accessEvents')
         .where('userId', whereIn: uids)
         .orderBy('timestamp', descending: true)
-        .limit(5)
+        .limit(20)
         .snapshots();
     _requestStream = FirebaseFirestore.instance
         .collection('leaveRequests')
         .where('studentUid', whereIn: uids)
-        .where('status', whereIn: ['approved', 'rejected'])
-        .orderBy('reviewedAt', descending: true)
-        .limit(5)
+        .where('status', isEqualTo: 'pending')
+        .snapshots();
+    final messages = FirebaseFirestore.instance.collection(
+      'secretariatMessages',
+    );
+    _messagesGlobalStream = messages
+        .where('recipientRole', isEqualTo: 'parent')
+        .where('studentUid', isEqualTo: '')
+        .snapshots();
+    _messagesChildrenStream = messages
+        .where('recipientRole', isEqualTo: 'parent')
+        .where('studentUid', whereIn: uids)
         .snapshots();
   }
 
@@ -625,87 +651,139 @@ class _ActivityFeedState extends State<_ActivityFeed> {
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: _requestStream,
           builder: (context, reqSnap) {
-            final List<_ActivityItem> items = [];
+            return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _messagesGlobalStream,
+              builder: (context, msgGlobalSnap) {
+                return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: _messagesChildrenStream,
+                  builder: (context, msgChildrenSnap) {
+                    final msgDocsById =
+                        <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+                    for (final doc
+                        in msgGlobalSnap.data?.docs ?? const []) {
+                      msgDocsById[doc.id] = doc;
+                    }
+                    for (final doc
+                        in msgChildrenSnap.data?.docs ?? const []) {
+                      msgDocsById[doc.id] = doc;
+                    }
 
-            for (final doc in accessSnap.data?.docs ?? []) {
-              final d = doc.data();
-              final typStr = (d['type'] ?? '').toString().trim();
-              final isExit = typStr == 'exit';
-              final uid = (d['userId'] ?? '').toString();
-              final name = _resolveName(uid, d);
-              final ts = (d['timestamp'] as Timestamp?)?.toDate();
-              items.add(
-                _ActivityItem(
-                  title: isExit ? '$name a iesit' : '$name a intrat',
-                  time: ts,
-                  icon: isExit
-                      ? Icons.arrow_forward_rounded
-                      : Icons.arrow_back_rounded,
-                  iconBg: isExit
-                      ? const Color(0xFFFFF0F5)
-                      : const Color(0xFFF0F4EA),
-                  iconColor: isExit ? _danger : _primary,
-                ),
-              );
-            }
+                    final List<_ActivityItem> items = [];
 
-            for (final doc in reqSnap.data?.docs ?? []) {
-              final d = doc.data();
-              final status = (d['status'] ?? '').toString();
-              final ts =
-                  ((d['reviewedAt'] ?? d['updatedAt'] ?? d['createdAt'])
-                          as Timestamp?)
-                      ?.toDate();
-              final approved = status == 'approved';
-              items.add(
-                _ActivityItem(
-                  title: approved ? 'Cerere aprobata' : 'Cerere respinsa',
-                  time: ts,
-                  icon: approved
-                      ? Icons.check_circle_outline_rounded
-                      : Icons.cancel_outlined,
-                  iconBg: approved
-                      ? const Color(0xFFF0F4EA)
-                      : const Color(0xFFFFF0F5),
-                  iconColor: approved ? _primary : _danger,
-                ),
-              );
-            }
+                    for (final doc in accessSnap.data?.docs ?? []) {
+                      final d = doc.data();
+                      final typStr = (d['type'] ?? '').toString().trim();
+                      final isExit = typStr == 'exit';
+                      final uid = (d['userId'] ?? '').toString();
+                      final name = _resolveName(uid, d);
+                      final ts = (d['timestamp'] as Timestamp?)?.toDate();
+                      items.add(
+                        _ActivityItem(
+                          title: isExit ? '$name a iesit' : '$name a intrat',
+                          time: ts,
+                          icon: isExit
+                              ? Icons.arrow_forward_rounded
+                              : Icons.arrow_back_rounded,
+                          iconBg: isExit
+                              ? const Color(0xFFFFF0F5)
+                              : const Color(0xFFF0F4EA),
+                          iconColor: isExit ? _danger : _primary,
+                        ),
+                      );
+                    }
 
-            items.sort((a, b) {
-              if (a.time == null && b.time == null) return 0;
-              if (a.time == null) return 1;
-              if (b.time == null) return -1;
-              return b.time!.compareTo(a.time!);
-            });
+                    for (final doc in reqSnap.data?.docs ?? []) {
+                      final d = doc.data();
+                      final status = (d['status'] ?? '').toString();
+                      if (status != 'pending') continue;
+                      final ts =
+                          ((d['requestedAt'] ?? d['createdAt'])
+                                  as Timestamp?)
+                              ?.toDate();
+                      final uid = (d['studentUid'] ?? '').toString();
+                      final name = _resolveName(uid, d);
+                      items.add(
+                        _ActivityItem(
+                          title: 'Cerere în așteptare - $name',
+                          time: ts,
+                          icon: Icons.warning_amber_rounded,
+                          iconBg: const Color(0xFFFFF1E0),
+                          iconColor: const Color(0xFFE65100),
+                        ),
+                      );
+                    }
 
-            final shown = items.take(3).toList();
+                    for (final doc in msgDocsById.values) {
+                      final d = doc.data();
+                      final ts = (d['createdAt'] as Timestamp?)?.toDate();
+                      final title = (d['title'] ?? '').toString();
+                      final msg = (d['message'] ?? '').toString();
+                      final display = title.isNotEmpty
+                          ? title
+                          : (msg.length > 40
+                              ? '${msg.substring(0, 40)}…'
+                              : msg);
+                      items.add(
+                        _ActivityItem(
+                          title: display,
+                          time: ts,
+                          icon: Icons.mail_outline_rounded,
+                          iconBg: const Color(0xFFE8F0FE),
+                          iconColor: const Color(0xFF1A73E8),
+                        ),
+                      );
+                    }
 
-            if (shown.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
-                child: Center(
-                  child: Text(
-                    'Nicio activitate recenta.',
-                    style: TextStyle(color: _outline, fontSize: 14),
-                  ),
-                ),
-              );
-            }
+                    items.sort((a, b) {
+                      if (a.time == null && b.time == null) return 0;
+                      if (a.time == null) return 1;
+                      if (b.time == null) return -1;
+                      return b.time!.compareTo(a.time!);
+                    });
 
-            return SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: shown
-                    .map(
-                      (item) => _ActivityTile(
-                        item: item,
-                        formattedTime: _formatTime(item.time),
+                    final now = DateTime.now();
+                    final todayStart =
+                        DateTime(now.year, now.month, now.day);
+                    final shown = items
+                        .where(
+                          (item) =>
+                              item.time != null &&
+                              !item.time!.isBefore(todayStart),
+                        )
+                        .toList();
+
+                    if (shown.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: 20,
+                          horizontal: 20,
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Nicio activitate recentă.',
+                            style: TextStyle(color: _outline, fontSize: 14),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: shown
+                            .map(
+                              (item) => _ActivityTile(
+                                item: item,
+                                formattedTime: _formatTime(item.time),
+                              ),
+                            )
+                            .toList(),
                       ),
-                    )
-                    .toList(),
-              ),
+                    );
+                  },
+                );
+              },
             );
           },
         );
@@ -935,7 +1013,7 @@ class _CereriCardState extends State<_CereriCard> {
             ),
             const Spacer(),
             const Text(
-              'Cereri de\ninvoire',
+              'Cereri de\nînvoire',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 22,
@@ -1419,7 +1497,7 @@ class ParentProfilePage extends StatelessWidget {
                     child: _ParentProfileCard(
                       displayName: fullName.isNotEmpty
                           ? fullName
-                          : (AppSession.username ?? 'Parinte'),
+                          : (AppSession.username ?? 'Părinte'),
                       username: username,
                       email: email,
                       childCount: snap.hasData ? childCount : null,
@@ -1762,7 +1840,11 @@ class _SettingsSheet extends StatelessWidget {
     AppSession.clear();
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginPageFirestore()),
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const LoginPageFirestore(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
         (_) => false,
       );
     }

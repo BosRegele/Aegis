@@ -35,7 +35,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
   Widget build(BuildContext context) {
     if (!AppSession.isAdmin) {
       return const Scaffold(
-        body: Center(child: Text("Access denied (admin only)")),
+        body: Center(child: Text("Acces interzis (doar admin).")),
       );
     }
 
@@ -1056,7 +1056,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                                       CrossAxisAlignment.start,
                                                   children: [
                                                     const Text(
-                                                      'USERNAME',
+                                                      'UTILIZATOR',
                                                       style: TextStyle(
                                                         fontSize: 11,
                                                         fontWeight:
@@ -1647,7 +1647,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                             size: 18,
                                           ),
                                     label: const Text(
-                                      'Extrage Date / Reseteaza Parola',
+                                      'Extrage Date / Resetează Parola',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 17,
@@ -1684,10 +1684,10 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                                 xls.TextCellValue('Username'),
                                                 xls.TextCellValue('Email'),
                                                 xls.TextCellValue(
-                                                  'Copii Atribuiti',
+                                                  'Copii Atribuiți',
                                                 ),
                                                 xls.TextCellValue(
-                                                  'Parola Noua',
+                                                  'Parolă Nouă',
                                                 ),
                                               ]);
                                               sheet.appendRow([
@@ -1721,7 +1721,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                               setS(() {
                                                 busy = false;
                                                 msg =
-                                                    'Date exportate si parola a fost resetata automat.';
+                                                    'Date exportate și parola a fost resetată automat.';
                                                 msgIsError = false;
                                               });
                                             } catch (e) {
@@ -1762,7 +1762,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                             Icons.delete_outline,
                                             size: 22,
                                           ),
-                                    label: const Text('Sterge Utilizator'),
+                                    label: const Text('Șterge Utilizator'),
                                     style: ButtonStyle(
                                       foregroundColor:
                                           WidgetStateProperty.resolveWith((
@@ -1835,7 +1835,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                               context: ctx,
                                               barrierDismissible: true,
                                               barrierLabel:
-                                                  'Confirmare stergere parinte',
+                                                  'Confirmare ștergere Părinte',
                                               barrierColor: Colors.transparent,
                                               transitionDuration:
                                                   const Duration(
@@ -1979,7 +1979,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                                                                 CrossAxisAlignment.start,
                                                                             children: [
                                                                               Text(
-                                                                                'Sterge parinte',
+                                                                                'Șterge Părinte',
                                                                                 style: TextStyle(
                                                                                   fontSize: 24,
                                                                                   fontWeight: FontWeight.w800,
@@ -1992,7 +1992,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                                                                 height: 6,
                                                                               ),
                                                                               Text(
-                                                                                'Confirmarea este permanenta si va sterge contul parintelui si datele asociate acestuia.',
+                                                                                'Confirmarea este permanentă și va șterge contul părintelui și datele asociate acestuia.',
                                                                                 style: TextStyle(
                                                                                   fontSize: 13,
                                                                                   height: 1.4,
@@ -2036,7 +2036,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                                                             CrossAxisAlignment.start,
                                                                         children: [
                                                                           const Text(
-                                                                            'Parinte selectat',
+                                                                            'Părinte selectat',
                                                                             style: TextStyle(
                                                                               fontSize: 11,
                                                                               fontWeight: FontWeight.w700,
@@ -2121,7 +2121,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                                                               ),
                                                                             ),
                                                                             child: const Text(
-                                                                              'Anuleaza',
+                                                                              'Anulează',
                                                                             ),
                                                                           ),
                                                                         ),
@@ -2152,7 +2152,7 @@ class _AdminParentsPageState extends State<AdminParentsPage> {
                                                                                   true,
                                                                                 ),
                                                                             child: const Text(
-                                                                              'Sterge parinte',
+                                                                              'Șterge Părinte',
                                                                             ),
                                                                           ),
                                                                         ),

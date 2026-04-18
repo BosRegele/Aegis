@@ -32,6 +32,9 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
   Stream<DocumentSnapshot<Map<String, dynamic>>>? _teacherStream;
   Stream<QuerySnapshot<Map<String, dynamic>>>? _pendingStream;
   Stream<QuerySnapshot<Map<String, dynamic>>>? _studentsStream;
+  Stream<QuerySnapshot<Map<String, dynamic>>>? _allRequestsStream;
+  Stream<QuerySnapshot<Map<String, dynamic>>>? _messagesTargetedStream;
+  Stream<QuerySnapshot<Map<String, dynamic>>>? _messagesGlobalStream;
   String _classId = '';
   bool _profilePressed = false;
 
@@ -62,6 +65,22 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 .collection('users')
                 .where('classId', isEqualTo: classId)
                 .where('role', isEqualTo: 'student')
+                .snapshots();
+            _allRequestsStream = FirebaseFirestore.instance
+                .collection('leaveRequests')
+                .where('classId', isEqualTo: classId)
+                .orderBy('requestedAt', descending: true)
+                .limit(5)
+                .snapshots();
+            _messagesTargetedStream = FirebaseFirestore.instance
+                .collection('secretariatMessages')
+                .where('recipientRole', isEqualTo: 'teacher')
+                .where('recipientUid', isEqualTo: uid)
+                .snapshots();
+            _messagesGlobalStream = FirebaseFirestore.instance
+                .collection('secretariatMessages')
+                .where('recipientRole', isEqualTo: 'teacher')
+                .where('recipientUid', isEqualTo: '')
                 .snapshots();
           });
         }
@@ -254,139 +273,189 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
   // ─── Card "Activitate Recentă" ──────────────────────────────────────────────
   Widget _buildActivityCard() {
     return StreamBuilder<QuerySnapshot>(
-      stream: _pendingStream,
-      builder: (context, snap) {
-        final pendingDocs = snap.data?.docs ?? [];
+      stream: _allRequestsStream,
+      builder: (context, reqSnap) {
+        return StreamBuilder<QuerySnapshot>(
+          stream: _messagesTargetedStream,
+          builder: (context, msgTargetedSnap) {
+            return StreamBuilder<QuerySnapshot>(
+              stream: _messagesGlobalStream,
+              builder: (context, msgGlobalSnap) {
+                final msgDocsById = <String, QueryDocumentSnapshot>{};
+                for (final doc in msgTargetedSnap.data?.docs ?? const []) {
+                  msgDocsById[doc.id] = doc;
+                }
+                for (final doc in msgGlobalSnap.data?.docs ?? const []) {
+                  msgDocsById[doc.id] = doc;
+                }
 
-        final items = <_ActivityData>[];
+                final items = <_ActivityData>[];
 
-        // Cereri în așteptare reale (max 1 pentru a lăsa loc celorlalte)
-        for (final doc in pendingDocs.take(1)) {
-          final d = doc.data() as Map<String, dynamic>;
-          final classId = (d['classId'] ?? '').toString();
-          items.add(
-            _ActivityData(
-              icon: Icons.warning_amber_rounded,
-              iconColor: const Color(0xFF9D1F5F),
-              title: 'Cerere în așteptare - $classId',
-              time: 'ACUM',
-            ),
-          );
-        }
+                for (final doc in reqSnap.data?.docs ?? []) {
+              final d = doc.data() as Map<String, dynamic>;
+              final status = (d['status'] ?? 'pending').toString();
+              final studentName = (d['studentName'] ?? '').toString().trim();
+              final name = studentName.isEmpty ? 'Elev' : studentName;
+              final ts = ((d['reviewedAt'] ?? d['requestedAt']) as Timestamp?)
+                  ?.toDate();
 
-        items.add(
-          const _ActivityData(
-            icon: Icons.campaign_rounded,
-            iconColor: _kGreen,
-            title: 'Anunț școlar nou',
-            time: 'ASTĂZI',
-          ),
-        );
-
-        if (pendingDocs.length > 1) {
-          final d = pendingDocs[1].data() as Map<String, dynamic>;
-          final studentName = (d['studentName'] ?? '').toString();
-          items.add(
-            _ActivityData(
-              icon: Icons.cancel_rounded,
-              iconColor: _kGreen,
-              title: 'Cerere respinsă - $studentName',
-              time: 'ASTĂZI',
-            ),
-          );
-        }
-
-        return Container(
-          width: double.infinity,
-          height: 390,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(34),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-            child: Column(
-              children: [
-                const SizedBox(height: 4),
-                const Text(
-                  'Activitate Recentă',
-                  style: TextStyle(
-                    fontSize: 31,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.7,
-                    color: Color(0xFF1A2E1D),
+              if (status != 'approved' && status != 'rejected') {
+                items.add(
+                  _ActivityData(
+                    icon: Icons.warning_amber_rounded,
+                    iconColor: const Color(0xFFE65100),
+                    title: 'Cerere în așteptare - $name',
+                    time: ts,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDDDDDD),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      children: items
-                          .map((item) => _ActivityItemWidget(data: item))
-                          .toList(),
+                );
+              }
+            }
+
+                for (final doc in msgDocsById.values) {
+                  final d = doc.data() as Map<String, dynamic>;
+                  final ts = (d['createdAt'] as Timestamp?)?.toDate();
+                  final title = (d['title'] ?? '').toString();
+                  final msg = (d['message'] ?? '').toString();
+                  final display = title.isNotEmpty
+                      ? title
+                      : (msg.length > 40 ? '${msg.substring(0, 40)}…' : msg);
+                  items.add(
+                    _ActivityData(
+                      icon: Icons.mail_outline_rounded,
+                      iconColor: const Color(0xFF1A73E8),
+                      title: display,
+                      time: ts,
                     ),
+                  );
+                }
+
+                items.sort((a, b) {
+                  if (a.time == null && b.time == null) return 0;
+                  if (a.time == null) return 1;
+                  if (b.time == null) return -1;
+                  return b.time!.compareTo(a.time!);
+                });
+
+                final now = DateTime.now();
+                final todayStart = DateTime(now.year, now.month, now.day);
+                final shown = items
+                    .where(
+                      (item) =>
+                          item.time != null && !item.time!.isBefore(todayStart),
+                    )
+                    .toList();
+
+                return Container(
+              width: double.infinity,
+              height: 390,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(34),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 8,
                 ),
-                const SizedBox(height: 12),
-                StreamBuilder<QuerySnapshot>(
-                  stream: _studentsStream,
-                  builder: (context, stuSnap) {
-                    final students = stuSnap.data?.docs ?? [];
-                    final inSchool = students
-                        .where(
-                          (d) =>
-                              (d.data() as Map<String, dynamic>)['inSchool'] ==
-                              true,
-                        )
-                        .length;
-                    final absent = students.length - inSchool;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _StatBox(
-                              label: 'PREZENȚI',
-                              value: students.isEmpty ? '--' : '$inSchool',
-                              valueColor: _kGreen,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _StatBox(
-                              label: 'ABSENȚI',
-                              value: students.isEmpty ? '--' : '$absent',
-                              valueColor: absent > 0
-                                  ? const Color(0xFF8E3557)
-                                  : const Color(0xFF717B6E),
-                            ),
-                          ),
-                        ],
+                child: Column(
+                  children: [
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Activitate Recentă',
+                      style: TextStyle(
+                        fontSize: 31,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.7,
+                        color: Color(0xFF1A2E1D),
                       ),
-                    );
-                  },
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDDDDDD),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: shown.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'Nicio activitate recentă.',
+                                style: TextStyle(
+                                  color: Color(0xFF717B6E),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            )
+                          : SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              child: Column(
+                                children: shown
+                                    .map(
+                                      (item) => _ActivityItemWidget(data: item),
+                                    )
+                                    .toList(),
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 12),
+                    StreamBuilder<QuerySnapshot>(
+                      stream: _studentsStream,
+                      builder: (context, stuSnap) {
+                        final students = stuSnap.data?.docs ?? [];
+                        final inSchool = students
+                            .where(
+                              (d) =>
+                                  (d.data()
+                                      as Map<String, dynamic>)['inSchool'] ==
+                                  true,
+                            )
+                            .length;
+                        final absent = students.length - inSchool;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _StatBox(
+                                  label: 'PREZENȚI',
+                                  value: students.isEmpty ? '--' : '$inSchool',
+                                  valueColor: _kGreen,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _StatBox(
+                                  label: 'ABSENȚI',
+                                  value: students.isEmpty ? '--' : '$absent',
+                                  valueColor: absent > 0
+                                      ? const Color(0xFF8E3557)
+                                      : const Color(0xFF717B6E),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 6),
+                  ],
                 ),
-                const SizedBox(height: 6),
-              ],
-            ),
-          ),
+              ),
+            );
+              },
+            );
+          },
         );
       },
     );
@@ -472,7 +541,7 @@ class _ActivityData {
   final IconData icon;
   final Color iconColor;
   final String title;
-  final String time;
+  final DateTime? time;
 
   const _ActivityData({
     required this.icon,
@@ -535,52 +604,58 @@ class _ActivityItemWidget extends StatelessWidget {
 
   const _ActivityItemWidget({required this.data});
 
+  static String _formatTime(DateTime? dt) {
+    if (dt == null) return '--';
+    final day = dt.day.toString().padLeft(2, '0');
+    const months = [
+      'IAN',
+      'FEB',
+      'MAR',
+      'APR',
+      'MAI',
+      'IUN',
+      'IUL',
+      'AUG',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DEC',
+    ];
+    final month = months[dt.month - 1];
+    return '$day $month';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFFF4FBF6),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           child: Row(
             children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   color: data.iconColor.withOpacity(1.0),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(data.icon, color: Colors.white, size: 26),
+                child: Icon(data.icon, color: Colors.white, size: 23),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      data.title,
-                      style: const TextStyle(
-                        color: Color(0xFF1A2E1D),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      data.time,
-                      style: const TextStyle(
-                        color: Color(0xFF8A9E8C),
-                        fontSize: 12,
-                        letterSpacing: 0.6,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  data.title,
+                  style: const TextStyle(
+                    color: Color(0xFF1A2E1D),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
