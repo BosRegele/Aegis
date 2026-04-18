@@ -167,13 +167,15 @@ class _MeniuScreenState extends State<MeniuScreen> {
     final media = MediaQuery.of(context);
     final screenHeight = media.size.height;
     final screenWidth = media.size.width;
-    final veryCompact = screenHeight < 700 || screenWidth < 340;
-    final compact = !veryCompact && screenHeight < 880;
+    final usableHeight =
+        screenHeight - media.padding.top - media.padding.bottom;
+    final veryCompact = usableHeight < 680 || screenWidth < 340;
+    final compact = !veryCompact && usableHeight < 820;
 
-    final headerHeight = veryCompact ? 176.0 : (compact ? 196.0 : 220.0);
+    final headerHeight = veryCompact ? 170.0 : (compact ? 190.0 : 220.0);
     final contentTop = headerHeight - 30.0;
     final spacing = veryCompact ? 10.0 : (compact ? 12.0 : 14.0);
-    final horizontalPad = veryCompact ? 14.0 : (compact ? 16.0 : 20.0);
+    final horizontalPad = veryCompact ? 14.0 : (compact ? 18.0 : 20.0);
 
     return MediaQuery(
       data: media.copyWith(
@@ -248,7 +250,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
                             horizontalPad,
                             0,
                             horizontalPad,
-                            24 + media.padding.bottom,
+                            12,
                           ),
                           child: Column(
                             children: [
@@ -296,6 +298,8 @@ class _MeniuScreenState extends State<MeniuScreen> {
                                 leaveActiveStream: _leaveActiveStream,
                                 isWithinSchedule: _isWithinSchedule,
                                 onActiveTap: widget.onNavigateToActiveLeave,
+                                compact: compact,
+                                veryCompact: veryCompact,
                               ),
                             ],
                           ),
@@ -334,7 +338,7 @@ class _TopHeroHeader extends StatelessWidget {
     final topPadding = MediaQuery.of(context).padding.top;
     final titleSize = compact ? 28.0 : 34.0;
     final subSize = compact ? 14.0 : 15.0;
-    final hPad = compact ? 22.0 : 28.0;
+    final hPad = compact ? 24.0 : 28.0;
     return ClipRRect(
       borderRadius: const BorderRadius.only(
         bottomLeft: Radius.circular(52),
@@ -537,19 +541,19 @@ class _AccessHubCardState extends State<_AccessHubCard> {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final compact = widget.compact;
     final veryCompact = widget.veryCompact;
-    final titleSize = veryCompact ? 23.0 : (compact ? 26.0 : 31.0);
+    final titleSize = veryCompact ? 22.0 : (compact ? 27.0 : 31.0);
     final qrSize = veryCompact
-        ? (screenWidth * 0.38).clamp(120.0, 150.0)
+        ? (screenWidth * 0.36).clamp(118.0, 140.0)
         : (compact
-              ? (screenWidth * 0.40).clamp(132.0, 160.0)
+              ? (screenWidth * 0.40).clamp(135.0, 160.0)
               : (screenWidth * 0.44).clamp(150.0, 186.0));
     final cardPad = veryCompact
         ? const EdgeInsets.fromLTRB(12, 10, 12, 12)
         : (compact
-              ? const EdgeInsets.fromLTRB(14, 11, 14, 13)
+              ? const EdgeInsets.fromLTRB(14, 12, 14, 14)
               : const EdgeInsets.fromLTRB(16, 14, 16, 16));
     final qrInnerPad = veryCompact ? 8.0 : (compact ? 9.0 : 10.0);
-    final qrOuterPad = veryCompact ? 10.0 : 12.0;
+    final qrOuterPad = veryCompact ? 10.0 : (compact ? 11.0 : 12.0);
     final topGap = veryCompact ? 8.0 : (compact ? 10.0 : 12.0);
     final bottomGap = veryCompact ? 18.0 : (compact ? 22.0 : 28.0);
 
@@ -716,14 +720,18 @@ class _AccessHubCardState extends State<_AccessHubCard> {
                       label: 'Status',
                       value: statusText,
                       valueColor: statusColor,
+                      compact: compact,
+                      veryCompact: veryCompact,
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  SizedBox(width: veryCompact ? 10 : (compact ? 12 : 14)),
                   Expanded(
                     child: _StatCard(
                       label: 'Scanare',
                       value: timeText,
                       valueColor: _onSurface,
+                      compact: compact,
+                      veryCompact: veryCompact,
                     ),
                   ),
                 ],
@@ -743,17 +751,27 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final Color valueColor;
+  final bool compact;
+  final bool veryCompact;
 
   const _StatCard({
     required this.label,
     required this.value,
     required this.valueColor,
+    this.compact = false,
+    this.veryCompact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hPad = veryCompact ? 12.0 : 14.0;
+    final vPad = veryCompact ? 10.0 : (compact ? 11.0 : 12.0);
+    final labelSize = veryCompact ? 9.5 : 10.0;
+    final valueSize = veryCompact ? 14.0 : 15.0;
+    final gap = veryCompact ? 6.0 : (compact ? 7.0 : 8.0);
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
       decoration: BoxDecoration(
         color: _surfaceContainerLow,
         borderRadius: BorderRadius.circular(18),
@@ -763,18 +781,22 @@ class _StatCard extends StatelessWidget {
         children: [
           Text(
             label.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 10,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: labelSize,
               fontWeight: FontWeight.w700,
               color: _outline,
               letterSpacing: 1.0,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: gap),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: valueSize,
               fontWeight: FontWeight.w800,
               color: valueColor,
             ),
@@ -800,12 +822,12 @@ class _CereriCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardHeight = veryCompact ? 142.0 : (compact ? 156.0 : 184.0);
-    final iconBox = veryCompact ? 40.0 : (compact ? 44.0 : 52.0);
+    final cardHeight = veryCompact ? 138.0 : (compact ? 156.0 : 184.0);
+    final iconBox = veryCompact ? 40.0 : (compact ? 46.0 : 52.0);
     final iconSize = veryCompact ? 20.0 : (compact ? 22.0 : 24.0);
     final titleSize = veryCompact ? 17.0 : (compact ? 19.0 : 22.0);
-    final subSize = veryCompact ? 11.0 : 12.0;
-    final pad = veryCompact ? 12.0 : (compact ? 13.0 : 16.0);
+    final subSize = veryCompact ? 11.0 : (compact ? 11.5 : 12.0);
+    final pad = veryCompact ? 13.0 : (compact ? 14.0 : 16.0);
 
     return GestureDetector(
       onTap: onTap,
@@ -983,15 +1005,16 @@ class _MesajeCard extends StatelessWidget {
                       ]);
 
                   final cardHeight =
-                      veryCompact ? 142.0 : (compact ? 156.0 : 184.0);
+                      veryCompact ? 138.0 : (compact ? 156.0 : 184.0);
                   final iconBox =
-                      veryCompact ? 40.0 : (compact ? 44.0 : 52.0);
+                      veryCompact ? 40.0 : (compact ? 46.0 : 52.0);
                   final iconSize =
                       veryCompact ? 20.0 : (compact ? 22.0 : 24.0);
                   final titleSize =
                       veryCompact ? 17.0 : (compact ? 19.0 : 22.0);
-                  final subSize = veryCompact ? 11.0 : 12.0;
-                  final pad = veryCompact ? 12.0 : (compact ? 13.0 : 16.0);
+                  final subSize =
+                      veryCompact ? 11.0 : (compact ? 11.5 : 12.0);
+                  final pad = veryCompact ? 13.0 : (compact ? 14.0 : 16.0);
 
                   return Container(
                     height: cardHeight,
@@ -1070,12 +1093,16 @@ class _LeaveStatusCard extends StatelessWidget {
   final Stream<QuerySnapshot<Map<String, dynamic>>>? leaveActiveStream;
   final bool Function(Map<String, dynamic>) isWithinSchedule;
   final void Function(String docId)? onActiveTap;
+  final bool compact;
+  final bool veryCompact;
 
   const _LeaveStatusCard({
     required this.classDocStream,
     required this.leaveActiveStream,
     required this.isWithinSchedule,
     this.onActiveTap,
+    this.compact = false,
+    this.veryCompact = false,
   });
 
   @override
@@ -1131,8 +1158,14 @@ class _LeaveStatusCard extends StatelessWidget {
                 : 'Inactivă';
             final statusColor = (hasActive || hasPending) ? _primary : _outline;
 
+            final vPad = veryCompact ? 12.0 : (compact ? 13.0 : 14.0);
+            final hPad = 14.0;
+            final iconBox = veryCompact ? 48.0 : (compact ? 52.0 : 56.0);
+            final iconSize = veryCompact ? 24.0 : (compact ? 25.0 : 26.0);
+            final titleSize = veryCompact ? 14.0 : 15.0;
+
             final card = Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
               decoration: BoxDecoration(
                 color: _surfaceLowest,
                 borderRadius: BorderRadius.circular(22),
@@ -1150,25 +1183,27 @@ class _LeaveStatusCard extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    width: 56,
-                    height: 56,
+                    width: iconBox,
+                    height: iconBox,
                     decoration: BoxDecoration(
                       color: _surfaceContainerLow,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.description_rounded,
                       color: _primary,
-                      size: 26,
+                      size: iconSize,
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Cerere Învoire',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: _onSurface,
-                        fontSize: 15,
+                        fontSize: titleSize,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

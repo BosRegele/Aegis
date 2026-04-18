@@ -124,14 +124,16 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
     final topPadding = media.padding.top;
     final screenHeight = media.size.height;
     final screenWidth = media.size.width;
-    final veryCompact = screenHeight < 700 || screenWidth < 340;
-    final compact = !veryCompact && screenHeight < 880;
+    final usableHeight =
+        screenHeight - media.padding.top - media.padding.bottom;
+    final veryCompact = usableHeight < 680 || screenWidth < 340;
+    final compact = !veryCompact && usableHeight < 820;
 
-    final headerHeight = veryCompact ? 176.0 : (compact ? 196.0 : 220.0);
+    final headerHeight = veryCompact ? 170.0 : (compact ? 190.0 : 220.0);
     final scrollStart = headerHeight - 30.0;
-    final activityHeight = veryCompact ? 300.0 : (compact ? 330.0 : 390.0);
+    final activityHeight = veryCompact ? 300.0 : (compact ? 340.0 : 390.0);
     final gridSpacing = veryCompact ? 10.0 : 12.0;
-    final horizontalPad = veryCompact ? 12.0 : (compact ? 13.0 : 16.0);
+    final horizontalPad = veryCompact ? 12.0 : (compact ? 14.0 : 16.0);
 
     return MediaQuery(
       data: media.copyWith(
@@ -180,7 +182,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                             horizontalPad,
                             0,
                             horizontalPad,
-                            24 + media.padding.bottom,
+                            12,
                           ),
                           child: Column(
                             children: [
@@ -756,14 +758,14 @@ class _GridCard extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.74)
         : const Color(0xFF6B7A6D);
 
-    final cardHeight = veryCompact ? 142.0 : (compact ? 156.0 : 184.0);
-    final iconBox = veryCompact ? 40.0 : (compact ? 44.0 : 52.0);
-    final iconSize = veryCompact ? 19.0 : (compact ? 21.0 : 24.0);
+    final cardHeight = veryCompact ? 138.0 : (compact ? 156.0 : 184.0);
+    final iconBox = veryCompact ? 40.0 : (compact ? 46.0 : 52.0);
+    final iconSize = veryCompact ? 20.0 : (compact ? 22.0 : 24.0);
     final wideIconSize = veryCompact ? 24.0 : (compact ? 26.0 : 28.0);
     final titleSize = veryCompact ? 17.0 : (compact ? 19.0 : 22.0);
-    final subSize = veryCompact ? 11.0 : 12.0;
-    final pad = veryCompact ? 12.0 : (compact ? 13.0 : 16.0);
-    final widePadH = veryCompact ? 12.0 : (compact ? 13.0 : 16.0);
+    final subSize = veryCompact ? 11.0 : (compact ? 11.5 : 12.0);
+    final pad = veryCompact ? 13.0 : (compact ? 14.0 : 16.0);
+    final widePadH = veryCompact ? 13.0 : (compact ? 14.0 : 16.0);
     final widePadV = veryCompact ? 12.0 : 14.0;
 
     return GestureDetector(
