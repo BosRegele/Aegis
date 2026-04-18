@@ -248,7 +248,7 @@ class _MeniuScreenState extends State<MeniuScreen> {
                             horizontalPad,
                             0,
                             horizontalPad,
-                            24,
+                            24 + media.padding.bottom,
                           ),
                           child: Column(
                             children: [

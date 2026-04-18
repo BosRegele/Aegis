@@ -180,7 +180,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                             horizontalPad,
                             0,
                             horizontalPad,
-                            24,
+                            24 + media.padding.bottom,
                           ),
                           child: Column(
                             children: [
