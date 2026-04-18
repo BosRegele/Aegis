@@ -125,12 +125,12 @@ class _ParentHomePageState extends State<ParentHomePage> {
     final veryCompact = usableHeight < 680 || screenWidth < 340;
     final compact = !veryCompact && usableHeight < 820;
 
-    final headerHeight = veryCompact ? 164.0 : (compact ? 180.0 : 220.0);
+    final headerHeight = veryCompact ? 168.0 : (compact ? 188.0 : 220.0);
     final contentTop = headerHeight - 30.0;
-    final spacing = veryCompact ? 8.0 : (compact ? 10.0 : 14.0);
+    final spacing = veryCompact ? 9.0 : (compact ? 11.0 : 14.0);
     final horizontalPad = veryCompact ? 12.0 : (compact ? 14.0 : 16.0);
-    final activityHeight = veryCompact ? 280.0 : (compact ? 310.0 : 390.0);
-    final cardsHeight = veryCompact ? 130.0 : (compact ? 148.0 : 184.0);
+    final activityHeight = veryCompact ? 290.0 : (compact ? 325.0 : 390.0);
+    final cardsHeight = veryCompact ? 134.0 : (compact ? 154.0 : 184.0);
 
     return MediaQuery(
       data: media.copyWith(
@@ -369,8 +369,8 @@ class _TopHeroHeaderState extends State<_TopHeroHeader> {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
-    final titleSize = widget.compact ? 26.0 : 34.0;
-    final hPad = widget.compact ? 22.0 : 28.0;
+    final titleSize = widget.compact ? 27.0 : 34.0;
+    final hPad = widget.compact ? 23.0 : 28.0;
     return ClipRRect(
       borderRadius: const BorderRadius.only(
         bottomLeft: Radius.circular(52),
@@ -1025,11 +1025,11 @@ class _CereriCardState extends State<_CereriCard> {
     final badgeStream = _badgeStream;
     final compact = widget.compact;
     final veryCompact = widget.veryCompact;
-    final iconBox = veryCompact ? 38.0 : (compact ? 44.0 : 52.0);
-    final iconSize = veryCompact ? 19.0 : (compact ? 21.0 : 24.0);
-    final titleSize = veryCompact ? 16.0 : (compact ? 18.0 : 22.0);
+    final iconBox = veryCompact ? 39.0 : (compact ? 45.0 : 52.0);
+    final iconSize = veryCompact ? 19.5 : (compact ? 21.5 : 24.0);
+    final titleSize = veryCompact ? 16.5 : (compact ? 18.5 : 22.0);
     final subSize = veryCompact ? 11.0 : (compact ? 11.5 : 12.0);
-    final pad = veryCompact ? 12.0 : (compact ? 13.0 : 16.0);
+    final pad = veryCompact ? 12.5 : (compact ? 13.5 : 16.0);
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -1310,15 +1310,15 @@ class _MesajeCardState extends State<_MesajeCard> {
               final compact = widget.compact;
               final veryCompact = widget.veryCompact;
               final iconBox =
-                  veryCompact ? 38.0 : (compact ? 44.0 : 52.0);
+                  veryCompact ? 39.0 : (compact ? 45.0 : 52.0);
               final iconSize =
-                  veryCompact ? 19.0 : (compact ? 21.0 : 24.0);
+                  veryCompact ? 19.5 : (compact ? 21.5 : 24.0);
               final titleSize =
-                  veryCompact ? 16.0 : (compact ? 18.0 : 22.0);
+                  veryCompact ? 16.5 : (compact ? 18.5 : 22.0);
               final subSize =
                   veryCompact ? 11.0 : (compact ? 11.5 : 12.0);
               final pad =
-                  veryCompact ? 12.0 : (compact ? 13.0 : 16.0);
+                  veryCompact ? 12.5 : (compact ? 13.5 : 16.0);
 
               return GestureDetector(
                 onTap: widget.onTap,
