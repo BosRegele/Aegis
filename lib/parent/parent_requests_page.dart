@@ -34,15 +34,18 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
         (AppSession.fullName != null && AppSession.fullName!.isNotEmpty)
         ? AppSession.fullName!
         : (AppSession.username ?? 'Părinte');
+    final newStatus = approved ? 'approved' : 'rejected';
     try {
       await FirebaseFirestore.instance
           .collection('leaveRequests')
           .doc(docId)
           .update({
-            'status': approved ? 'approved' : 'rejected',
+            'status': newStatus,
             'reviewedAt': FieldValue.serverTimestamp(),
             'reviewedByUid': AppSession.uid,
             'reviewedByName': parentName,
+            'reviewedByRole': 'parent',
+            'recipients.parent.status': newStatus,
           });
 
       if (!mounted) return;
@@ -86,170 +89,68 @@ class _ParentRequestsPageState extends State<ParentRequestsPage> {
 
   Widget _buildRequests() {
     final parentUid = (AppSession.uid ?? '').trim();
+    if (parentUid.isEmpty) {
+      return const Center(
+        child: Text(
+          'Sesiune invalidă.',
+          style: TextStyle(color: Color(0xFF7A8077), fontSize: 16),
+        ),
+      );
+    }
 
-    return FutureBuilder<List<String>>(
-      future: _loadLinkedStudentIds(parentUid),
-      builder: (context, linkedSnapshot) {
-        if (!linkedSnapshot.hasData) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('leaveRequests')
+          .where('recipientUids', arrayContains: parentUid)
+          .where('status', isEqualTo: 'pending')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Eroare: ${snapshot.error}'));
+        }
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final linkedChildIds = linkedSnapshot.data!;
-        final streams = <Stream<QuerySnapshot<Map<String, dynamic>>>>[
-          ..._buildLegacyChildRequestStreams(linkedChildIds),
-        ];
-
-        return _buildMergedRequestStream(streams, (mergedDocs) {
-          final docs =
-              mergedDocs.where((doc) {
-                final data = doc.data();
-                final status = (data['status'] ?? '').toString().trim();
-                final source = (data['source'] ?? '').toString().trim();
-                final studentUid = (data['studentUid'] ?? '').toString().trim();
-                final isLegacyLinkedRequest = linkedChildIds.contains(
-                  studentUid,
-                );
-
-                return status == 'pending' &&
-                    source != 'secretariat' &&
-                    isLegacyLinkedRequest;
-              }).toList()..sort((a, b) {
-                final aTs = a.data()['requestedAt'] as Timestamp?;
-                final bTs = b.data()['requestedAt'] as Timestamp?;
-                return (bTs?.millisecondsSinceEpoch ?? 0).compareTo(
-                  aTs?.millisecondsSinceEpoch ?? 0,
-                );
-              });
-
-          if (docs.isEmpty) {
-            return const Center(
-              child: Text(
-                'Nu există cereri noi.',
-                style: TextStyle(color: Color(0xFF7A8077), fontSize: 16),
-              ),
-            );
-          }
-
-          return ListView.separated(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.only(top: 2, bottom: 24),
-            itemCount: docs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 14),
-            itemBuilder: (context, index) {
-              final doc = docs[index];
-              final data = doc.data();
-              return _RequestCard(
-                data: data,
-                onAccept: () => _handleRequest(doc.id, true),
-                onReject: () => _handleRequest(doc.id, false),
-              );
-            },
+        final docs = snapshot.data!.docs.where((doc) {
+          final source = (doc.data()['source'] ?? '').toString().trim();
+          return source != 'secretariat';
+        }).toList()..sort((a, b) {
+          final aTs = a.data()['requestedAt'] as Timestamp?;
+          final bTs = b.data()['requestedAt'] as Timestamp?;
+          return (bTs?.millisecondsSinceEpoch ?? 0).compareTo(
+            aTs?.millisecondsSinceEpoch ?? 0,
           );
         });
+
+        if (docs.isEmpty) {
+          return const Center(
+            child: Text(
+              'Nu există cereri noi.',
+              style: TextStyle(color: Color(0xFF7A8077), fontSize: 16),
+            ),
+          );
+        }
+
+        return ListView.separated(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.only(top: 2, bottom: 24),
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 14),
+          itemBuilder: (context, index) {
+            final doc = docs[index];
+            final data = doc.data();
+            return _RequestCard(
+              data: data,
+              onAccept: () => _handleRequest(doc.id, true),
+              onReject: () => _handleRequest(doc.id, false),
+            );
+          },
+        );
       },
     );
   }
 
-  Future<List<String>> _loadLinkedStudentIds(String parentUid) async {
-    if (parentUid.isEmpty) return const <String>[];
-
-    final users = FirebaseFirestore.instance.collection('users');
-    final ids = <String>{};
-
-    try {
-      final parentDoc = await users.doc(parentUid).get();
-      final parentData = parentDoc.data() ?? const <String, dynamic>{};
-      ids.addAll(
-        ((parentData['children'] as List? ?? const [])
-            .map((value) => value.toString().trim())
-            .where((value) => value.isNotEmpty && value != parentUid)),
-      );
-    } catch (_) {}
-
-    try {
-      final byParents = await users
-          .where('parents', arrayContains: parentUid)
-          .get();
-      ids.addAll(byParents.docs.map((doc) => doc.id));
-    } catch (_) {}
-
-    try {
-      final byParentUid = await users
-          .where('parentUid', isEqualTo: parentUid)
-          .get();
-      ids.addAll(byParentUid.docs.map((doc) => doc.id));
-    } catch (_) {}
-
-    try {
-      final byParentId = await users
-          .where('parentId', isEqualTo: parentUid)
-          .get();
-      ids.addAll(byParentId.docs.map((doc) => doc.id));
-    } catch (_) {}
-
-    final sorted = ids.toList()..sort();
-    return sorted;
-  }
-
-  List<Stream<QuerySnapshot<Map<String, dynamic>>>>
-  _buildLegacyChildRequestStreams(List<String> studentIds) {
-    if (studentIds.isEmpty) {
-      return const <Stream<QuerySnapshot<Map<String, dynamic>>>>[];
-    }
-
-    const chunkSize = 10;
-    final streams = <Stream<QuerySnapshot<Map<String, dynamic>>>>[];
-    for (int index = 0; index < studentIds.length; index += chunkSize) {
-      final chunk = studentIds.skip(index).take(chunkSize).toList();
-      streams.add(
-        FirebaseFirestore.instance
-            .collection('leaveRequests')
-            .where('studentUid', whereIn: chunk)
-            .where('status', isEqualTo: 'pending')
-            .snapshots(),
-      );
-    }
-    return streams;
-  }
-
-  Widget _buildMergedRequestStream(
-    List<Stream<QuerySnapshot<Map<String, dynamic>>>> streams,
-    Widget Function(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs)
-    onReady,
-  ) {
-    if (streams.isEmpty) {
-      return onReady(const <QueryDocumentSnapshot<Map<String, dynamic>>>[]);
-    }
-
-    Widget step(
-      int index,
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> acc,
-    ) {
-      if (index >= streams.length) {
-        final unique = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{
-          for (final doc in acc) doc.id: doc,
-        };
-        return onReady(unique.values.toList());
-      }
-
-      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: streams[index],
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            // Continue with other streams if one chunk is denied.
-            return step(index + 1, acc);
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          return step(index + 1, [...acc, ...snapshot.data!.docs]);
-        },
-      );
-    }
-
-    return step(0, const <QueryDocumentSnapshot<Map<String, dynamic>>>[]);
-  }
 }
 
 class _TopHeader extends StatelessWidget {

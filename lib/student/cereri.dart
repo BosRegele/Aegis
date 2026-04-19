@@ -366,6 +366,21 @@ class _CereriScreenState extends State<CereriScreen> {
       teacherName = (teacherData['fullName'] ?? teacherUsername)
           .toString()
           .trim();
+    } else if (teacherUsername.isNotEmpty) {
+      final query = await FirebaseFirestore.instance
+          .collection('users')
+          .where('username', isEqualTo: teacherUsername)
+          .where('role', isEqualTo: 'teacher')
+          .limit(1)
+          .get();
+      if (query.docs.isNotEmpty) {
+        final doc = query.docs.first;
+        teacherUid = doc.id;
+        final teacherData = doc.data();
+        teacherName = (teacherData['fullName'] ?? teacherUsername)
+            .toString()
+            .trim();
+      }
     }
     return <String, String>{
       'uid': teacherUid,
@@ -442,7 +457,40 @@ class _CereriScreenState extends State<CereriScreen> {
         throw Exception('Elevul nu are clasă setată în profil.');
       }
 
-      final baseDoc = {
+      final recipients = <String, Map<String, dynamic>>{};
+      final recipientUids = <String>[];
+
+      if (_targetTeacher) {
+        final teacher = await _resolveTeacher();
+        final tUid = (teacher['uid'] ?? '').trim();
+        recipients['teacher'] = {
+          'uid': tUid,
+          'name': (teacher['name'] ?? 'Diriginte').trim(),
+          'username': (teacher['username'] ?? '').trim(),
+          'status': 'pending',
+        };
+        if (tUid.isNotEmpty) recipientUids.add(tUid);
+      }
+
+      if (_targetParent) {
+        final parent = await _resolveParent();
+        final pUid = (parent['uid'] ?? '').trim();
+        if (pUid.isNotEmpty) {
+          recipients['parent'] = {
+            'uid': pUid,
+            'name': (parent['name'] ?? '').trim(),
+            'username': (parent['username'] ?? '').trim(),
+            'status': 'pending',
+          };
+          recipientUids.add(pUid);
+        }
+      }
+
+      if (recipients.isEmpty) {
+        throw Exception('Niciun destinatar valid pentru cerere.');
+      }
+
+      await FirebaseFirestore.instance.collection('leaveRequests').add({
         'studentUid': studentUid,
         'studentUsername': studentUsername,
         'studentName': studentName,
@@ -464,40 +512,10 @@ class _CereriScreenState extends State<CereriScreen> {
         'reviewedAt': null,
         'reviewedByUid': null,
         'reviewedByName': null,
-        'viewedByParent': false,
-      };
-
-      final futures = <Future>[];
-
-      if (_targetTeacher) {
-        final teacher = await _resolveTeacher();
-        futures.add(
-          FirebaseFirestore.instance.collection('leaveRequests').add({
-            ...baseDoc,
-            'targetRole': 'teacher',
-            'targetUid': (teacher['uid'] ?? '').trim(),
-            'targetName': (teacher['name'] ?? 'Diriginte').trim(),
-            'targetUsername': (teacher['username'] ?? '').trim(),
-          }),
-        );
-      }
-
-      if (_targetParent) {
-        final parent = await _resolveParent();
-        if (parent['uid']?.isNotEmpty == true) {
-          futures.add(
-            FirebaseFirestore.instance.collection('leaveRequests').add({
-              ...baseDoc,
-              'targetRole': 'parent',
-              'targetUid': (parent['uid'] ?? '').trim(),
-              'targetName': (parent['name'] ?? '').trim(),
-              'targetUsername': (parent['username'] ?? '').trim(),
-            }),
-          );
-        }
-      }
-
-      await Future.wait(futures);
+        'reviewedByRole': null,
+        'recipients': recipients,
+        'recipientUids': recipientUids,
+      });
 
       await FirebaseFirestore.instance.collection('users').doc(studentUid).set({
         'unreadCount': FieldValue.increment(1),

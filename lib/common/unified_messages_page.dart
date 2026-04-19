@@ -162,15 +162,14 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
   List<Stream<QuerySnapshot<Map<String, dynamic>>>> _buildParentDecisionStreams(
     String uid,
   ) {
-    final leave = FirebaseFirestore.instance.collection('leaveRequests');
+    if (uid.isEmpty) {
+      return const <Stream<QuerySnapshot<Map<String, dynamic>>>>[];
+    }
     return [
-      ..._childrenUids.map(
-        (childUid) => leave
-            .where('studentUid', isEqualTo: childUid)
-            .orderBy('requestedAt', descending: true)
-            .limit(50)
-            .snapshots(),
-      ),
+      FirebaseFirestore.instance
+          .collection('leaveRequests')
+          .where('recipientUids', arrayContains: uid)
+          .snapshots(),
     ];
   }
 
@@ -428,9 +427,7 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
           final data = doc.data();
           final status = (data['status'] ?? '').toString().trim();
           final source = (data['source'] ?? '').toString().trim();
-          final targetRole = (data['targetRole'] ?? '').toString().trim();
           return source != 'secretariat' &&
-              targetRole == 'parent' &&
               (status == 'pending' ||
                   status == 'approved' ||
                   status == 'rejected');
@@ -457,6 +454,28 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
                     ? _MessageState.rejected
                     : _MessageState.pending);
 
+          final recipients = data['recipients'];
+          final hasMultipleRecipients =
+              recipients is Map && recipients.keys.length >= 2;
+          final reviewerRole = (data['reviewedByRole'] ?? '').toString().trim();
+          String? badgeOverride;
+          if (hasMultipleRecipients &&
+              (state == _MessageState.approved ||
+                  state == _MessageState.rejected)) {
+            String? suffix;
+            if (reviewerRole == 'teacher') {
+              suffix = ' de către diriginte';
+            } else if (reviewerRole == 'parent') {
+              suffix = ' de către părinte';
+            }
+            if (suffix != null) {
+              final verb = state == _MessageState.approved
+                  ? 'Aprobată'
+                  : 'Respinsă';
+              badgeOverride = '$verb$suffix';
+            }
+          }
+
           return _UnifiedMessageItem(
             kind: _MessageKind.decision,
             state: state,
@@ -472,6 +491,7 @@ class _UnifiedMessagesPageState extends State<UnifiedMessagesPage> {
             createdAt: when,
             dateLabel: (data['dateText'] ?? '').toString().trim(),
             timeLabel: (data['timeText'] ?? '').toString().trim(),
+            badgeLabelOverride: badgeOverride,
           );
         })
         .toList();
@@ -752,7 +772,7 @@ class _MessageCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 _StatusPill(
-                  label: scheme.badgeLabel,
+                  label: item.badgeLabelOverride ?? scheme.badgeLabel,
                   icon: scheme.badgeIcon,
                   bg: scheme.pillBg,
                   fg: scheme.pillFg,
@@ -817,6 +837,7 @@ class _UnifiedMessageItem {
   final DateTime createdAt;
   final String? dateLabel;
   final String? timeLabel;
+  final String? badgeLabelOverride;
 
   const _UnifiedMessageItem({
     required this.kind,
@@ -827,6 +848,7 @@ class _UnifiedMessageItem {
     required this.createdAt,
     this.dateLabel,
     this.timeLabel,
+    this.badgeLabelOverride,
   });
 }
 

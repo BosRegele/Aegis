@@ -201,6 +201,21 @@ class _InboxScreenState extends State<InboxScreen> {
       }
     }
 
+    // Only mention the reviewer when the request went to BOTH diriginte and
+    // părinte — otherwise it's obvious who decided.
+    final recipients = data['recipients'];
+    final hasMultipleRecipients =
+        recipients is Map && recipients.keys.length >= 2;
+    final reviewedByRole = (data['reviewedByRole'] ?? '').toString().trim();
+    String reviewerSuffix = '';
+    if (hasMultipleRecipients) {
+      if (reviewedByRole == 'teacher') {
+        reviewerSuffix = ' de către diriginte';
+      } else if (reviewedByRole == 'parent') {
+        reviewerSuffix = ' de către părinte';
+      }
+    }
+
     switch (status) {
       case 'approved':
         return _InboxCardData(
@@ -212,7 +227,7 @@ class _InboxScreenState extends State<InboxScreen> {
           leadingBackground: const Color(0xFFE7EFE2),
           leadingForeground: _primary,
           statusIcon: Icons.check_circle_rounded,
-          statusLabel: 'Aprobată',
+          statusLabel: 'Aprobată$reviewerSuffix',
           statusBackground: const Color(0xFFE4F0E1),
           statusForeground: _primary,
           sortAt: requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
@@ -227,7 +242,7 @@ class _InboxScreenState extends State<InboxScreen> {
           leadingBackground: const Color(0xFFF2E4EA),
           leadingForeground: const Color(0xFF9D345F),
           statusIcon: Icons.cancel_rounded,
-          statusLabel: 'Respinsă',
+          statusLabel: 'Respinsă$reviewerSuffix',
           statusBackground: const Color(0xFFF4E6EC),
           statusForeground: const Color(0xFF9D345F),
           sortAt: requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0),

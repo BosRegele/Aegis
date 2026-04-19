@@ -114,6 +114,8 @@ service cloud.firestore {
             'reviewedAt',
             'reviewedByUid',
             'reviewedByName',
+            'reviewedByRole',
+            'recipients',
           ]) &&
           ['approved', 'rejected'].hasAny([request.resource.data.status]) &&
           request.resource.data.reviewedByUid == request.auth.uid &&
@@ -125,14 +127,17 @@ service cloud.firestore {
           (isStudent() && resource.data.studentUid == request.auth.uid) ||
           isParentOfStudent(resource.data.studentUid) ||
           isTeacherForClass(resource.data.classId) ||
-          (isParent() && resource.data.targetUid == request.auth.uid);
+          (resource.data.recipientUids is list &&
+           request.auth.uid in resource.data.recipientUids);
     }
 
     function canReviewLeaveRequest() {
       return validLeaveReviewUpdate() &&
           (isAdmin() ||
               isParentOfStudent(resource.data.studentUid) ||
-              isTeacherForClass(resource.data.classId));
+              isTeacherForClass(resource.data.classId) ||
+              (resource.data.recipientUids is list &&
+               request.auth.uid in resource.data.recipientUids));
     }
 
     function canReadAccessEvent() {
@@ -226,14 +231,30 @@ service cloud.firestore {
     }
 
     match /leaveRequests/{requestId} {
-      allow read: if canReadLeaveRequest();
+      allow read: if request.auth.uid in resource.data.recipientUids;
+      allow read: if resource.data.studentUid == request.auth.uid;
+      allow read: if isAdmin();
+      allow read: if isParentOfStudent(resource.data.studentUid);
+      allow read: if isTeacherForClass(resource.data.classId);
       allow create: if validLeaveRequestCreate() || validAdminGlobalMessage();
       allow update: if canReviewLeaveRequest();
       allow delete: if isAdmin();
     }
 
     match /secretariatMessages/{messageId} {
-      allow read: if canReadSecretariatMessage();
+      allow read: if isAdmin();
+      allow read: if isStudent() &&
+                     resource.data.recipientRole == 'student' &&
+                     (resource.data.recipientUid == request.auth.uid ||
+                      resource.data.recipientUid == '');
+      allow read: if isParent() &&
+                     resource.data.recipientRole == 'parent' &&
+                     (resource.data.studentUid == '' ||
+                      isParentOfStudent(resource.data.studentUid));
+      allow read: if isTeacher() &&
+                     resource.data.recipientRole == 'teacher' &&
+                     (resource.data.recipientUid == request.auth.uid ||
+                      resource.data.recipientUid == '');
       allow create: if validSecretariatMessageCreate();
       allow update, delete: if isAdmin();
     }

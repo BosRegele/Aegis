@@ -70,6 +70,7 @@ class _MessageItem {
   final String message;
   final String? metaText;
   final DateTime createdAt;
+  final String? badgeLabelOverride;
 
   const _MessageItem({
     required this.state,
@@ -78,6 +79,7 @@ class _MessageItem {
     required this.message,
     this.metaText,
     required this.createdAt,
+    this.badgeLabelOverride,
   });
 }
 
@@ -111,10 +113,22 @@ _MessageItem _fromSecretariatMessage(Map<String, dynamic> d) {
   );
 }
 
+String? _reviewerSuffix(Map<String, dynamic> d) {
+  final recipients = d['recipients'];
+  final hasMultipleRecipients =
+      recipients is Map && recipients.keys.length >= 2;
+  if (!hasMultipleRecipients) return null;
+  final role = (d['reviewedByRole'] ?? '').toString().trim();
+  if (role == 'teacher') return ' de către diriginte';
+  if (role == 'parent') return ' de către părinte';
+  return null;
+}
+
 _MessageItem _fromLeaveRequest(Map<String, dynamic> d) {
   final status = (d['status'] ?? 'pending').toString();
   final studentName = (d['studentName'] ?? '').toString().trim();
   final requestedAt = (d['requestedAt'] as Timestamp?)?.toDate();
+  final reviewedAt = (d['reviewedAt'] as Timestamp?)?.toDate();
   final dateText = (d['dateText'] ?? '').toString();
   final timeText = (d['timeText'] ?? '').toString();
   final message = (d['message'] ?? '').toString();
@@ -144,13 +158,24 @@ _MessageItem _fromLeaveRequest(Map<String, dynamic> d) {
     meta = parts.join(', ');
   }
 
+  String? badgeOverride;
+  if (state == _MsgState.approved || state == _MsgState.rejected) {
+    final suffix = _reviewerSuffix(d);
+    if (suffix != null) {
+      final verb = state == _MsgState.approved ? 'Aprobată' : 'Respinsă';
+      badgeOverride = '$verb$suffix';
+    }
+  }
+
   return _MessageItem(
     state: state,
     title: title,
     subtitle: name,
     message: message,
     metaText: meta,
-    createdAt: requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+    createdAt:
+        reviewedAt ?? requestedAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+    badgeLabelOverride: badgeOverride,
   );
 }
 
@@ -265,7 +290,7 @@ class _MessageCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 _StatusPill(
-                  label: scheme.badgeLabel,
+                  label: item.badgeLabelOverride ?? scheme.badgeLabel,
                   icon: scheme.badgeIcon,
                   bg: scheme.pillBg,
                   fg: scheme.pillFg,
@@ -373,7 +398,7 @@ class _MesajeDirPageState extends State<MesajeDirPage> {
                   );
                   final leaveStream = FirebaseFirestore.instance
                       .collection('leaveRequests')
-                      .where('classId', isEqualTo: classId)
+                      .where('recipientUids', arrayContains: teacherUid)
                       .snapshots();
                   final secretariatTargetedStream = messages
                       .where('recipientRole', isEqualTo: 'teacher')

@@ -157,9 +157,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
                         .map((e) {
                           if (e is String) return e.trim();
                           if (e is Map) {
-                            return ((e['uid'] ??
-                                        e['studentUid'] ??
-                                        e['id']) ??
+                            return ((e['uid'] ?? e['studentUid'] ?? e['id']) ??
                                     '')
                                 .toString()
                                 .trim();
@@ -256,8 +254,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
                                             PageRouteBuilder(
                                               pageBuilder: (_, __, ___) =>
                                                   const ParentRequestsPage(),
-                                              transitionDuration:
-                                                  Duration.zero,
+                                              transitionDuration: Duration.zero,
                                               reverseTransitionDuration:
                                                   Duration.zero,
                                             ),
@@ -607,6 +604,7 @@ class _ActivityFeedState extends State<_ActivityFeed> {
   }
 
   void _buildStreams(List<String> uids) {
+    final parentUid = (AppSession.uid ?? '').trim();
     if (uids.isEmpty) {
       _accessStream = const Stream.empty();
       _requestStream = const Stream.empty();
@@ -620,11 +618,13 @@ class _ActivityFeedState extends State<_ActivityFeed> {
         .orderBy('timestamp', descending: true)
         .limit(20)
         .snapshots();
-    _requestStream = FirebaseFirestore.instance
-        .collection('leaveRequests')
-        .where('studentUid', whereIn: uids)
-        .where('status', isEqualTo: 'pending')
-        .snapshots();
+    _requestStream = parentUid.isEmpty
+        ? const Stream.empty()
+        : FirebaseFirestore.instance
+              .collection('leaveRequests')
+              .where('recipientUids', arrayContains: parentUid)
+              .where('status', isEqualTo: 'pending')
+              .snapshots();
     final messages = FirebaseFirestore.instance.collection(
       'secretariatMessages',
     );
@@ -707,12 +707,10 @@ class _ActivityFeedState extends State<_ActivityFeed> {
                   builder: (context, msgChildrenSnap) {
                     final msgDocsById =
                         <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
-                    for (final doc
-                        in msgGlobalSnap.data?.docs ?? const []) {
+                    for (final doc in msgGlobalSnap.data?.docs ?? const []) {
                       msgDocsById[doc.id] = doc;
                     }
-                    for (final doc
-                        in msgChildrenSnap.data?.docs ?? const []) {
+                    for (final doc in msgChildrenSnap.data?.docs ?? const []) {
                       msgDocsById[doc.id] = doc;
                     }
 
@@ -745,8 +743,7 @@ class _ActivityFeedState extends State<_ActivityFeed> {
                       final status = (d['status'] ?? '').toString();
                       if (status != 'pending') continue;
                       final ts =
-                          ((d['requestedAt'] ?? d['createdAt'])
-                                  as Timestamp?)
+                          ((d['requestedAt'] ?? d['createdAt']) as Timestamp?)
                               ?.toDate();
                       final uid = (d['studentUid'] ?? '').toString();
                       final name = _resolveName(uid, d);
@@ -769,8 +766,8 @@ class _ActivityFeedState extends State<_ActivityFeed> {
                       final display = title.isNotEmpty
                           ? title
                           : (msg.length > 40
-                              ? '${msg.substring(0, 40)}…'
-                              : msg);
+                                ? '${msg.substring(0, 40)}…'
+                                : msg);
                       items.add(
                         _ActivityItem(
                           title: display,
@@ -789,15 +786,15 @@ class _ActivityFeedState extends State<_ActivityFeed> {
                       return b.time!.compareTo(a.time!);
                     });
 
-                    final now = DateTime.now();
-                    final todayStart =
-                        DateTime(now.year, now.month, now.day);
+                    final cutoff = DateTime.now().subtract(
+                      const Duration(days: 7),
+                    );
                     final shown = items
                         .where(
                           (item) =>
-                              item.time != null &&
-                              !item.time!.isBefore(todayStart),
+                              item.time != null && !item.time!.isBefore(cutoff),
                         )
+                        .take(5)
                         .toList();
 
                     if (shown.isEmpty) {
@@ -1075,7 +1072,7 @@ class _CereriCardState extends State<_CereriCard> {
             ),
             const Spacer(),
             Text(
-              'Cereri de\nînvoire',
+              'Cereri',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -1086,15 +1083,24 @@ class _CereriCardState extends State<_CereriCard> {
               ),
             ),
             const SizedBox(height: 4),
-            Text(
-              'Vezi rapid',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.74),
-                fontSize: subSize,
-                fontWeight: FontWeight.w500,
-              ),
+            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: badgeStream,
+              builder: (context, snap) {
+                final count = snap.data?.docs.length ?? 0;
+                final subtitle = count > 0
+                    ? '$count ${count == 1 ? 'cerere nouă' : 'cereri noi'}'
+                    : 'Nicio cerere nouă';
+                return Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.74),
+                    fontSize: subSize,
+                    fontWeight: FontWeight.w500,
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -1156,8 +1162,7 @@ class _MesajeCardState extends State<_MesajeCard> {
     _pendingRequestsStream = parentUid.isNotEmpty
         ? FirebaseFirestore.instance
               .collection('leaveRequests')
-              .where('targetUid', isEqualTo: parentUid)
-              .where('targetRole', isEqualTo: 'parent')
+              .where('recipientUids', arrayContains: parentUid)
               .where('status', isEqualTo: 'pending')
               .snapshots()
               .handleError((_) {})
@@ -1309,16 +1314,11 @@ class _MesajeCardState extends State<_MesajeCard> {
 
               final compact = widget.compact;
               final veryCompact = widget.veryCompact;
-              final iconBox =
-                  veryCompact ? 39.0 : (compact ? 45.0 : 52.0);
-              final iconSize =
-                  veryCompact ? 19.5 : (compact ? 21.5 : 24.0);
-              final titleSize =
-                  veryCompact ? 16.5 : (compact ? 18.5 : 22.0);
-              final subSize =
-                  veryCompact ? 11.0 : (compact ? 11.5 : 12.0);
-              final pad =
-                  veryCompact ? 12.5 : (compact ? 13.5 : 16.0);
+              final iconBox = veryCompact ? 39.0 : (compact ? 45.0 : 52.0);
+              final iconSize = veryCompact ? 19.5 : (compact ? 21.5 : 24.0);
+              final titleSize = veryCompact ? 16.5 : (compact ? 18.5 : 22.0);
+              final subSize = veryCompact ? 11.0 : (compact ? 11.5 : 12.0);
+              final pad = veryCompact ? 12.5 : (compact ? 13.5 : 16.0);
 
               return GestureDetector(
                 onTap: widget.onTap,
@@ -1367,32 +1367,15 @@ class _MesajeCardState extends State<_MesajeCard> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: unread > 0 ? _primary : _outline,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              unread > 0
-                                  ? '$unread mesaje noi'
-                                  : 'Vezi rapid',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: unread > 0 ? _primary : _outline,
-                                fontSize: subSize,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        'Istoric cereri',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: const Color(0xFF6B7A6D),
+                          fontSize: subSize,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),

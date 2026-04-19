@@ -58,7 +58,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
             _classId = classId;
             _pendingStream = FirebaseFirestore.instance
                 .collection('leaveRequests')
-                .where('classId', isEqualTo: classId)
+                .where('recipientUids', arrayContains: uid)
                 .where('status', isEqualTo: 'pending')
                 .snapshots();
             _studentsStream = FirebaseFirestore.instance
@@ -68,9 +68,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                 .snapshots();
             _allRequestsStream = FirebaseFirestore.instance
                 .collection('leaveRequests')
-                .where('classId', isEqualTo: classId)
-                .orderBy('requestedAt', descending: true)
-                .limit(5)
+                .where('recipientUids', arrayContains: uid)
                 .snapshots();
             _messagesTargetedStream = FirebaseFirestore.instance
                 .collection('secretariatMessages')
@@ -381,13 +379,15 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
                   return b.time!.compareTo(a.time!);
                 });
 
-                final now = DateTime.now();
-                final todayStart = DateTime(now.year, now.month, now.day);
+                final cutoff = DateTime.now().subtract(
+                  const Duration(days: 7),
+                );
                 final shown = items
                     .where(
                       (item) =>
-                          item.time != null && !item.time!.isBefore(todayStart),
+                          item.time != null && !item.time!.isBefore(cutoff),
                     )
+                    .take(5)
                     .toList();
 
                 return Container(
@@ -527,7 +527,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
           children: [
             _GridCard(
               icon: Icons.group_rounded,
-              title: 'Clasa Mea',
+              title: 'Clasa mea',
               subtitle: 'Gestionare elevi',
               isDark: false,
               wide: true,

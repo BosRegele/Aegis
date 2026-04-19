@@ -27,15 +27,18 @@ class _ParentHomePageState extends State<ParentHomePage> {
 
   Future<void> _handleRequest(String docId, bool approved) async {
     final parentName = AppSession.username ?? "Părinte";
+    final newStatus = approved ? 'approved' : 'rejected';
     try {
       await FirebaseFirestore.instance
           .collection('leaveRequests')
           .doc(docId)
           .update({
-            'status': approved ? 'approved' : 'rejected',
+            'status': newStatus,
             'reviewedAt': FieldValue.serverTimestamp(),
             'reviewedByUid': AppSession.uid,
             'reviewedByName': parentName,
+            'reviewedByRole': 'parent',
+            'recipients.parent.status': newStatus,
           });
 
       if (!mounted) return;
@@ -73,7 +76,10 @@ class _ParentHomePageState extends State<ParentHomePage> {
         child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('leaveRequests')
-              .where('targetRole', isEqualTo: 'parent')
+              .where(
+                'recipientUids',
+                arrayContains: (AppSession.uid ?? '').trim(),
+              )
               .where('status', isEqualTo: 'pending')
               .orderBy('requestedAt', descending: true)
               .snapshots(),

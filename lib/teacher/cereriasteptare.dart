@@ -50,6 +50,8 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
           'reviewedAt': Timestamp.now(),
           'reviewedByUid': teacherUid,
           'reviewedByName': (AppSession.username ?? '').toString(),
+          'reviewedByRole': 'teacher',
+          'recipients.teacher.status': status,
         });
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -89,7 +91,10 @@ class _CereriAsteptarePageState extends State<CereriAsteptarePage> {
                       : StreamBuilder<QuerySnapshot>(
                           stream: FirebaseFirestore.instance
                               .collection('leaveRequests')
-                              .where('classId', isEqualTo: _classId)
+                              .where(
+                                'recipientUids',
+                                arrayContains: uid,
+                              )
                               .where('status', isEqualTo: 'pending')
                               .orderBy('requestedAt', descending: true)
                               .snapshots(),
