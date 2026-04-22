@@ -2,7 +2,7 @@
 
 ## Overview
 
-School QR Access System is a Flutter application designed to manage and control access to a school building using dynamic QR codes. The app supports multiple roles (students, teachers, administrators, and gate devices) and integrates with Firebase for authentication, database management, and backend logic.
+School QR Access System is a Flutter application designed to manage and control access to a school building using dynamic QR codes. The app supports multiple roles (students, parents, teachers, administrators, and gate devices) and integrates with Firebase for authentication, database management, and backend logic.
 
 The goal of the system is to modernize school entry by replacing manual checks with a secure QR-based access system. Each student receives a dynamically generated QR code which can be scanned at the entrance turnstile.
 
@@ -12,7 +12,7 @@ The goal of the system is to modernize school entry by replacing manual checks w
 
 ## User Roles
 
-The system supports four types of users:
+The system supports five types of users:
 
 ### Students
 
@@ -23,25 +23,35 @@ The system supports four types of users:
   * Name
   * Class
   * Schedule
+  * Inbox / messages
+  * Requests (cereri)
 
-### Teachers
+### Parents
+
+* Linked to one or more student accounts.
+* View their children's status, schedule, and messages.
+* Submit and track requests.
+
+### Teachers (including Homeroom / Diriginte)
 
 * Access a dashboard.
-* View information related to their classes.
+* View the classes they teach and their schedule.
+* Manage pending requests and messages for their homeroom class.
+* Track student status.
 
 ### Secretariat / Administrators
 
-Administrative interface that allows full control over users.
+Administrative interface that allows full control over users and school data.
 
 Admins can:
 
-* Create new users
-* View all students
-* View all teachers
-* View all administrators
-* View all turnstile devices
-* Disable accounts
-* Delete accounts
+* Create new users (students, parents, teachers, admins)
+* View and manage all students, teachers, parents, administrators
+* Manage classes and schedules
+* Manage turnstile devices
+* Send global messages and notifications
+* Configure school holidays (vacanțe)
+* Disable or delete accounts
 
 ### Turnstiles (Gate Devices)
 
@@ -63,43 +73,105 @@ Admins can:
 * Firebase Authentication
 * Cloud Firestore
 * Firebase Cloud Functions
+* Firebase Cloud Messaging (push notifications)
+* Firebase Hosting
 
 ---
 
 # Project Structure
 
 ```
-lib/
+StudentId/
 │
-├── main.dart
-├── firebase_options.dart
-├── session.dart
+├── android/                          # Android platform code
+├── ios/                              # iOS platform code
+├── web/                              # Web platform code
+├── windows/ macos/ linux/            # Desktop platform code
 │
-├── login_page.dart
-├── login_page_firestore.dart
+├── assets/                           # Images, fonts, static files
+├── docs/                             # Project documentation
+├── functions/                        # Firebase Cloud Functions (Node.js)
+├── test/                             # Unit & widget tests
+├── testsprite_tests/                 # Integration / E2E tests
 │
-├── elev_qr_page.dart
-├── gate_scan_page.dart
+├── firebase.json                     # Firebase project config
+├── firestore.rules                   # Firestore security rules
+├── firestore.indexes.json            # Firestore indexes
+├── storage.rules                     # Firebase Storage rules
+├── cors.json                         # CORS config for Storage
+├── pubspec.yaml                      # Flutter dependencies
 │
-├── teacher_dashboard_page.dart
-│
-├── meniu.dart
-├── mainnavigation.dart
-│
-├── admin/
-│   ├── secretariat_raw_page.dart
-│   ├── admin_create_user_page.dart
-│   ├── admin_students_page.dart
-│   ├── admin_teachers_page.dart
-│   ├── admin_admins_page.dart
-│   ├── admin_turnstiles_page.dart
-│   ├── admin_api.dart
-│   └── admin_store.dart
-│
-└── utils/
-    ├── password_hash.dart
-    ├── qr_token.dart
-    └── session.dart
+└── lib/                              # Main Flutter source
+    │
+    ├── main.dart                     # App entry point
+    │
+    ├── core/                         # App-wide core setup
+    │   ├── firebase_options.dart     # Auto-generated Firebase config
+    │   └── session.dart              # Session / auth state
+    │
+    ├── auth/                         # Authentication flows
+    │   ├── login_page_firestore.dart
+    │   ├── onboarding_page.dart
+    │   ├── login_add_photo.dart
+    │   └── two_factor_verify_page.dart
+    │
+    ├── student/                      # Student role UI
+    │   ├── mainnavigation.dart       # Bottom-nav shell
+    │   ├── meniu.dart                # Home / menu page
+    │   ├── orar.dart                 # Schedule view
+    │   ├── inbox.dart                # Messages inbox
+    │   ├── cereri.dart               # Requests
+    │   ├── logout_dialog.dart
+    │   └── widgets/
+    │       └── maniubara.dart        # Shared UI widgets
+    │
+    ├── parent/                       # Parent role UI
+    │   ├── parent_home.dart
+    │   ├── parent_home_page.dart
+    │   ├── parent_students_page.dart
+    │   ├── parent_requests_page.dart
+    │   ├── parent_inbox_page.dart
+    │   └── parent_ui.dart
+    │
+    ├── teacher/                      # Teacher / homeroom UI
+    │   ├── teacher_dashboard_page.dart
+    │   ├── orardir.dart              # Homeroom schedule
+    │   ├── statuselevi.dart          # Student status
+    │   ├── cereriasteptare.dart      # Pending requests
+    │   ├── mesajedir.dart            # Homeroom messages
+    │   └── account_bottom_sheet.dart
+    │
+    ├── admin/                        # Secretariat / admin UI
+    │   ├── secretariat_raw_page.dart
+    │   ├── admin_students_page.dart
+    │   ├── admin_teachers_page.dart
+    │   ├── admin_parents_page.dart
+    │   ├── admin_admins_page.dart
+    │   ├── admin_classes_page.dart
+    │   ├── admin_schedules_page.dart
+    │   ├── admin_turnstiles_page.dart
+    │   ├── admin_notifications.dart
+    │   ├── admin_vacante.dart        # School holidays
+    │   ├── secretariat_global_messages_page.dart
+    │   └── services/
+    │       ├── admin_api.dart        # Cloud Functions client
+    │       └── admin_store.dart      # Firestore data layer
+    │
+    ├── gate/                         # Turnstile / gate device
+    │   ├── gate_scan_page.dart       # QR scanner
+    │   └── qr_token.dart             # Token generation / validation
+    │
+    ├── common/                       # Shared cross-role pages
+    │   └── unified_messages_page.dart
+    │
+    ├── services/                     # App-wide services
+    │   └── security_flags_service.dart
+    │
+    └── utils/                        # Helpers
+        ├── password_hash.dart
+        ├── csv_download.dart         # CSV export (platform-agnostic)
+        ├── csv_download_stub.dart
+        └── csv_download_web.dart
 ```
 
 ---
@@ -108,9 +180,9 @@ lib/
 
 Users authenticate using a username and password system.
 
-Accounts are created by administrators through the admin panel. The credentials are stored securely and verified using Firebase.
+Accounts are created by administrators through the admin panel. Passwords are hashed before storage and verified against Firebase. An optional two-factor verification flow is available for sensitive actions.
 
-User roles determine which pages and features are accessible after login.
+User roles stored in Firestore determine which pages and features are accessible after login.
 
 ---
 
@@ -119,16 +191,16 @@ User roles determine which pages and features are accessible after login.
 Students receive a dynamic QR code that changes periodically.
 This prevents QR screenshots from being reused.
 
-The QR code contains a token that is verified when scanned by a turnstile device.
+The QR code contains a signed token that is verified when scanned by a turnstile device.
 
 Flow:
 
 1. Student opens the QR page
-2. A secure token is generated
-3. QR code is displayed
+2. A secure token is generated client-side
+3. QR code is displayed and refreshed on an interval
 4. Turnstile scans the QR
-5. Backend validates the token
-6. Access is granted or denied
+5. Backend (Cloud Functions + Firestore rules) validates the token
+6. Access is granted or denied, and the event is logged
 
 ---
 
@@ -138,18 +210,25 @@ The secretariat interface allows administrators to manage the entire system.
 
 Administrators can:
 
-* Create users
-* Manage roles
+* Create users across all roles
+* Manage classes, schedules, and holidays
+* Send global or class-scoped messages and notifications
 * Disable compromised accounts
 * Delete unused accounts
 * View all users grouped by role
+* Export lists to CSV
 
 Pages include:
 
 * Students
 * Teachers
+* Parents
 * Administrators
+* Classes
+* Schedules
 * Turnstiles
+* Global messages
+* Holidays (vacanțe)
 
 Each user entry shows:
 
@@ -164,11 +243,13 @@ Each user entry shows:
 
 The system includes several security measures:
 
-* Role-based access control
-* Firestore security rules
-* Dynamic QR tokens
-* Account disable functionality
+* Role-based access control enforced in Firestore rules
+* Dynamic, short-lived QR tokens
 * Server-side validation via Cloud Functions
+* Password hashing
+* Optional two-factor verification
+* Account disable and security-flag service
+* Storage rules limiting file access per role
 
 These protections help prevent unauthorized access or manipulation of the system.
 
@@ -178,12 +259,12 @@ These protections help prevent unauthorized access or manipulation of the system
 
 Possible future extensions:
 
-* Entry history logging
-* Attendance tracking
-* Push notifications
+* Entry history logging and analytics
+* Automatic attendance tracking
+* Richer push-notification channels
 * Admin analytics dashboard
-* Hardware turnstile integration
-* Multi-school support
+* Physical turnstile hardware integration
+* Multi-school / multi-tenant support
 
 ---
 
@@ -192,9 +273,10 @@ Possible future extensions:
 This project was developed as an educational and practical system to explore:
 
 * Mobile application development with Flutter
-* Backend services using Firebase
+* Backend services using Firebase (Auth, Firestore, Functions, Messaging)
 * Access control systems
 * Secure QR authentication
+* Multi-role app architecture
 
 It demonstrates how a modern digital access solution can be implemented in a school environment.
 
