@@ -1410,39 +1410,65 @@ exports.redeemQrToken = onCall(async (request) => {
     const preScanSnap = await tokenRef.get();
     const preUserId = preScanSnap.exists ? String(preScanSnap.data().userId || "") : "";
 
-    let approvedLeaveExit = false;
+    let approvedLeaveExitId = null;
     if (preUserId) {
-        const roNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
-        const roDay = String(roNow.getDate()).padStart(2, "0");
-        const roMonth = String(roNow.getMonth() + 1).padStart(2, "0");
-        const roYear = roNow.getFullYear();
-        const todayText = `${roDay}/${roMonth}/${roYear}`;
-        const nowMinutes = roNow.getHours() * 60 + roNow.getMinutes();
+        // Metoda robusta de a obtine data si ora in Romania fara string parsing fragil
+        const formatter = new Intl.DateTimeFormat("en-GB", {
+            timeZone: "Europe/Bucharest",
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", second: "2-digit",
+            hour12: false
+        });
+        const parts = formatter.formatToParts(new Date());
+        const getPart = (type) => parts.find(p => p.type === type).value;
+
+        const roYear = getPart("year");
+        const roMonth = getPart("month");
+        const roDay = getPart("day");
+        const roHour = parseInt(getPart("hour"), 10);
+        const roMin = parseInt(getPart("minute"), 10);
+
+        const todayText = `${roDay}/${roMonth}/${roYear}`; // Format DD/MM/YYYY
+        const nowMinutes = roHour * 60 + roMin;
 
         // Query approved leave requests for today, then check timeText in code
         const leaveSnap = await db.collection("leaveRequests")
             .where("studentUid", "==", preUserId)
             .where("status", "==", "approved")
             .where("dateText", "==", todayText)
+            .orderBy("timeText", "asc")
             .get();
 
-        // approvedLeaveExit is true if at least one request's timeText (HH:mm) is <= now
-        approvedLeaveExit = leaveSnap.docs.some((doc) => {
+        // Find the specific leave request that is active now
+        const activeLeave = leaveSnap.docs.find((doc) => {
             const timeText = String(doc.data().timeText || "");
             const parts = timeText.split(":").map((x) => parseInt(x, 10));
             if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return false;
             const requestMinutes = parts[0] * 60 + parts[1];
             return nowMinutes >= requestMinutes;
         });
+        if (activeLeave) {
+            approvedLeaveExitId = activeLeave.id;
+        }
     }
 
     let activeHolidayExit = false;
     if (preUserId) {
-        const roNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
+        const formatter = new Intl.DateTimeFormat("en-GB", {
+            timeZone: "Europe/Bucharest",
+            year: "numeric", month: "2-digit", day: "2-digit"
+        });
+        const parts = formatter.formatToParts(new Date());
+        const getPart = (type) => parts.find(p => p.type === type).value;
+
+        const roYear = parseInt(getPart("year"), 10);
+        const roMonth = parseInt(getPart("month"), 10);
+        const roDay = parseInt(getPart("day"), 10);
+
         const nowKey =
-            roNow.getFullYear() * 10000 +
-            (roNow.getMonth() + 1) * 100 +
-            roNow.getDate();
+            roYear * 10000 +
+            roMonth * 100 +
+            roDay;
 
         const vacancySnap = await db.collection("vacancies").get();
         activeHolidayExit = vacancySnap.docs.some((doc) => {
@@ -1598,23 +1624,30 @@ exports.redeemQrToken = onCall(async (request) => {
         const classData = classSnap.exists ? classSnap.data() || {} : {};
         const schedule = classData.schedule || {};
 
-        // Use local school timezone (e.g. Europe/Bucharest) for timetable checks,
-        // because Cloud Functions uses UTC by default and can be 2-3h behind local time.
-        const localNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Bucharest" }));
-        const dayIdx = localNow.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
-        const isWeekend = dayIdx === 0 || dayIdx === 6;
+        // Obtinem ziua saptamanii si ora locala in Romania pentru verificarea orarului
+        const formatter = new Intl.DateTimeFormat("en-GB", {
+            timeZone: "Europe/Bucharest",
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit",
+            hour12: false
+        });
+        const parts = formatter.formatToParts(new Date());
+        const getPart = (type) => parts.find(p => p.type === type).value;
+        
+        const localNow = new Date(`${getPart("year")}-${getPart("month")}-${getPart("day")}T${getPart("hour")}:${getPart("minute")}:00`);
+        const dayIdx = localNow.getDay(); 
 
-        const now = localNow;
+        const isWeekend = dayIdx === 0 || dayIdx === 6;
 
         let isAfterSchedule = false;
         let isBeforeSchedule = false;
 
-        
-
+        // Verificarea existentei orarului se executa DOAR in zilele lucratoare
+        if (!isWeekend) {
             const dayKey = String(dayIdx);
             const daySchedule = schedule[dayKey];
             if (!daySchedule || !daySchedule.start || !daySchedule.end) {
-                result = {ok: false, reason: "NO_SCHEDULE", userId, fullName, classId, type: "deny"};
+                result = { ok: false, reason: "NO_SCHEDULE", userId, fullName, classId, type: "deny" };
                 accessEventToLog = {
                     gateUid: callerUid,
                     userId,
@@ -1641,7 +1674,7 @@ exports.redeemQrToken = onCall(async (request) => {
             const endMinutes = parseTime(daySchedule.end);
 
             if (startMinutes == null || endMinutes == null || endMinutes < startMinutes) {
-                result = {ok: false, reason: "BAD_SCHEDULE", userId, fullName, classId, type: "deny"};
+                result = { ok: false, reason: "BAD_SCHEDULE", userId, fullName, classId, type: "deny" };
                 accessEventToLog = {
                     gateUid: callerUid,
                     userId,
@@ -1656,12 +1689,12 @@ exports.redeemQrToken = onCall(async (request) => {
                 break scan;
             }
 
-            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+            const nowMinutes = localNow.getHours() * 60 + localNow.getMinutes();
             isAfterSchedule = nowMinutes > endMinutes;
             isBeforeSchedule = nowMinutes < startMinutes;
-        
+        }
 
-        // approvedLeaveExit was determined before the transaction via a plain query.
+        // approvedLeaveExitId was determined before the transaction via a plain query.
         // (tx.get(query) is unreliable with multi-field filters in firebase-admin v13)
 
         const nowTs = scanTimestamp;
@@ -1697,12 +1730,17 @@ exports.redeemQrToken = onCall(async (request) => {
                 lastOutAt: nowTs,
             });
             result.type = "exit";
-        } else if (approvedLeaveExit) {
+        } else if (approvedLeaveExitId) {
             // student has an approved leave request for right now — allow early exit
             eventType = "exit";
             tx.update(userRef, {
                 inSchool: false,
                 lastOutAt: nowTs,
+            });
+            // Expire the used leave request
+            tx.update(db.collection("leaveRequests").doc(approvedLeaveExitId), {
+                status: "expired",
+                expiredAt: nowTs,
             });
             result = {
                 ok: true,
@@ -1845,7 +1883,7 @@ exports.cleanupExpiredLeaveRequests = onSchedule("every 60 minutes", async (even
         const dateText = String(data.dateText || "");
 
         // Parse DD.MM.YYYY
-        const parts = dateText.split(".");
+        const parts = dateText.split("/"); // Changed to split by '/'
         if (parts.length !== 3) continue;
 
         const reqDay = parseInt(parts[0], 10);
