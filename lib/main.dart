@@ -35,7 +35,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await FirebaseAuth.instance.signOut(); // TEMP: force logout
   if (kIsWeb) {
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: false,
@@ -162,7 +161,6 @@ class _MyAppState extends State<MyApp> {
   String? _cachedUid;
   Stream<DocumentSnapshot<Map<String, dynamic>>>? _userDocStream;
   bool _hadAuthenticatedUser = false;
-  final Set<String> _authEmailMirroredUids = {};
 
   // Cached so that StreamBuilder rebuilds do not recreate the Future,
   // which would reset the FutureBuilder to ConnectionState.waiting.
@@ -316,23 +314,6 @@ class _MyAppState extends State<MyApp> {
               final effectivelyOnboarded = onboardingComplete;
               if (effectivelyOnboarded && !onboardingComplete) {
                 // Already onboarded, no-op now.
-              }
-
-              // Keep auth email mirrored in Firestore user profile.
-              // Only attempt once per uid to avoid write-loops on rebuilds.
-              if (!_authEmailMirroredUids.contains(user.uid) &&
-                  (data['authEmail'] ?? '').toString().trim().isEmpty &&
-                  (user.email ?? '').trim().isNotEmpty) {
-                _authEmailMirroredUids.add(user.uid);
-                unawaited(
-                  FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(user.uid)
-                      .set({
-                        'authEmail': user.email,
-                        'updatedAt': FieldValue.serverTimestamp(),
-                      }, SetOptions(merge: true)),
-                );
               }
 
               return StreamBuilder<SecurityFlags>(

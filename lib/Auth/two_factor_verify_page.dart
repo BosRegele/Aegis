@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -102,9 +101,6 @@ class _TwoFactorVerifyPageState extends State<TwoFactorVerifyPage> {
           .add(const Duration(hours: 8))
           .millisecondsSinceEpoch;
       await prefs.setInt(_prefKey(widget.uid), expiry);
-      await FirebaseFirestore.instance.collection('users').doc(widget.uid).set({
-        'twoFactorVerifiedUntil': Timestamp.fromMillisecondsSinceEpoch(expiry),
-      }, SetOptions(merge: true));
     } catch (_) {}
   }
 

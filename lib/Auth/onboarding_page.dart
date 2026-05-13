@@ -1,5 +1,4 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../admin/services/admin_api.dart';
@@ -205,14 +204,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
       // 3) NOW that auth is restored, write to Firestore.
       if (_isStudentRole) {
-        // Student → mark passwordChanged, then go to photo step.
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.user.uid)
-            .set({
-              'passwordChanged': true,
-              'updatedAt': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true));
+        // Student continues to the photo step after the server marks the
+        // password as changed.
+        await _api.markPasswordChanged(uid: widget.user.uid);
         if (!mounted) return;
         setState(() {
           _step = _stepPhoto;

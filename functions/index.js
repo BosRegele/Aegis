@@ -2395,6 +2395,12 @@ exports.authVerifySecondFactor = onCall(async (request) => {
         });
     });
 
+    await db.collection("users").doc(uid).set({
+        twoFactorVerifiedUntil: admin.firestore.Timestamp
+            .fromMillis(Date.now() + 8 * 60 * 60 * 1000),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
     return { verified: true };
 });
 

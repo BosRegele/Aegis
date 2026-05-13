@@ -55,11 +55,8 @@ service cloud.firestore {
         'requestsLastOpenedAt',
         'profilePictureUrl',
         'photoUrl',
-        'authEmail',
         'updatedAt',
         'fcmToken',
-        'twoFactorVerifiedUntil',
-        'passwordChanged',
       ]);
     }
 
@@ -194,18 +191,23 @@ service cloud.firestore {
 
     function validQrTokenCreate() {
       return isStudent() &&
-          request.resource.data.keys().hasAll(['userId', 'expiresAt', 'used']) &&
+          request.resource.data.keys().hasOnly(['userId', 'expiresAt', 'used']) &&
           request.resource.data.userId == request.auth.uid &&
           request.resource.data.expiresAt is timestamp &&
+          request.resource.data.expiresAt > request.time &&
+          request.resource.data.expiresAt <= request.time + duration.value(5, 'm') &&
           request.resource.data.used == false;
     }
 
     match /users/{userId} {
-      // Some legacy accounts may still have inconsistent profile documents
-      // during bootstrap/login. Keep reads available to authenticated users so
-      // the app can resolve and migrate those profiles instead of hanging on a
-      // permission-denied error.
-      allow read: if isSignedIn();
+      allow read: if isOwnUser(userId) ||
+          isAdmin() ||
+          (isTeacher() &&
+              resource.data.role == 'student' &&
+              resource.data.classId == me().classId) ||
+          (isParent() &&
+              me().children is list &&
+              userId in me().children);
       allow create: if isAdmin();
       allow update: if isAdmin() ||
           (isOwnUser(userId) && onlyOwnInboxFieldsChanged());
