@@ -189,16 +189,6 @@ service cloud.firestore {
             resource.data.recipientUid == ''));
     }
 
-    function validQrTokenCreate() {
-      return isStudent() &&
-          request.resource.data.keys().hasOnly(['userId', 'expiresAt', 'used']) &&
-          request.resource.data.userId == request.auth.uid &&
-          request.resource.data.expiresAt is timestamp &&
-          request.resource.data.expiresAt > request.time &&
-          request.resource.data.expiresAt <= request.time + duration.value(5, 'm') &&
-          request.resource.data.used == false;
-    }
-
     match /users/{userId} {
       allow read: if isOwnUser(userId) ||
           isAdmin() ||
@@ -263,17 +253,14 @@ service cloud.firestore {
 
     match /accessEvents/{eventId} {
       allow read: if canReadAccessEvent();
-      allow create: if isGate() || isAdmin();
-      allow update, delete: if false;
+      // Events are created only by redeemQrToken through the Admin SDK.
+      allow create, update, delete: if false;
     }
 
     match /qrTokens/{tokenId} {
-      allow read: if isAdmin() ||
-          (isStudent() && resource.data.userId == request.auth.uid);
-      allow create: if validQrTokenCreate();
-      allow update: if false;
-      allow delete: if isAdmin() ||
-          (isStudent() && resource.data.userId == request.auth.uid);
+      // Token lifecycle is backend-only: issue, redeem and cleanup all use
+      // Cloud Functions with the Admin SDK.
+      allow read, write: if false;
     }
 
     match /{document=**} {

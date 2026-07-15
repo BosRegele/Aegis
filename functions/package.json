@@ -2,6 +2,7 @@
   "name": "functions",
   "description": "Cloud Functions for Firebase",
   "scripts": {
+    "check": "node --check index.js",
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
     "start": "npm run shell",
@@ -13,12 +14,9 @@
   },
   "main": "index.js",
   "dependencies": {
-    "firebase-admin": "^13.6.0",
-    "firebase-functions": "^7.1.1",
-    "nodemailer": "^6.10.0"
-  },
-  "devDependencies": {
-    "firebase-functions-test": "^3.4.1"
+    "firebase-admin": "^13.10.0",
+    "firebase-functions": "^7.2.5",
+    "nodemailer": "^9.0.3"
   },
   "private": true
 }

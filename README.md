@@ -158,8 +158,7 @@ StudentId/
     │       └── admin_store.dart      # Firestore data layer
     │
     ├── gate/                         # Turnstile / gate device
-    │   ├── gate_scan_page.dart       # QR scanner
-    │   └── qr_token.dart             # Token generation / validation
+    │   └── gate_scan_page.dart       # QR scanner
     │
     ├── common/                       # Shared cross-role pages
     │   └── unified_messages_page.dart
@@ -188,18 +187,17 @@ User roles stored in Firestore determine which pages and features are accessible
 
 # QR Code Access System
 
-Students receive a dynamic QR code that changes periodically.
-This prevents QR screenshots from being reused.
-
-The QR code contains a signed token that is verified when scanned by a turnstile device.
+Students receive a dynamic QR code that changes periodically. Each code contains
+an opaque, cryptographically random 256-bit token. The token is issued by a Cloud
+Function, expires after 20 seconds and can be redeemed only once.
 
 Flow:
 
 1. Student opens the QR page
-2. A secure token is generated client-side
+2. An authenticated Cloud Function verifies the student and issues the token
 3. QR code is displayed and refreshed on an interval
 4. Turnstile scans the QR
-5. Backend (Cloud Functions + Firestore rules) validates the token
+5. The backend atomically validates and redeems the token
 6. Access is granted or denied, and the event is logged
 
 ---
@@ -244,7 +242,7 @@ Each user entry shows:
 The system includes several security measures:
 
 * Role-based access control enforced in Firestore rules
-* Dynamic, short-lived QR tokens
+* Backend-issued, cryptographically random, short-lived and single-use QR tokens
 * Server-side validation via Cloud Functions
 * Password hashing
 * Optional two-factor verification

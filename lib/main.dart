@@ -11,7 +11,7 @@ import 'package:firster/teacher/teacher_dashboard_page.dart';
 import 'package:firster/parent/parent_home_page.dart';
 import 'package:firster/services/security_flags_service.dart';
 import 'package:firster/core/session.dart';
-import 'package:firster/auth/onboarding_page.dart';
+import 'package:firster/Auth/onboarding_page.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';

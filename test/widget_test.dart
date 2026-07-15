@@ -15,12 +15,16 @@ void main() {
     WidgetTester tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1440, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(const MaterialApp(home: LoginPageFirestore()));
 
     expect(find.text('Autentificare'), findsOneWidget);
-    expect(find.text('Nume de utilizator'), findsOneWidget);
-    expect(find.text('Parola'), findsOneWidget);
+    expect(find.text('Nume utilizator sau Email'), findsOneWidget);
+    expect(find.text('Parolă'), findsOneWidget);
     expect(find.text('Conectează-te'), findsOneWidget);
   });
 }

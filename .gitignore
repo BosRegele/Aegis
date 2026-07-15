@@ -32,6 +32,16 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+node_modules/
+functions/node_modules/
+
+# Local Firebase Functions configuration. Commit only the redacted example.
+.env
+.env.*
+!.env.example
+functions/.env
+functions/.env.*
+!functions/.env.example
 
 # Symbolication related
 app.*.symbols
