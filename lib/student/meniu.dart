@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firster/student/cereri.dart';
 import 'package:firster/student/inbox.dart';
@@ -193,7 +193,9 @@ class _MeniuScreenState extends State<MeniuScreen> {
             builder: (context, snapshot) {
               final data = snapshot.data?.data() ?? const <String, dynamic>{};
               final fullName = (data['fullName'] ?? '').toString().trim();
-              final resolvedName = fullName.isNotEmpty ? fullName : fallbackName;
+              final resolvedName = fullName.isNotEmpty
+                  ? fullName
+                  : fallbackName;
               final classId = (data['classId'] ?? AppSession.classId ?? '')
                   .toString()
                   .trim();
@@ -482,21 +484,22 @@ class _AccessHubCardState extends State<_AccessHubCard> {
 
   Future<void> _regenerateToken() async {
     final uid = AppSession.uid;
-    if (uid == null || uid.isEmpty) return;
+    if (uid == null || uid.isEmpty || _loading) return;
     if (mounted) setState(() => _loading = true);
 
     try {
-      final random = Random();
-      final tokenId = List.generate(16, (_) => random.nextInt(10)).join();
-      final expiresAt = Timestamp.fromDate(
-        DateTime.now().add(const Duration(seconds: _renewIntervalSeconds + 1)),
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'generateQrToken',
       );
-
-      await FirebaseFirestore.instance.collection('qrTokens').doc(tokenId).set({
-        'userId': uid,
-        'expiresAt': expiresAt,
-        'used': false,
-      });
+      final response = await callable.call();
+      final rawData = response.data;
+      if (rawData is! Map) {
+        throw StateError('Răspuns QR invalid de la backend.');
+      }
+      final tokenId = rawData['token']?.toString().trim() ?? '';
+      if (tokenId.isEmpty) {
+        throw StateError('Backend-ul nu a returnat un token QR valid.');
+      }
 
       if (!mounted) return;
       setState(() {
@@ -1004,16 +1007,15 @@ class _MesajeCard extends StatelessWidget {
                         ...(globalSecretariatSnapshot.data?.docs ?? const []),
                       ]);
 
-                  final cardHeight =
-                      veryCompact ? 134.0 : (compact ? 154.0 : 184.0);
-                  final iconBox =
-                      veryCompact ? 39.0 : (compact ? 45.0 : 52.0);
-                  final iconSize =
-                      veryCompact ? 19.5 : (compact ? 21.5 : 24.0);
-                  final titleSize =
-                      veryCompact ? 16.5 : (compact ? 18.5 : 22.0);
-                  final subSize =
-                      veryCompact ? 11.0 : (compact ? 11.5 : 12.0);
+                  final cardHeight = veryCompact
+                      ? 134.0
+                      : (compact ? 154.0 : 184.0);
+                  final iconBox = veryCompact ? 39.0 : (compact ? 45.0 : 52.0);
+                  final iconSize = veryCompact ? 19.5 : (compact ? 21.5 : 24.0);
+                  final titleSize = veryCompact
+                      ? 16.5
+                      : (compact ? 18.5 : 22.0);
+                  final subSize = veryCompact ? 11.0 : (compact ? 11.5 : 12.0);
                   final pad = veryCompact ? 12.5 : (compact ? 13.5 : 16.0);
 
                   return Container(

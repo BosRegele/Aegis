@@ -1,7 +1,7 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
-const { randomBytes, createHash } = require("crypto");
+const { randomBytes, randomInt, createHash } = require("crypto");
 const nodemailer = require("nodemailer");
 const admin = require("firebase-admin");
 
@@ -17,6 +17,8 @@ const ATTEMPT_TOKEN_TTL_SECONDS = 300;
 const ACTOR_KEY_RE = /^[a-f0-9]{32,128}$/;
 const PASSWORD_RESET_CODE_TTL_MS = 30 * 60 * 1000;
 const PASSWORD_RESET_RESEND_COOLDOWN_MS = 60 * 1000;
+const QR_TOKEN_TTL_SECONDS = 20;
+const QR_TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
 
 function normalizeEmail(value) {
     return String(value || "").trim().toLowerCase();
@@ -468,7 +470,7 @@ exports.authRequestPasswordReset = onCall(async (request) => {
         return { ok: true, sent: false, cooldownSeconds: Math.max(1, remaining) };
     }
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = randomInt(100000, 1000000).toString();
     const expiryMs = nowMs + PASSWORD_RESET_CODE_TTL_MS;
 
     await admin.firestore().collection("users").doc(resolved.uid).set({
@@ -1354,27 +1356,40 @@ exports.adminRemoveParentFromStudent = onCall(async (request) => {
     });
 });
 exports.generateQrToken = onCall(async (request) => {
-
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "Login required");
     }
 
     const uid = request.auth.uid;
+    const db = admin.firestore();
+    const userSnap = await db.collection("users").doc(uid).get();
+    if (!userSnap.exists) {
+        throw new HttpsError("permission-denied", "Profil inexistent");
+    }
 
-    const rand = Math.random().toString().slice(2, 18);
+    const userData = userSnap.data() || {};
+    if (userData.role !== "student" || String(userData.status || "active") === "disabled") {
+        throw new HttpsError("permission-denied", "Doar elevii activi pot genera coduri QR");
+    }
 
-    const expiresAt = new Date(Date.now() + 20000); // 20 sec
+    // Opaque, 256-bit token generated only on the trusted backend.
+    const tokenId = randomBytes(32).toString("base64url");
+    const now = admin.firestore.Timestamp.now();
+    const expiresAt = admin.firestore.Timestamp.fromMillis(
+        now.toMillis() + QR_TOKEN_TTL_SECONDS * 1000
+    );
 
-    await admin.firestore().collection("qrTokens").doc(rand).set({
+    await db.collection("qrTokens").doc(tokenId).set({
         userId: uid,
         expiresAt: expiresAt,
-        used: false
+        createdAt: now,
+        used: false,
     });
 
     return {
-        token: rand
+        token: tokenId,
+        expiresInSeconds: QR_TOKEN_TTL_SECONDS,
     };
-
 });
 
 exports.redeemQrToken = onCall(async (request) => {
@@ -1393,10 +1408,13 @@ exports.redeemQrToken = onCall(async (request) => {
     if (callerData.role !== "gate" && callerData.role !== "admin") {
         throw new HttpsError("permission-denied", "Doar poarta/admin poate valida QR");
     }
+    if (String(callerData.status || "active") === "disabled") {
+        throw new HttpsError("permission-denied", "Cont dezactivat");
+    }
 
     const tokenId = String(request.data.token || "").trim();
-    if (!tokenId) {
-        throw new HttpsError("invalid-argument", "Token lipsa");
+    if (!QR_TOKEN_RE.test(tokenId)) {
+        throw new HttpsError("invalid-argument", "Token QR invalid");
     }
 
     const db = admin.firestore();
@@ -2003,7 +2021,7 @@ exports.sendVerificationEmail = onCall(async (request) => {
     await assertPersonalEmailUnique({ uid, email: emailLower });
 
     // Generez cod 6 cifre
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = randomInt(100000, 1000000).toString();
     const expiryMs = Date.now() + 60 * 60 * 1000; // 1 ora
 
     // Salvez codul în Firestore
@@ -2311,7 +2329,7 @@ exports.authStartSecondFactor = onCall(async (request) => {
     // authStartSecondFactor is called ONCE per login — always generate a fresh code.
     // Cooldown applies only to authResendSecondFactor (user-triggered resends).
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = randomInt(100000, 1000000).toString();
     const codeHash = createHash("sha256").update(code).digest("hex");
     const nowTs = admin.firestore.Timestamp.fromMillis(nowMs);
 
@@ -2441,7 +2459,7 @@ exports.authResendSecondFactor = onCall(async (request) => {
         }
     }
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = randomInt(100000, 1000000).toString();
     const codeHash = createHash("sha256").update(code).digest("hex");
     const nowTs = admin.firestore.Timestamp.fromMillis(nowMs);
 

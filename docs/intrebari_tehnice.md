@@ -206,25 +206,21 @@ La fiecare login, dispozitivul primește un **token FCM unic** care este salvat 
 Elev generează QR  →  Operator scanează  →  Backend validează  →  Acces înregistrat
 ```
 
-1. Elevul apasă butonul de generare QR în aplicație
-2. Se creează un token semnat cu timp de expirare scurt
+1. Elevul deschide cardul QR în aplicație
+2. O funcție backend verifică rolul elevului și emite un token aleatoriu cu expirare scurtă
 3. Operatorul de la turnichete (rol `gate`) scanează QR-ul
-4. Aplicația verifică semnătura și că token-ul nu a expirat
-5. Funcția `redeemQrToken` înregistrează evenimentul de acces în Firestore
+4. Funcția `redeemQrToken` verifică rolul operatorului, expirarea și dacă token-ul a mai fost folosit
+5. Token-ul este consumat atomic, iar evenimentul de acces este înregistrat de backend
 
 ---
 
 ### 17. Cum este securizat token-ul QR? Nu poate fi falsificat?
 
-Token-ul are formatul:
-
-```
-userId . expTimestamp . semnatura
-```
-
-Semnătura este generată cu **HMAC-SHA256** pe baza perechii `userId.expTimestamp`, folosind un secret cunoscut doar serverului.
-
-Oricine modifică `userId` sau `expTimestamp` va produce o semnătură diferită — verificarea va eșua automat. În plus, token-ul expiră după câteva minute, deci un screenshot vechi nu poate fi refolosit.
+Token-ul este un identificator opac de 256 de biți, generat cu un generator
+criptografic exclusiv pe backend. Nu conține `userId` și nu poate fi creat direct
+de client prin regulile Firestore. Documentul asociat expiră după 20 de secunde și
+este marcat drept folosit în aceeași tranzacție care validează accesul, astfel încât
+un screenshot vechi sau un al doilea scan nu poate fi reutilizat.
 
 ---
 
